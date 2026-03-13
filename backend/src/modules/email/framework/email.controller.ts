@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { EmailService } from '../core/app/email.service.js';
 import { CreateEmailDto } from '../core/model/create-email.dto.js';
-import { UpdateAuthDto } from 'src/modules/auth/core/model/update-auth.dto.js';
+import { UpdateAuthDto } from '../../auth/core/model/update-auth.dto.js';
 
 @Controller('email')
 export class EmailController {
