@@ -14,4 +14,9 @@ export class AuthService {
   getGoogleAuthUrl() {
     return this.googleOauthService.getAuthUrl();
   }
+
+  async getToken(code: string) {
+    const accessToken = await this.googleOauthService.getToken(code);
+    return accessToken;
+  }
 }

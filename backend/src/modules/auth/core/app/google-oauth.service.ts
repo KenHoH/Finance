@@ -29,5 +29,10 @@ export class GoogleOauthService {
             scope: scopes,
         });
     }
+    public async getToken(code: string){
+        const { tokens } = await this.oauth2Client.getToken(code);
+        console.log('Token:', tokens);
+        return tokens.access_token;
+    }
 
 }

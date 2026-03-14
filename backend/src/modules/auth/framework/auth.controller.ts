@@ -1,22 +1,31 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Query, Redirect, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthService } from '../core/app/auth.service.js';
-import { CreateAuthDto } from '../core/model/create-auth.dto.js';
-import { UpdateAuthDto } from '../core/model/update-auth.dto.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Get('/google')
+  @Redirect()
   googleAuth() {
-    return {
-      url: this.authService.getGoogleAuthUrl()
-    };
+    const url = this.authService.getGoogleAuthUrl();
+    console.log(url);
+
+    return { url };
   }
 
-  @Get('/auth/google/callback')
-  googleCallback(@Query('token') token: string) {
-    console.log(token);
-    return token;
+  @Get('/google/callback')
+  async googleCallback(@Query('code') code: string, @Res({ passthrough: true }) response: Response,) {
+    console.log(code);
+
+    const token: string = await this.authService.getToken(code);
+    response.cookie('accessToken', token, {
+      maxAge: 900000,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+    response.redirect('/');
   }
 }
