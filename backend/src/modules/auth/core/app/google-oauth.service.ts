@@ -21,7 +21,8 @@ export class GoogleOauthService {
     public getAuthUrl() {
 
         const scopes = [
-            'https://www.googleapis.com/auth/gmail.readonly'
+            'https://www.googleapis.com/auth/gmail.readonly',
+            'https://mail.google.com/',
         ];
 
         return this.oauth2Client.generateAuthUrl({
@@ -31,7 +32,6 @@ export class GoogleOauthService {
     }
     public async getToken(code: string){
         const { tokens } = await this.oauth2Client.getToken(code);
-        console.log('Token:', tokens);
         return tokens.access_token;
     }
 

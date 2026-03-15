@@ -1,34 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { ConsoleLogger, Controller, Get, Query, Req } from '@nestjs/common';
 import { EmailService } from '../core/app/email.service.js';
-import { CreateEmailDto } from '../core/model/create-email.dto.js';
-import { UpdateAuthDto } from '../../auth/core/model/update-auth.dto.js';
+import type { Request } from 'express';
 
 @Controller('email')
 export class EmailController {
   constructor(private readonly emailService: EmailService) {}
-
-  @Post()
-  create(@Body() createEmailDto: CreateEmailDto) {
-    return this.emailService.create(createEmailDto);
-  }
-
   @Get()
-  findAll() {
-    return this.emailService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.emailService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateEmailDto: UpdateAuthDto) {
-    return this.emailService.update(+id, updateEmailDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.emailService.remove(+id);
+  getMailBoxes(
+    @Query('userEmail') userEmail: string,
+    @Req() request: Request
+  ) {
+    console.log('Received request to get mailboxes');
+    console.log(request.cookies);
+    console.log(userEmail);
+    return this.emailService.getMailboxs(userEmail, request.cookies['accessToken']);
   }
 }

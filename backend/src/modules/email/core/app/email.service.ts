@@ -1,26 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { CreateEmailDto } from '../model/create-email.dto.js';
-import { UpdateEmailDto } from '../model/update-email.dto.js';
+import { connectToImap } from '../../../../../src/infrastucture/imap/imap.services.js';
 
 @Injectable()
 export class EmailService {
-  create(createEmailDto: CreateEmailDto) {
-    return 'This action adds a new email';
-  }
 
-  findAll() {
-    return `This action returns all email`;
+  getMailboxs(userEmail: string, googleAccessToken: string) {
+    connectToImap(userEmail, googleAccessToken);
   }
-
-  findOne(id: number) {
-    return `This action returns a #${id} email`;
-  }
-
-  update(id: number, updateEmailDto: UpdateEmailDto) {
-    return `This action updates a #${id} email`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} email`;
-  }
+  
 }

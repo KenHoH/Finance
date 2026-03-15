@@ -10,15 +10,11 @@ export class AuthController {
   @Redirect()
   googleAuth() {
     const url = this.authService.getGoogleAuthUrl();
-    console.log(url);
-
     return { url };
   }
 
   @Get('/google/callback')
   async googleCallback(@Query('code') code: string, @Res({ passthrough: true }) response: Response,) {
-    console.log(code);
-
     const token: string = await this.authService.getToken(code);
     response.cookie('accessToken', token, {
       maxAge: 900000,
