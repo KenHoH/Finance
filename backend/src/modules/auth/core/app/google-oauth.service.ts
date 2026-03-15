@@ -28,7 +28,7 @@ export class GoogleOauthService {
 
         const scopes = [
             'https://www.googleapis.com/auth/gmail.readonly',
-            'https://mail.google.com/',
+            'https://mail.google.com/',.
             'https://www.googleapis.com/auth/userinfo.email',
             'https://www.googleapis.com/auth/userinfo.profile',
         ];
@@ -57,6 +57,7 @@ export class GoogleOauthService {
         const {data} = await oauth2.userinfo.get();
         console.log('user profile = ', {email: data.email, name: data.name})
         return data;
+        return tokens.access_token;
     }
 
 }
