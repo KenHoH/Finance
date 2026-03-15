@@ -72,26 +72,50 @@ export async function connectToImap(userEmail: string, googleAccessToken: string
             user: userEmail,          
             accessToken: googleAccessToken
         },
-        logger: false // true to see the raw TCP traffic
-    })
+        logger: false 
+    });
 
     try {
-        console.log('Connecting to Gmail IMAP...');
         await client.connect();
         console.log('Connected and authenticated via XOAUTH2!');
 
-        let lock = await client.getMailboxLock('INBOX');
+        let lock = await client.getMailboxLock('Important Stuff');
         console.log('Inbox opened. Listening for new emails...');
 
-        let mailboxes = await client.list();
+        // let mailbox = await client.list();
 
-        for (let mailbox of mailboxes) {
-            console.log('Path:', mailbox.path);
-            console.log('Delimiter:', mailbox.delimiter);
-            console.log('Flags:', mailbox.flags);
-            console.log('Special use:', mailbox.specialUse);
-            console.log('---');
-        }
+        // for(let mail of mailbox){
+        //     console.log(`Path: ${mail.path}}`);
+        //     console.log(`Delimitter: ${mail.path}}`);
+        //     console.log(`Flags: ${mail.path}}`);
+        //     console.log(`Special use: ${mail.path}}`);
+        //     console.log(`========`);
+        // }
+
+        // 2. Listen for the event
+        client.on("exists", async (data) => {
+            console.log(`\n🔔 New email arrived! Total in Inbox: ${data.count}`);
+
+            // 3. Create a sequence range in case multiple emails arrive at once
+            // Example: If we had 10 emails, and now have 12, this fetches "11:*" (11 through the end)
+            const sequenceRange = `${data.prevCount + 1}:*`;
+
+            try {
+                for await (let message of client.fetch(sequenceRange, { source: true })) {
+                    
+                    const parsed = await simpleParser(message.source);
+
+                    console.log("-----------------------------------");
+                    console.log("Subject:", parsed.subject);
+                    console.log("From:", parsed.from?.text);
+                    console.log("Text:", parsed.text);
+                    console.log("-----------------------------------");
+                }
+            } catch (err) {
+                console.error("Error fetching new message:", err);
+            }
+        });
+
     } catch (err) {
         console.error('IMAP Connection Error:', err);
     }
