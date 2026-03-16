@@ -63,31 +63,50 @@ export async function connectToImap(userEmail: string, googleAccessToken: string
 }import { ImapFlow } from "imapflow";
 import * as cheerio from "cheerio";
 
+
+function parseIDRCurrency(value: string): number {
+  return Number(
+    value
+      .replace(/^Rp\s?/, '')
+      .replace(/\./g, '')
+      .replace(',', '.')
+      .trim()
+  );
+}
+
 function extractInfoFromHTMLBLU(html: string) {
     const $ = cheerio.load(html);
 
-    // --- 1. EXTRACT AMOUNT ---
-    const amountRaw = $('span').filter((i, el) => $(el).text().trim() === 'Rp').next().text().trim();
-    
-    // --- 2. EXTRACT NAME ---
-    const nameRaw = $('span[style*="padding-top:8px"]').text().trim();
+    // Unused Filter (16/03/2026)
+    // const amounts = $('span')
+    // .filter((i, el) => $(el).text().trim() === 'Rp')
+    // .map((i, el) => $(el).next().text().trim())
+    // .get();
+    // const splitDetails = bankDetailsHtml.split(/<br\s*\/?>/i);
+    // const bankNameRaw = splitDetails[0] ? splitDetails[0].trim() : "Bank not found";
+    // const accountRaw = splitDetails[1] ? splitDetails[1].trim() : "Account not found";
+    // const bankDetailsHtml = $('span[style*="#8993A4"]').html() || '';
 
-    // --- 3. EXTRACT BANK NAME & ACCOUNT (DYNAMICALLY) ---
-    // Find the span using the specific gray hex color blu uses for destination details
-    const bankDetailsHtml = $('span[style*="#8993A4"]').html() || '';
-    
-    // Split the inner HTML right where the <br> tag is
-    const splitDetails = bankDetailsHtml.split(/<br\s*\/?>/i);
-    
-    // The first half is ALWAYS the Bank Name, the second half is ALWAYS the Account Number
-    const bankNameRaw = splitDetails[0] ? splitDetails[0].trim() : "Bank not found";
-    const accountRaw = splitDetails[1] ? splitDetails[1].trim() : "Account not found";
+    const allNames = $('span[style*="padding-top:8px"]')
+    .map((i, el) => $(el).text().trim())
+    .get();
 
-    console.log("💳 TRANSACTION DETAILS:");
-    console.log(`Name:    ${nameRaw}`);      // Output: JUAN KONTOL
-    console.log(`Bank:    ${bankNameRaw}`);  // Output: BCA Digital (or Mandiri, GoPay, etc.)
-    console.log(`Account: ${accountRaw}`);   // Output: 0028 122233 4341
-    console.log(`Amount:  Rp ${amountRaw}`); // Output: Rp 10.000,00
+    const receipentName = allNames[0] || "Name not found";
+    const senderName = allNames[1] || "Name not found";
+    const names = `Sender: ${senderName}, Recipient: ${receipentName}`;
+
+    const labelDate = $('div').filter((i, el) => $(el).text().trim() === 'Tgl & Jam Transaksi');
+    const dateTimeRaw = labelDate.closest('div[class*="mj-column"]').next('div[class*="mj-column"]').text().trim();
+
+    const labelTotal = $('div').filter((i, el) => $(el).text().trim() === 'Total');
+    let totalAmountRaw = labelTotal.closest('div[class*="mj-column"]').next('div[class*="mj-column"]').text().trim();
+    totalAmountRaw = totalAmountRaw.replace(/^Rp/, '').trim();
+    const totalAmount = parseIDRCurrency(totalAmountRaw);
+
+    console.log("TRANSACTION DETAILS:");
+    console.log(`Name:    ${names}`);      
+    console.log(`Date:    ${dateTimeRaw}`);
+    console.log(`Total:   Rp ${totalAmount.toFixed(2)}`); 
 }
 
 export async function connectToImap(userEmail: string, googleAccessToken: string) {
@@ -105,19 +124,10 @@ export async function connectToImap(userEmail: string, googleAccessToken: string
 
     try {
         await client.connect();
-        console.log('Connected and authenticated via XOAUTH2!');
 
+        // Label "Important Stuff" because i filterize the important email like OVO, BLU and BCA into this label
+        // You can change the label name into 'INBOX'
         let lock = await client.getMailboxLock('Important Stuff');
-        console.log('Inbox opened. Listening for new emails...');
-
-        // let mailbox = await client.list();
-        // for(let mail of mailbox){
-        //     console.log(`Path: ${mail.path}}`);
-        //     console.log(`Delimitter: ${mail.path}}`);
-        //     console.log(`Flags: ${mail.path}}`);
-        //     console.log(`Special use: ${mail.path}}`);
-        //     console.log(`========`);
-        // }
 
         client.on("exists", async (data) => {
             console.log(`\nNew email arrived! Total in Inbox: ${data.count}`);
@@ -132,14 +142,13 @@ export async function connectToImap(userEmail: string, googleAccessToken: string
                     console.log("-----------------------------------");
                     console.log("Subject:", parsed.subject);
                     console.log("From:", parsed.from?.text);
-                    console.log("Text:", parsed.text);
                     console.log("HTML:", parsed.html);
                     console.log("-----------------------------------");
 
                     if(parsed.html){
                         extractInfoFromHTMLBLU(parsed.html || '');
                     }else {
-                        console.warn("No HTML content found in the email. Skipping extraction.");
+                        console.log("No HTML content found in the email. Skipping extraction.");
                     }
                 }
             } catch (err) {
