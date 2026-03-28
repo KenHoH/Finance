@@ -5,9 +5,12 @@ import { AppController } from './app.controller.js';
 import { EmailModule } from './modules/email/email.module.js';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './modules/prisma/prisma.module.js';
+import { TransactionModule } from './modules/transaction/transaction.module.js';
+import { BudgetModule } from './modules/budget/budget.module.js';
+import { GoalModule } from './modules/goal/goal.module.js';
 
 @Module({
-  imports: [AuthModule, EmailModule, PrismaModule, ConfigModule.forRoot({
+  imports: [AuthModule, EmailModule, PrismaModule, TransactionModule, BudgetModule, GoalModule, ConfigModule.forRoot({
     isGlobal: true,
     envFilePath: '.env',
   })],
