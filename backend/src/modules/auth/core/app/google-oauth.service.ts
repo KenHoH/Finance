@@ -29,16 +29,33 @@ export class GoogleOauthService {
         const scopes = [
             'https://www.googleapis.com/auth/gmail.readonly',
             'https://mail.google.com/',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile',
         ];
 
         return this.oauth2Client.generateAuthUrl({
             access_type: 'offline',
+            prompt: 'consent',
             scope: scopes,
         });
     }
+    
     public async getToken(code: string){
         const { tokens } = await this.oauth2Client.getToken(code);
-        return tokens.access_token;
+        console.log('token received', {
+            hasAccess: !!tokens.access_token,
+            hasRefresh: !!tokens.refresh_token,
+            expiry: tokens.expiry_date,
+        })
+        return tokens;
+    }
+
+    public async getUserProfile(accessToken: string){
+        this.oauth2Client.setCredentials({access_token: accessToken});
+        const oauth2 = google.oauth2({version: 'v2', auth: this.oauth2Client});
+        const {data} = await oauth2.userinfo.get();
+        console.log('user profile = ', {email: data.email, name: data.name})
+        return data;
     }
 
 }

@@ -1,5 +1,5 @@
-import { Controller, Get, Query, Redirect, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import { Controller, Get, Query, Redirect, Req, Res, UseGuards } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { AuthService } from '../core/app/auth.service.js';
 
 @Controller('auth')
@@ -14,14 +14,40 @@ export class AuthController {
   }
 
   @Get('/google/callback')
-  async googleCallback(@Query('code') code: string, @Res({ passthrough: true }) response: Response,) {
-    const token: string = await this.authService.getToken(code);
-    response.cookie('accessToken', token, {
-      maxAge: 900000,
-      httpOnly: true,
+  async googleCallback(
+    @Query('code') code: string, 
+    @Res({ passthrough: true }) response: Response,
+  ){
+    const {jwt, user} = await this.authService.handleGoogleLogin(code);
+
+    response.cookie('token', jwt, {
+      maxAge: 7*24*60*60*1000, //7hari
+      httpOnly:true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
     });
-    response.redirect('/');
+
+    return { message: 'login succeed', user: {id: user.id, email: user.email}};
+  }
+
+  @Get('/me')
+  async getMe(@Req() req: Request){
+    const token = req.cookies?.['token'];
+    if(!token){
+      return {user: null};
+    }
+
+    const user = await this.authService.getMe(token);
+    return {user};
+  }
+
+  @Get('/logout')
+  logOut(@Req() req:Request, @Res({passthrough: true}) response: Response) {
+    const token = req.cookies?.['token'];
+    if(!token){
+      return {message: 'no activate session bro'};
+    }
+    response.clearCookie('token');
+    return {message: 'logout succeed'};
   }
 }
