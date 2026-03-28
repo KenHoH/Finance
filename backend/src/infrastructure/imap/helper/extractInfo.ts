@@ -13,13 +13,13 @@ export interface ExtractedInfo {
 export function extractInfo(subject: string, sender: string, html:string) : ExtractedInfo {
 
 
-    if(subject === 'Transaksimu Pakai blu Berhasil'){
+    if(subject.includes('Transaksimu Pakai blu Berhasil')){
         return extractInfoFromHTMLBLU(html);
     }
-    else if(subject === 'Internet Transaction Journal'){
+    else if(subject.includes('Internet Transaction Journal')){
         return extractInfoFromHTMLBCA(html);
     }
-    else if(subject === 'OVO QR Payment Receipt'){
+    else if(subject.includes('OVO QR Payment Receipt')){
         return extractInfoFromHTMLOVO(html);
     }
 

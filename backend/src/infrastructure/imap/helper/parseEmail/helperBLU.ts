@@ -25,7 +25,7 @@ export function extractInfoFromHTMLBLU(html: string) : ExtractedInfo {
     console.log(`Total:     ${totalAmount.toFixed(2)}`);
 
     return {
-        status: receipentName || totalAmount > 0 || dateTimeRaw ? true : false,
+        status: !!(receipentName && totalAmount > 0 && dateTimeRaw),
         amount: totalAmount,
         date: dateTimeRaw,
         recipient: receipentName

@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { CreateAuthDto } from '../model/create-auth.dto.js';
-import { UpdateAuthDto } from '../model/update-auth.dto.js';
 import { GoogleOauthService } from './google-oauth.service.js';
 
 
