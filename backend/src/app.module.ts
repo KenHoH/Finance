@@ -13,6 +13,7 @@ import { GoalModule } from './modules/goal/goal.module.js';
 import { SplitBillModule } from './modules/split-bill/split-bill.module.js';
 import { CategoryModule } from './modules/category/category.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module.js';
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: CsrfGuard },
   ],
 })
 export class AppModule {}

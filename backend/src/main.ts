@@ -4,12 +4,15 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import express from 'express';
 import { GlobalExceptionFilter } from './infrastructure/filters/http-exception.filter.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet());
+  app.use(express.json({ limit: '10kb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',

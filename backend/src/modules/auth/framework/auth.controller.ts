@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Redirect, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from '../core/app/auth.service.js';
+import { generateCsrfToken, setCsrfCookie } from '../../../infrastructure/utils/csrf-token.js';
 
 @Controller('auth')
 export class AuthController {
@@ -27,6 +28,9 @@ export class AuthController {
       sameSite: 'lax',
     });
 
+    const csrfToken = generateCsrfToken();
+    setCsrfCookie(response, csrfToken);
+
     return { message: 'login succeed', user: {id: user.id, email: user.email}};
   }
 
@@ -48,6 +52,7 @@ export class AuthController {
       return {message: 'no activate session bro'};
     }
     response.clearCookie('token');
+    response.clearCookie('csrf-token');
     return {message: 'logout succeed'};
   }
 }
