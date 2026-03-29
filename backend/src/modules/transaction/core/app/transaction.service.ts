@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateTransactionDto } from './create-transaction.dto.js';
 import { UpdateTransactionDto } from './update-transaction.dto.js';
+import { FilterTransactionDto } from './filter-transaction.dto.js';
 
 @Injectable()
 export class TransactionService {
@@ -22,12 +23,45 @@ export class TransactionService {
     });
   }
 
-  async findAll(userId: string){
-    return this.prisma.transaction.findMany({
-      where: {userId},
-      orderBy: {date: 'desc'},
-      include: {category: true},
-    });
+  async findAll(userId: string, filters?: FilterTransactionDto){
+    const where: any = { userId };
+
+    if(filters?.type){
+      where.type = filters.type;
+    }
+
+    if(filters?.categoryId){
+      where.categoryId = filters.categoryId;
+    }
+
+    if(filters?.startDate || filters?.endDate){
+      where.date = {};
+      if(filters.startDate) where.date.gte = new Date(filters.startDate);
+      if(filters.endDate) where.date.lte = new Date(filters.endDate);
+    }
+
+    const page = Math.max(1, parseInt(filters?.page || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(filters?.limit || '20', 10)));
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where,
+        orderBy: {date: 'desc'},
+        include: {category: true},
+        skip,
+        take: limit,
+      }),
+      this.prisma.transaction.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(userId: string, id: string){

@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import { TransactionService } from '../core/app/transaction.service.js';
 import { CreateTransactionDto } from '../core/app/create-transaction.dto.js';
 import { UpdateTransactionDto } from '../core/app/update-transaction.dto.js';
+import { FilterTransactionDto } from '../core/app/filter-transaction.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('transactions')
@@ -17,9 +18,9 @@ export class TransactionController{
   }
 
   @Get()
-  async findAll(@Req() req: Request){
+  async findAll(@Req() req: Request, @Query() filters: FilterTransactionDto){
     const userId = (req as any).user.sub;
-    return this.transactionService.findAll(userId);
+    return this.transactionService.findAll(userId, filters);
   }
 
   @Get(':id')

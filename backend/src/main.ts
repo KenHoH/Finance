@@ -3,16 +3,24 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import { GlobalExceptionFilter } from './infrastructure/filters/http-exception.filter.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.use(helmet());
+
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
   
   app.use(cookieParser());
+
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,

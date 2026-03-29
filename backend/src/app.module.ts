@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { AppService } from './app.service.js'
 import { AppController } from './app.controller.js';
@@ -10,13 +12,26 @@ import { BudgetModule } from './modules/budget/budget.module.js';
 import { GoalModule } from './modules/goal/goal.module.js';
 import { SplitBillModule } from './modules/split-bill/split-bill.module.js';
 import { CategoryModule } from './modules/category/category.module.js';
+import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 
 @Module({
-  imports: [AuthModule, EmailModule, PrismaModule, TransactionModule, BudgetModule, GoalModule, SplitBillModule, CategoryModule, ConfigModule.forRoot({
-    isGlobal: true,
-    envFilePath: '.env',
-  })],
+  imports: [
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 40 }]), //max 40request/60sec per ip
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    AuthModule,
+    EmailModule,
+    PrismaModule,
+    TransactionModule,
+    BudgetModule,
+    GoalModule,
+    SplitBillModule,
+    CategoryModule,
+    DashboardModule,
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}
