@@ -9,9 +9,10 @@ import { TransactionModule } from './modules/transaction/transaction.module.js';
 import { BudgetModule } from './modules/budget/budget.module.js';
 import { GoalModule } from './modules/goal/goal.module.js';
 import { SplitBillModule } from './modules/split-bill/split-bill.module.js';
+import { CategoryModule } from './modules/category/category.module.js';
 
 @Module({
-  imports: [AuthModule, EmailModule, PrismaModule, TransactionModule, BudgetModule, GoalModule, SplitBillModule, ConfigModule.forRoot({
+  imports: [AuthModule, EmailModule, PrismaModule, TransactionModule, BudgetModule, GoalModule, SplitBillModule, CategoryModule, ConfigModule.forRoot({
     isGlobal: true,
     envFilePath: '.env',
   })],
