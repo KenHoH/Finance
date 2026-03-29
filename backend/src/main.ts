@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import cookieParser from 'cookie-parser';
@@ -12,6 +13,12 @@ async function bootstrap() {
   });
   
   app.use(cookieParser());
+
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
 
   const config = new DocumentBuilder()
     .setTitle('Finance App API')

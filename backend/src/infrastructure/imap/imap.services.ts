@@ -1,39 +1,40 @@
 import { ImapFlow } from "imapflow";
-import { simpleParser } from 'mailparser';  
-import { extractInfo } from "./helper/extractInfo.js";
+import { simpleParser } from 'mailparser';
+import { extractInfo, ExtractedInfo } from "./helper/extractInfo.js";
 import { AuthError, ConnectionError } from "../errors/error.js";
 
-export async function connectToImap(userEmail: string, googleAccessToken: string) {
+export type OnTransactionParsed = (info: ExtractedInfo, subject: string) => Promise<void>;
 
+export async function connectToImap(
+    userEmail: string,
+    googleAccessToken: string,
+    onTransaction?: OnTransactionParsed,
+){
     const client = new ImapFlow({
         host: 'imap.gmail.com',
         port: 993,
         secure: true,
         auth: {
-            user: userEmail,          
+            user: userEmail,
             accessToken: googleAccessToken
         },
-        logger: false 
+        logger: false
     });
 
     let lock;
     try {
-        // Connect to the IMAP server
         await client.connect();
-        console.log('cek imap: connected ke gmail');
+        console.log('imap: connected to gmail');
 
-        // Label "Important Stuff" because i filterize the important email like OVO, BLU and BCA into this label
-        // You can change the label name into 'INBOX'
         lock = await client.getMailboxLock('Important Stuff');
-        console.log('cek imap: lock mailbox berhasil');
+        console.log('imap: mailbox locked');
 
-        client.on("exists", async (data) => {
-            console.log(`\ncek imap: email baru masuk! Total: ${data.count}`);
+        client.on("exists", async(data) => {
+            console.log(`\nimap: new email! Total: ${data.count}`);
             const sequenceRange = `${data.prevCount + 1}:*`;
 
             try {
-                for await (let message of client.fetch(sequenceRange, { source: true })) {
-                    
+                for await(let message of client.fetch(sequenceRange, { source: true })){
                     const parsed = await simpleParser(message.source);
 
                     console.log("-----------------------------------");
@@ -41,30 +42,33 @@ export async function connectToImap(userEmail: string, googleAccessToken: string
                     console.log("From:", parsed.from?.text);
                     console.log("-----------------------------------");
 
-                    let result = extractInfo(parsed.subject, parsed.from?.text || '', parsed.html || '')
+                    const result = extractInfo(parsed.subject, parsed.from?.text || '', parsed.html || '');
 
-                    console.log("cek extracted info:", result);
+                    console.log("extracted info:", result);
+
+                    if(result.status && onTransaction){
+                        await onTransaction(result, parsed.subject || '');
+                    }
                 }
-            } catch (err) {
-                console.error("cek error fetch message:", err);
+            } catch(err){
+                console.error("imap fetch error:", err);
             }
         });
 
-        return { success: true, message: 'cek imap: listening for new emails' };
+        return { success: true, message: 'imap: listening for new emails' };
 
-    } catch (err) {
-        if (err.authenticationFailed) {
+    } catch(err: any){
+        if(err.authenticationFailed){
             throw new AuthError();
         }
-
-        if (err.code === 'NoConnection') {
+        if(err.code === 'NoConnection'){
             throw new ConnectionError();
         }
         throw err;
     } finally {
-        if (lock) {
+        if(lock){
             lock.release();
-            console.log('cek imap: lock released');
+            console.log('imap: lock released');
         }
     }
 }
