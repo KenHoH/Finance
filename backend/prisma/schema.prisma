@@ -104,8 +104,8 @@ model Budget {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   amount      Decimal  @db.Decimal(12, 2)
   startDate   DateTime
   endDate     DateTime
@@ -152,6 +152,7 @@ model SplitParticipant {
   amountOwed  Decimal   @db.Decimal(12, 2)
   isPaid      Boolean   @default(false)
   paidAt      DateTime?
+  paymentProof String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }

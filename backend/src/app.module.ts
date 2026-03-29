@@ -8,9 +8,10 @@ import { PrismaModule } from './modules/prisma/prisma.module.js';
 import { TransactionModule } from './modules/transaction/transaction.module.js';
 import { BudgetModule } from './modules/budget/budget.module.js';
 import { GoalModule } from './modules/goal/goal.module.js';
+import { SplitBillModule } from './modules/split-bill/split-bill.module.js';
 
 @Module({
-  imports: [AuthModule, EmailModule, PrismaModule, TransactionModule, BudgetModule, GoalModule, ConfigModule.forRoot({
+  imports: [AuthModule, EmailModule, PrismaModule, TransactionModule, BudgetModule, GoalModule, SplitBillModule, ConfigModule.forRoot({
     isGlobal: true,
     envFilePath: '.env',
   })],

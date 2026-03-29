@@ -11,7 +11,7 @@ export class BudgetService {
     return this.prisma.budget.create({
       data: {
         userId,
-        categoryId: dto.categoryId,
+        categoryId: dto.categoryId ?? undefined,
         amount: dto.amount,
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
