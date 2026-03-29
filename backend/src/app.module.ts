@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -14,6 +14,7 @@ import { SplitBillModule } from './modules/split-bill/split-bill.module.js';
 import { CategoryModule } from './modules/category/category.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
+import { LoggingMiddleware } from './infrastructure/middleware/logging.middleware.js';
 
 @Module({
   imports: [
@@ -36,4 +37,8 @@ import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
     { provide: APP_GUARD, useClass: CsrfGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer){
+    consumer.apply(LoggingMiddleware).forRoutes('*');
+  }
+}

@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import express from 'express';
 import { GlobalExceptionFilter } from './infrastructure/filters/http-exception.filter.js';
+import { SanitizeInterceptor } from './infrastructure/interceptors/sanitize.interceptor.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -24,6 +25,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalInterceptors(new SanitizeInterceptor());
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
