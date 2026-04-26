@@ -11,6 +11,12 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
+    // Skip CSRF for API requests with Bearer token (JWT auth)
+    const authHeader = request.headers.authorization;
+    if(authHeader?.startsWith('Bearer ')){
+      return true;
+    }
+
     const cookieToken = request.cookies?.['csrf-token'];
     const headerToken = request.headers['x-csrf-token'];
 

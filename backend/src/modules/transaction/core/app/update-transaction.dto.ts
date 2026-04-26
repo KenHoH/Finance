@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, IsEnum, IsOptional, IsString, IsDateString } from 'class-validator';
 
 export class UpdateTransactionDto {
@@ -17,6 +18,7 @@ export class UpdateTransactionDto {
   @IsDateString()
   date?: string;
 
+  @ApiPropertyOptional({description: 'Category ID (optional)', example: 'default-salary'})
   @IsOptional()
   @IsString()
   categoryId?: string;

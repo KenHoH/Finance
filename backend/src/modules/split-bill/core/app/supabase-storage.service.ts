@@ -30,15 +30,34 @@ export class SupabaseStorageService {
 
     if (error) throw new Error(`Upload failed: ${error.message}`);
 
-    return fileName; // store just the filename, not the URL
+    const publicUrl = `${this.configService.get<string>('SUPABASE_URL')}/storage/v1/object/public/payment-proofs/${fileName}`;
+    return publicUrl;
   }
 
-  async getSignedUrl(fileName: string): Promise<string> {
-    const { data, error } = await this.supabase.storage
-      .from('payment-proofs')
-      .createSignedUrl(fileName, 3600); // 1 hour
+  async getSignedUrl(fileName: string): Promise<string | null> {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from('payment-proofs')
+        .createSignedUrl(fileName, 3600); // 1 hour
 
-    if (error || !data) throw new Error('Failed to generate signed URL');
-    return data.signedUrl;
+      if (error || !data) return null;
+      return data.signedUrl;
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteFile(fileUrl: string): Promise<void> {
+    try{
+      const url = new URL(fileUrl);
+      const pathParts = url.pathname.split('/');
+      const fileName = pathParts[pathParts.length - 1];
+
+      await this.supabase.storage
+        .from('payment-proofs')
+        .remove([fileName]);
+    }catch{
+      // Ignore errors if file doesn't exist
+    }
   }
 }

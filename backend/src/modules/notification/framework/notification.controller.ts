@@ -1,10 +1,12 @@
 import { Controller, Get, Post, Put, Delete, Param, Req, UseGuards, NotFoundException } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { NotificationService } from '../core/app/notification.service.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 

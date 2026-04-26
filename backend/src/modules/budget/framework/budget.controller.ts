@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { BudgetService } from '../core/app/budget.service.js';
 import { CreateBudgetDto } from '../core/app/create-budget.dto.js';
@@ -7,6 +8,7 @@ import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('budgets')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class BudgetController {
   constructor(private readonly budgetService: BudgetService) {}
 

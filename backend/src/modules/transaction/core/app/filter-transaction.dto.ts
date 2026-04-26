@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsEnum, IsString, IsDateString, IsNumberString } from 'class-validator';
 
 export class FilterTransactionDto {
@@ -5,6 +6,7 @@ export class FilterTransactionDto {
   @IsEnum(['INCOME', 'EXPENSE'])
   type?: 'INCOME' | 'EXPENSE';
 
+  @ApiPropertyOptional({description: 'Filter by category ID', example: 'default-salary'})
   @IsOptional()
   @IsString()
   categoryId?: string;

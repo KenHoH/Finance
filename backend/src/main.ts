@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import express from 'express';
 import { GlobalExceptionFilter } from './infrastructure/filters/http-exception.filter.js';
 import { SanitizeInterceptor } from './infrastructure/interceptors/sanitize.interceptor.js';
+import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -33,10 +34,13 @@ async function bootstrap() {
     transform: true,
   }));
 
+  app.useGlobalGuards(new CsrfGuard());
+
   const config = new DocumentBuilder()
     .setTitle('Finance App API')
     .setDescription('Financial management API - budgeting, tracking, split bills')
     .setVersion('1.0')
+    .addBearerAuth()
     .addTag('auth')
     .addTag('email')
     .build();

@@ -18,8 +18,7 @@ export class CreateTransactionDto {
   @ApiProperty({description: 'Transaction date (ISO format)', example: '2025-01-15'})
   @IsDateString()
   date: string;
-
-  @ApiPropertyOptional({description: 'Category ID', example: 'uuid-string'})
+  @ApiPropertyOptional({description: 'Category ID (optional)', example: 'default-salary'})
   @IsOptional()
   @IsString()
   categoryId?: string;

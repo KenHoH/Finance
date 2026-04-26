@@ -34,13 +34,6 @@ export class SplitBillService {
       include: { participants: true },
     });
 
-    for (const bill of bills) {
-      for (const p of bill.participants) {
-        if (p.paymentProof) {
-          (p as any).paymentProofUrl = await this.storageService.getSignedUrl(p.paymentProof);
-        }
-      }
-    }
     return bills;
   }
 
@@ -51,12 +44,6 @@ export class SplitBillService {
     });
 
     if (!bill) return null;
-
-    for (const p of bill.participants) {
-      if (p.paymentProof) {
-        (p as any).paymentProofUrl = await this.storageService.getSignedUrl(p.paymentProof);
-      }
-    }
     return bill;
   }
 
@@ -110,18 +97,17 @@ export class SplitBillService {
       where: { id: billId, creatorId },
       include: { participants: true },
     });
-  
-    if (!bill) return null;
-  
-    // Check if this participant already has a proof
-    const participant = bill.participants.find(p => p.id === participantId);
-      if (participant?.paymentProof) {
-        // Delete old proof before uploading new one (prevent spam)
-        // Or throw an error:
-        throw new Error('Payment proof already uploaded');
-      }
 
-      return this.prisma.splitParticipant.update({
+    if (!bill) return null;
+
+    const participant = bill.participants.find(p => p.id === participantId);
+
+    // Delete old proof if exists
+    if (participant?.paymentProof) {
+      await this.storageService.deleteFile(participant.paymentProof);
+    }
+
+    return this.prisma.splitParticipant.update({
       where: { id: participantId },
       data: {
         paymentProof: imageUrl,

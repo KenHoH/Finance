@@ -3,7 +3,7 @@ import { IsNumber, IsOptional, IsString, IsDateString } from 'class-validator';
 
 // create-budget.dto.ts
 export class CreateBudgetDto {
-  @ApiPropertyOptional({description: 'Category ID (optional)', example: 'uuid-string'})
+  @ApiPropertyOptional({description: 'Category ID (optional)', example: 'default-salary'})
   @IsOptional()
   @IsString()
   categoryId?: string;

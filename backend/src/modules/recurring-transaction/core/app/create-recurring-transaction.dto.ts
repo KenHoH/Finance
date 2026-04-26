@@ -14,7 +14,7 @@ export class CreateRecurringTransactionDto {
   @IsString()
   description: string;
 
-  @ApiPropertyOptional({description: 'Category ID', example: 'uuid-string'})
+  @ApiPropertyOptional({description: 'Category ID (optional)', example: 'default-salary'})
   @IsOptional()
   @IsString()
   categoryId?: string;

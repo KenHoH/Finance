@@ -8,21 +8,26 @@ export class RecurringTransactionService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateRecurringTransactionDto){
-    const startDate = new Date(dto.startDate);
-    return this.prisma.recurringTransaction.create({
-      data: {
-        userId,
-        amount: dto.amount,
-        type: dto.type as any,
-        description: dto.description,
-        categoryId: dto.categoryId ?? null,
-        frequency: dto.frequency as any,
-        startDate,
-        nextDate: startDate,
-        isActive: dto.isActive ?? true,
-      },
-      include: {category: true},
-    });
+    try{
+      const startDate = new Date(dto.startDate);
+      return await this.prisma.recurringTransaction.create({
+        data: {
+          userId,
+          amount: dto.amount,
+          type: dto.type as any,
+          description: dto.description,
+          categoryId: dto.categoryId ?? null,
+          frequency: dto.frequency as any,
+          startDate,
+          nextDate: startDate,
+          isActive: dto.isActive ?? true,
+        },
+        include: {category: true},
+      });
+    }catch(error){
+      console.error('RecurringTransaction create error:', error);
+      throw error;
+    }
   }
 
   async findAll(userId: string){

@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CategoryService } from '../core/app/category.service.js';
 import { CreateCategoryDto } from '../core/app/create-category.dto.js';
@@ -7,6 +8,7 @@ import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 

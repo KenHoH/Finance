@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { GoalService } from '../core/app/goal.service.js';
 import { CreateGoalDto } from '../core/app/create-goal.dto.js';
@@ -8,6 +9,7 @@ import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('goals')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class GoalController {
   constructor(private readonly goalService: GoalService) {}
 
