@@ -45,4 +45,12 @@ export class BudgetController {
     if(!budget) throw new NotFoundException('Budget not found');
     return {message: 'Budget deleted'};
   }
+
+  @Get(':id/status')
+  async getStatus(@Req() req: Request, @Param('id') id: string){
+    const userId = (req as any).user.sub;
+    const status = await this.budgetService.getStatus(userId, id);
+    if(!status) throw new NotFoundException('Budget not found');
+    return status;
+  }
 }

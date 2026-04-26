@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import { GoalService } from '../core/app/goal.service.js';
 import { CreateGoalDto } from '../core/app/create-goal.dto.js';
 import { UpdateGoalDto } from '../core/app/update-goal.dto.js';
+import { ContributeGoalDto } from '../core/app/contribute-goal.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('goals')
@@ -44,5 +45,13 @@ export class GoalController {
     const goal = await this.goalService.delete(userId, id);
     if(!goal) throw new NotFoundException('Goal not found');
     return { message: 'Goal deleted' };
+  }
+
+  @Post(':id/contribute')
+  async contribute(@Req() req: Request, @Param('id') id: string, @Body() dto: ContributeGoalDto){
+    const userId = (req as any).user.sub;
+    const goal = await this.goalService.contribute(userId, id, dto.amount);
+    if(!goal) throw new NotFoundException('Goal not found');
+    return goal;
   }
 }

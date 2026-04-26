@@ -61,4 +61,24 @@ export class GoalService {
       where: {id},
     });
   }
+
+  async contribute(userId: string, id: string, amount: number){
+    const goal = await this.prisma.goal.findFirst({
+      where: {id, userId},
+    });
+
+    if(!goal) return null;
+
+    const newAmount = Number(goal.currentAmount) + amount;
+    const targetAmount = Number(goal.targetAmount);
+    const isAchieved = newAmount >= targetAmount;
+
+    return this.prisma.goal.update({
+      where: {id},
+      data: {
+        currentAmount: newAmount,
+        status: isAchieved ? 'ACHIEVED' : goal.status,
+      },
+    });
+  }
 }

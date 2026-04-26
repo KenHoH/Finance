@@ -64,4 +64,42 @@ export class BudgetService {
       where: {id},
     });
   }
+
+  async getStatus(userId: string, id: string){
+    const budget = await this.prisma.budget.findFirst({
+      where: {id, userId},
+      include: {category: true},
+    });
+
+    if(!budget) return null;
+
+    const spentAgg = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        type: 'EXPENSE',
+        date: {gte: budget.startDate, lte: budget.endDate},
+        ...(budget.categoryId ? {categoryId: budget.categoryId} : {}),
+      },
+      _sum: {amount: true},
+    });
+
+    const spent = Number(spentAgg._sum.amount || 0);
+    const budgetAmount = Number(budget.amount);
+    const remaining = budgetAmount - spent;
+    const percentage = budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0;
+
+    return {
+      budget: {
+        id: budget.id,
+        amount: budgetAmount,
+        startDate: budget.startDate,
+        endDate: budget.endDate,
+        category: budget.category,
+      },
+      spent,
+      remaining,
+      percentage,
+      isOverBudget: spent > budgetAmount,
+    };
+  }
 }
