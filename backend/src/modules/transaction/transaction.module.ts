@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TransactionController } from './framework/transaction.controller.js';
 import { TransactionService } from './core/app/transaction.service.js';
+import { OcrService } from './core/app/ocr.service.js';
 import { NotificationModule } from '../notification/notification.module.js';
 
 @Module({
   imports: [
+    ConfigModule,
     NotificationModule,
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
@@ -16,7 +18,7 @@ import { NotificationModule } from '../notification/notification.module.js';
     }),
   ],
   controllers: [TransactionController],
-  providers: [TransactionService],
+  providers: [TransactionService, OcrService],
   exports: [TransactionService],
 })
 export class TransactionModule {}
