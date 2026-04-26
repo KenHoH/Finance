@@ -1,15 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { NotificationService } from '../../../notification/core/app/notification.service.js';
 import { CreateTransactionDto } from './create-transaction.dto.js';
 import { UpdateTransactionDto } from './update-transaction.dto.js';
 import { FilterTransactionDto } from './filter-transaction.dto.js';
 
 @Injectable()
 export class TransactionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async create(userId: string, dto: CreateTransactionDto){
-    return this.prisma.transaction.create({
+    const transaction = await this.prisma.transaction.create({
       data: {
         userId,
         amount: dto.amount,
@@ -21,6 +25,59 @@ export class TransactionService {
         source: dto.source ?? 'MANUAL',
       },
     });
+
+    if(transaction.type === 'EXPENSE'){
+      await this.checkBudgetAlert(userId, transaction);
+    }
+
+    return transaction;
+  }
+
+  private async checkBudgetAlert(userId: string, transaction: any){
+    const today = new Date();
+    const budgets = await this.prisma.budget.findMany({
+      where: {
+        userId,
+        startDate: {lte: today},
+        endDate: {gte: today},
+        ...(transaction.categoryId ? {OR: [{categoryId: transaction.categoryId}, {categoryId: null}]} : {categoryId: null}),
+      },
+      include: {category: true},
+    });
+
+    for(const budget of budgets){
+      const spentAgg = await this.prisma.transaction.aggregate({
+        where: {
+          userId,
+          type: 'EXPENSE',
+          date: {gte: budget.startDate, lte: budget.endDate},
+          ...(budget.categoryId ? {categoryId: budget.categoryId} : {}),
+        },
+        _sum: {amount: true},
+      });
+
+      const spent = Number(spentAgg._sum.amount || 0);
+      const budgetAmount = Number(budget.amount);
+      const percentage = budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0;
+
+      const categoryName = budget.category?.name ?? 'Overall';
+
+      if(percentage >= 100){
+        await this.notificationService.create(
+          userId,
+          'BUDGET_ALERT',
+          'Budget Exceeded',
+          `You have exceeded your ${categoryName} budget of Rp ${budgetAmount.toLocaleString('id-ID')}. Current spending: Rp ${spent.toLocaleString('id-ID')}`,
+        );
+      }else if(percentage >= 80){
+        await this.notificationService.create(
+          userId,
+          'BUDGET_ALERT',
+          'Budget Warning',
+          `You have used ${percentage}% of your ${categoryName} budget (Rp ${budgetAmount.toLocaleString('id-ID')})`,
+        );
+      }
+    }
   }
 
   async findAll(userId: string, filters?: FilterTransactionDto){

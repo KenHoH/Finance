@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backend Architecture</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 40px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #58a6ff;
+      border-bottom: 2px solid #30363d;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #7ee787;
+      margin-top: 40px;
+    }
+    .mermaid {
+      background: #161b22;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      border: 1px solid #30363d;
+    }
+    .legend {
+      background: #21262d;
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .legend-item {
+      display: inline-block;
+      margin-right: 20px;
+    }
+    .box { display: inline-block; width: 20px; height: 20px; margin-right: 5px; vertical-align: middle; border-radius: 4px; }
+    .client { background: #ff6b6b; }
+    .gateway { background: #4ecdc4; }
+    .module { background: #45b7d1; }
+    .database { background: #96ceb4; }
+    .external { background: #ffeaa7; }
+  </style>
+</head>
+<body>
+  <h1>Finance App - Backend Architecture</h1>
+
+  <h2>System Overview</h2>
+  <div class="mermaid">
+flowchart TB
+    subgraph Client["Client Layer"]
+        WEB["Next.js Frontend<br/>localhost:3000"]
+    end
+
+    subgraph Gateway["API Gateway"]
+        CORS["CORS"]
+        HELMET["Helmet"]
+        RATE["Rate Limit<br/>40 req/min"]
+        CSRF["CSRF Guard"]
+        JWT["JWT Auth"]
+        SANITIZE["Input Sanitize"]
+        LOG["Logging"]
+    end
+
+    subgraph NestJS["NestJS Backend<br/>localhost:3001"]
+        AUTH["Auth Module"]
+        TX["Transaction Module"]
+        BUD["Budget Module"]
+        GOAL["Goal Module"]
+        CAT["Category Module"]
+        SPLIT["Split Bill Module"]
+        DASH["Dashboard Module"]
+        NOTIF["Notification Module"]
+        RECUR["Recurring Tx Module"]
+        EMAIL["Email Module"]
+    end
+
+    subgraph Data["Data Layer (Supabase)"]
+        PRISMA["Prisma ORM"]
+        PG[(PostgreSQL<br/>hosted by Supabase)]
+        SUPA[(Supabase Storage<br/>for files)]
+    end
+
+    subgraph External["External Services"]
+        GOOGLE["Google OAuth"]
+        GMAIL["Gmail IMAP"]
+    end
+
+    WEB -->|HTTPS + JWT Cookie| CORS
+    CORS --> HELMET --> RATE --> CSRF --> JWT --> SANITIZE --> LOG
+    LOG --> AUTH & TX & BUD & GOAL & CAT & SPLIT & DASH & NOTIF & RECUR & EMAIL
+
+    AUTH --> GOOGLE
+    EMAIL --> GMAIL
+    TX & BUD & GOAL & CAT & SPLIT & DASH & NOTIF & RECUR --> PRISMA
+    SPLIT --> SUPA
+    PRISMA --> PG
+  </div>
+
+  <h2>Module Dependencies</h2>
+  <div class="mermaid">
+flowchart TB
+    APP[AppModule]
+    PRISMA[PrismaModule]
+    JWT[JwtModule]
+    SCHED[ScheduleModule]
+
+    AUTH[AuthModule]
+    TX[TransactionModule]
+    BUD[BudgetModule]
+    GOAL[GoalModule]
+    CAT[CategoryModule]
+    SPLIT[SplitBillModule]
+    DASH[DashboardModule]
+    NOTIF[NotificationModule]
+    RECUR[RecurringTransactionModule]
+    EMAIL[EmailModule]
+
+    APP --> AUTH & TX & BUD & GOAL & CAT & SPLIT & DASH & NOTIF & RECUR & EMAIL
+
+    AUTH --> PRISMA & JWT
+    TX --> PRISMA
+    BUD --> PRISMA
+    GOAL --> PRISMA
+    CAT --> PRISMA
+    SPLIT --> PRISMA
+    DASH --> PRISMA
+    NOTIF --> PRISMA & JWT
+    RECUR --> PRISMA & JWT & SCHED
+    EMAIL --> PRISMA & JWT
+  </div>
+
+  <h2>Request Flow</h2>
+  <div class="mermaid">
+sequenceDiagram
+    participant C as Client
+    participant G as Guards
+    participant P as Pipes
+    participant I as Interceptors
+    participant CTL as Controller
+    participant SVC as Service
+    participant DB as Prisma/DB
+
+    C->>G: HTTP Request + JWT Cookie
+    G->>G: Rate Limit Check
+    G->>G: CORS Check
+    G->>G: CSRF Token Verify
+    G->>G: JWT Verify + Extract userId
+    G->>I: Sanitize Input
+    I->>P: Validate DTO
+    P->>CTL: Validated Request
+    CTL->>SVC: Call Service Method
+    SVC->>DB: Prisma Query
+    DB-->>SVC: Data
+    SVC-->>CTL: Result
+    CTL-->>C: HTTP Response
+  </div>
+
+  <h2>Data Model Relationships</h2>
+  <div class="mermaid">
+erDiagram
+    USER ||--o{ TRANSACTION : creates
+    USER ||--o{ CATEGORY : owns
+    USER ||--o{ BUDGET : sets
+    USER ||--o{ GOAL : tracks
+    USER ||--o{ SPLITBILL : creates
+    USER ||--o{ NOTIFICATION : receives
+    USER ||--o{ RECURRINGTRANSACTION : configures
+    USER ||--o{ SPLITPARTICIPANT : participates
+    USER ||--o{ AUTHIDENTITIES : has
+
+    CATEGORY ||--o{ TRANSACTION : categorizes
+    CATEGORY ||--o{ BUDGET : limits
+    CATEGORY ||--o{ RECURRINGTRANSACTION : templates
+
+    SPLITBILL ||--o{ SPLITPARTICIPANT : includes
+  </div>
+
+  <h2>Recurring Transaction Cron</h2>
+  <div class="mermaid">
+flowchart LR
+    CRON[Cron Job<br/>Daily Midnight] --> FIND[Find Due Recurring]
+    FIND --> LOOP{For Each}
+    LOOP --> CREATE[Create Transaction]
+    CREATE --> UPDATE[Update nextDate]
+    UPDATE --> LOOP
+    LOOP --> DONE[Done]
+  </div>
+
+  <h2>Legend</h2>
+  <div class="legend">
+    <div class="legend-item"><span class="box client"></span>Client Layer</div>
+    <div class="legend-item"><span class="box gateway"></span>Security/Gateway</div>
+    <div class="legend-item"><span class="box module"></span>Feature Module</div>
+    <div class="legend-item"><span class="box database"></span>Data Storage</div>
+    <div class="legend-item"><span class="box external"></span>External Service</div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#161b22',
+        primaryTextColor: '#c9d1d9',
+        primaryBorderColor: '#30363d',
+        lineColor: '#8b949e',
+        secondaryColor: '#21262d',
+        tertiaryColor: '#30363d',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }
+    });
+  </script>
+</body>
+</html>
