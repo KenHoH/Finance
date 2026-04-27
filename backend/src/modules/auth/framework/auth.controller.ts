@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Redirect, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Query, Redirect, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from '../core/app/auth.service.js';
 import { generateCsrfToken, setCsrfCookie } from '../../../infrastructure/utils/csrf-token.js';
@@ -46,7 +46,7 @@ export class AuthController {
     return {user};
   }
 
-  @Get('/logout')
+  @Post('/logout')
   logOut(@Req() req:Request, @Res({passthrough: true}) response: Response) {
     const token = req.cookies?.['token'];
     if(!token){
