@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, UseGuards, UseInterceptors, UploadedFile, NotFoundException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { TransactionService } from '../core/app/transaction.service.js';
 import { OcrService, OcrResponse } from '../core/app/ocr.service.js';
@@ -11,7 +11,6 @@ import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class TransactionController{
   constructor(
     private readonly transactionService: TransactionService,

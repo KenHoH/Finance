@@ -6,11 +6,10 @@ import { SupabaseStorageService } from '../core/app/supabase-storage.service.js'
 import { CreateSplitBillDto } from '../core/app/create-split-bill.dto.js';
 import { UpdateSplitBillDto, UpdateParticipantDto } from '../core/app/update-split-bill.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
-import { ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 
 @Controller('split-bills')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class SplitBillController {
   constructor(
     private readonly splitBillService: SplitBillService,

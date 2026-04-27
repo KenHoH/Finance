@@ -39,9 +39,9 @@ export class AuthService {
           username: profile.name || profile.email.split('@')[0],
         }
       });
-      console.log('user created ok', user.id)
+      this.logger.log(`User created: ${user.id}`)
     }else{
-      console.log('user uda ada', user.id)
+      this.logger.log(`User already exists: ${user.id}`)
     }
 
     await this.prisma.authIdentities.upsert({
@@ -68,7 +68,7 @@ export class AuthService {
       }
     });
 
-    console.log('token saved to db');
+    this.logger.log('Google tokens saved to database');
 
     const jwt = this.jwtService.sign({
       sub: user.id,
@@ -98,15 +98,18 @@ export class AuthService {
     }
   }
 
-  async getMe(token: string){
+  async getMe(token: string): Promise<{user: {id: string; email: string; username: string | null} | null; isInvalid: boolean}>{
     try{
       const payload = this.jwtService.verify(token);
       const user = await this.prisma.user.findUnique({
         where: {id: payload.sub},
       });
-      return user ? {id: user.id, email: user.email, username: user.username} : null;
+      if(!user){
+        return {user: null, isInvalid: false};
+      }
+      return {user: {id: user.id, email: user.email, username: user.username}, isInvalid: false};
     } catch{
-      return null;
+      return {user: null, isInvalid: true};
     }
   }
 
@@ -171,8 +174,6 @@ export class AuthService {
     if(process.env.NODE_ENV !== 'production'){
       allowedOrigins.add('http://localhost:3000');
       allowedOrigins.add('http://localhost:3001');
-      allowedOrigins.add('http://127.0.0.1:3000');
-      allowedOrigins.add('http://127.0.0.1:3001');
     }
 
     return allowedOrigins.has(origin);

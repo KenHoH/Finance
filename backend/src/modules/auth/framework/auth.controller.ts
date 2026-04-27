@@ -36,13 +36,21 @@ export class AuthController {
   }
 
   @Get('/me')
-  async getMe(@Req() req: Request){
+  async getMe(@Req() req: Request, @Res({passthrough: true}) response: Response){
     const token = req.cookies?.['token'];
     if(!token){
       return {user: null};
     }
 
-    const user = await this.authService.getMe(token);
+    const {user, isInvalid} = await this.authService.getMe(token);
+    if(isInvalid){
+      response.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+      });
+    }
     return {user};
   }
 
@@ -52,8 +60,18 @@ export class AuthController {
     if(!token){
       return {message: 'no activate session bro'};
     }
-    response.clearCookie('token');
-    response.clearCookie('csrf-token');
+    response.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/'
+    });
+    response.clearCookie('csrf-token', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/'
+    });
     return {message: 'logout succeed'};
   }
 }

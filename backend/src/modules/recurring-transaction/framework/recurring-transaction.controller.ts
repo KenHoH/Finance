@@ -1,5 +1,4 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { RecurringTransactionService } from '../core/app/recurring-transaction.service.js';
 import { CreateRecurringTransactionDto } from '../core/app/create-recurring-transaction.dto.js';
@@ -8,7 +7,6 @@ import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('recurring-transactions')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class RecurringTransactionController {
   constructor(private readonly recurringService: RecurringTransactionService) {}
 

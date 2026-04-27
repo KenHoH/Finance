@@ -16,8 +16,26 @@ async function bootstrap() {
   app.use(express.json({ limit: '10kb' }));
   app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
+  const allowedOrigins = new Set<string>();
+  const frontendUrl = process.env.FRONTEND_URL;
+  if(frontendUrl){
+    try{
+      allowedOrigins.add(new URL(frontendUrl).origin);
+    }catch{}
+  }
+  if(process.env.NODE_ENV !== 'production'){
+    allowedOrigins.add('http://localhost:3000');
+    allowedOrigins.add('http://localhost:3001');
+  }
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: (origin, callback) => {
+      if(!origin || allowedOrigins.has(origin)){
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
@@ -38,14 +56,36 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Finance App API')
-    .setDescription('Financial management API - budgeting, tracking, split bills')
+    .setDescription('Auth via cookie. Swagger UI langsung send the csrf-token cookie as X-CSRF-Token after login jadi bisa langsung tes.')
     .setVersion('1.0')
-    .addBearerAuth()
     .addTag('auth')
     .addTag('email')
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory);
+  SwaggerModule.setup('api', app, documentFactory, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      requestInterceptor: (request: any) => {
+        request.credentials = 'include';
+
+        if(typeof document !== 'undefined'){
+          const csrfToken = document.cookie
+            .split('; ')
+            .find((cookie) => cookie.startsWith('csrf-token='))
+            ?.split('=')[1];
+
+          if(csrfToken){
+            request.headers = {
+              ...request.headers,
+              'X-CSRF-Token': decodeURIComponent(csrfToken),
+            };
+          }
+        }
+
+        return request;
+      },
+    },
+  });
   
   
   await app.listen(process.env.PORT || 3000);
