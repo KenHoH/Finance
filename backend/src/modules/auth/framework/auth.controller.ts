@@ -9,17 +9,18 @@ export class AuthController {
 
   @Get('/google')
   @Redirect()
-  googleAuth() {
-    const url = this.authService.getGoogleAuthUrl();
+  googleAuth(@Query('returnTo') returnTo?: string){
+    const url = this.authService.getGoogleAuthUrl(returnTo);
     return { url };
   }
 
   @Get('/google/callback')
   async googleCallback(
-    @Query('code') code: string, 
+    @Query('code') code: string,
     @Res({ passthrough: true }) response: Response,
+    @Query('state') state?: string,
   ){
-    const {jwt, user} = await this.authService.handleGoogleLogin(code);
+    const {jwt, redirectUrl} = await this.authService.handleGoogleLogin(code, state);
 
     response.cookie('token', jwt, {
       maxAge: 7*24*60*60*1000, //7hari
@@ -31,7 +32,7 @@ export class AuthController {
     const csrfToken = generateCsrfToken();
     setCsrfCookie(response, csrfToken);
 
-    return { message: 'login succeed', user: {id: user.id, email: user.email}};
+    response.redirect(redirectUrl);
   }
 
   @Get('/me')

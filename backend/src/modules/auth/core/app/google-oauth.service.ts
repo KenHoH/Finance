@@ -24,7 +24,7 @@ export class GoogleOauthService {
         );
     }
 
-    public getAuthUrl() {
+    public getAuthUrl(state?: string){
 
         const scopes = [
             'https://www.googleapis.com/auth/gmail.readonly',
@@ -36,6 +36,7 @@ export class GoogleOauthService {
         return this.oauth2Client.generateAuthUrl({
             access_type: 'offline',
             prompt: 'consent',
+            state,
             scope: scopes,
         });
     }

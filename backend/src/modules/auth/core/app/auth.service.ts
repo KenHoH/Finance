@@ -14,11 +14,12 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  getGoogleAuthUrl() {
-    return this.googleOauthService.getAuthUrl();
+  getGoogleAuthUrl(returnTo?: string){
+    const state = this.encodeOauthState(returnTo);
+    return this.googleOauthService.getAuthUrl(state);
   }
 
-  async handleGoogleLogin(code: string){
+  async handleGoogleLogin(code: string, state?: string){
     const tokens = await this.googleOauthService.getToken(code);
     const profile = await this.googleOauthService.getUserProfile(tokens.access_token!);
 
@@ -74,7 +75,27 @@ export class AuthService {
       email: user.email,
     });
 
-    return {jwt, user};
+    const redirectUrl = this.buildFrontendRedirect(state);
+    return {jwt, user, redirectUrl};
+  }
+
+  buildFrontendRedirect(state?: string){
+    const fallback = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const returnTo = this.decodeOauthState(state);
+    if(!returnTo){
+      return fallback;
+    }
+
+    try{
+      const fallbackUrl = new URL(fallback);
+      const redirectUrl = returnTo.startsWith('/') ? new URL(returnTo, fallbackUrl) : new URL(returnTo);
+      if(!this.isAllowedFrontendOrigin(redirectUrl.origin, fallbackUrl.origin)){
+        return fallback;
+      }
+      return redirectUrl.toString();
+    }catch{
+      return fallback;
+    }
   }
 
   async getMe(token: string){
@@ -87,5 +108,73 @@ export class AuthService {
     } catch{
       return null;
     }
+  }
+
+  private encodeOauthState(returnTo?: string){
+    if(!returnTo){
+      return undefined;
+    }
+
+    if(returnTo.startsWith('/')){
+      return Buffer.from(JSON.stringify({returnTo}), 'utf8').toString('base64url');
+    }
+
+    try{
+      const url = new URL(returnTo);
+      if(!this.isAllowedFrontendOrigin(url.origin)){
+        return undefined;
+      }
+      return Buffer.from(JSON.stringify({returnTo: url.toString()}), 'utf8').toString('base64url');
+    }catch{
+      return undefined;
+    }
+  }
+
+  private decodeOauthState(state?: string){
+    if(!state){
+      return null;
+    }
+
+    try{
+      const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8')) as {returnTo?: string};
+      if(!decoded.returnTo){
+        return null;
+      }
+
+      if(decoded.returnTo.startsWith('/')){
+        return decoded.returnTo;
+      }
+
+      const url = new URL(decoded.returnTo);
+      if(!this.isAllowedFrontendOrigin(url.origin)){
+        return null;
+      }
+      return url.toString();
+    }catch{
+      return null;
+    }
+  }
+
+  private isAllowedFrontendOrigin(origin: string, fallbackOrigin?: string){
+    const allowedOrigins = new Set<string>();
+    if(fallbackOrigin){
+      allowedOrigins.add(fallbackOrigin);
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL;
+    if(frontendUrl){
+      try{
+        allowedOrigins.add(new URL(frontendUrl).origin);
+      }catch{}
+    }
+
+    if(process.env.NODE_ENV !== 'production'){
+      allowedOrigins.add('http://localhost:3000');
+      allowedOrigins.add('http://localhost:3001');
+      allowedOrigins.add('http://127.0.0.1:3000');
+      allowedOrigins.add('http://127.0.0.1:3001');
+    }
+
+    return allowedOrigins.has(origin);
   }
 }
