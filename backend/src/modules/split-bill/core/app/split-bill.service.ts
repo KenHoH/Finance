@@ -1,10 +1,21 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateSplitBillDto } from './create-split-bill.dto.js';
 import { UpdateSplitBillDto, UpdateParticipantDto } from './update-split-bill.dto.js';
 import { SupabaseStorageService } from './supabase-storage.service.js';
 import { FriendService } from '../../../friend/core/app/friend.service.js';
 import type { Express } from 'express';
+
+const splitBillInclude = {
+  participants: true,
+  creator: {
+    select: {
+      id: true,
+      username: true,
+      email: true,
+    },
+  },
+};
 
 @Injectable()
 export class SplitBillService {
@@ -40,7 +51,7 @@ export class SplitBillService {
           })),
         },
       },
-      include: { participants: true },
+      include: splitBillInclude,
     });
   }
 
@@ -53,7 +64,7 @@ export class SplitBillService {
         ],
       },
       orderBy: { date: 'desc' },
-      include: { participants: true },
+      include: splitBillInclude,
     });
 
     return bills;
@@ -68,7 +79,7 @@ export class SplitBillService {
           { participants: { some: { userId } } },
         ],
       },
-      include: { participants: true },
+      include: splitBillInclude,
     });
 
     if (!bill) return null;
@@ -88,7 +99,7 @@ export class SplitBillService {
         description: dto.description,
         status: dto.status,
       },
-      include: {participants: true},
+      include: splitBillInclude,
     });
   }
 
@@ -157,6 +168,36 @@ export class SplitBillService {
         isPaid: true,
         paidAt: new Date(),
       },
+    });
+  }
+
+  async uploadReceiptProofs(creatorId: string, billId: string, files: Express.Multer.File[]) {
+    if(files.length === 0){
+      throw new BadRequestException('At least one receipt image is required');
+    }
+
+    if(files.length > 3){
+      throw new BadRequestException('Maximum 3 receipt images are allowed');
+    }
+
+    const bill = await this.prisma.splitBill.findFirst({
+      where: { id: billId, creatorId },
+    });
+
+    if(!bill) return null;
+
+    const uploadedUrls = await this.storageService.uploadSplitBillReceiptProofs(files, billId);
+
+    if(bill.receiptProofs.length > 0){
+      await this.storageService.deleteFiles(bill.receiptProofs);
+    }
+
+    return this.prisma.splitBill.update({
+      where: { id: billId },
+      data: {
+        receiptProofs: uploadedUrls,
+      },
+      include: splitBillInclude,
     });
   }
 }

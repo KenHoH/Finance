@@ -160,6 +160,7 @@ model SplitBill {
   description String
   date        DateTime
   status      SplitStatus        @default(PENDING)
+  receiptProofs String[]         @default([])
   participants SplitParticipant[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
