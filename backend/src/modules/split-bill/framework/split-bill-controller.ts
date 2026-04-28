@@ -2,7 +2,6 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFou
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import { SplitBillService } from '../core/app/split-bill.service.js';
-import { SupabaseStorageService } from '../core/app/supabase-storage.service.js';
 import { CreateSplitBillDto } from '../core/app/create-split-bill.dto.js';
 import { UpdateSplitBillDto, UpdateParticipantDto } from '../core/app/update-split-bill.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
@@ -13,7 +12,6 @@ import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 export class SplitBillController {
   constructor(
     private readonly splitBillService: SplitBillService,
-    private readonly storageService: SupabaseStorageService,
   ) {}
 
   @Post()
@@ -78,8 +76,7 @@ export class SplitBillController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     const userId = (req as any).user.sub;
-    const imageUrl = await this.storageService.uploadPaymentProof(file, participantId);
-    const result = await this.splitBillService.uploadProof(userId, id, participantId, imageUrl);
+    const result = await this.splitBillService.uploadProof(userId, id, participantId, file);
     if (!result) throw new NotFoundException('Split bill or participant not found');
     return result;
   }

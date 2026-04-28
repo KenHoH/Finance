@@ -40,6 +40,13 @@ enum RecurringFrequency {
   YEARLY
 }
 
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  BLOCKED
+}
+
 model User {
   id            String             @id @default(uuid())
   username      String
@@ -57,6 +64,12 @@ model User {
   billShares    SplitParticipant[]
   notifications Notification[]
   recurringTransactions RecurringTransaction[]
+  
+  // Friend relations
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friendsAsUser1         Friend[]        @relation("User1Friends")
+  friendsAsUser2         Friend[]        @relation("User2Friends")
 }
 
 model AuthIdentities {
@@ -194,4 +207,30 @@ model RecurringTransaction {
   isActive    Boolean            @default(true)
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
+}
+
+// Friend requests between users
+model FriendRequest {
+  id         String              @id @default(uuid())
+  senderId   String
+  sender     User                @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User                @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  status     FriendRequestStatus @default(PENDING)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  
+  @@unique([senderId, receiverId])
+}
+
+// Established friendships (bidirectional)
+model Friend {
+  id        String   @id @default(uuid())
+  user1Id   String
+  user1     User     @relation("User1Friends", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id   String
+  user2     User     @relation("User2Friends", fields: [user2Id], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([user1Id, user2Id])
 }

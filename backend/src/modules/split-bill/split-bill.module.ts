@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { SplitBillController } from './framework/split-bill-controller.js';
 import { SplitBillService } from './core/app/split-bill.service.js';
 import { SupabaseStorageService } from './core/app/supabase-storage.service.js';
+import { FriendModule } from '../friend/friend.module.js';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { SupabaseStorageService } from './core/app/supabase-storage.service.js';
       }),
       inject: [ConfigService],
     }),
+    FriendModule,
   ],
   controllers: [SplitBillController],
   providers: [SplitBillService, SupabaseStorageService],
