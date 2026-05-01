@@ -7,6 +7,8 @@ import { AppController } from './app.controller.js';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './modules/prisma/prisma.module.js';
 import { GoalModule } from './modules/goal/goal.module.js';
+import { SavingPointModule } from './modules/saving-point/saving-point.module.js';
+import { BillModule } from './modules/bill/bill.module.js';
 import { SplitBillModule } from './modules/split-bill/split-bill.module.js';
 import { FriendModule } from './modules/friend/friend.module.js';
 import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
@@ -19,6 +21,8 @@ import { LoggingMiddleware } from './infrastructure/middleware/logging.middlewar
     AuthModule,
     PrismaModule,
     GoalModule,
+    SavingPointModule,
+    BillModule,
     SplitBillModule,
     FriendModule,
   ],

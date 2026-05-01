@@ -1,0 +1,112 @@
+BACKEND FEATURES SUMMARY
+
+Authentication
+- Login with Google OAuth
+- Get current authenticated user/session info
+- Logout
+
+Dashboard
+- View dashboard summary
+- View total income, total expense, and net balance
+- View spending by category
+- View recent transactions
+- Filter dashboard by month and year
+
+Categories
+- Create category
+- List categories
+- Update category
+- Delete category
+
+Transactions
+- Create transaction
+- List transactions
+- Filter transactions by type, category, date range, and pagination
+- Get one transaction
+- Update transaction
+- Delete transaction
+- Upload receipt image for OCR scanning
+- Extract transaction-related info from OCR service
+
+Budgets
+- Create budget
+- List budgets
+- Get one budget
+- Update budget
+- Delete budget
+- Get budget status/progress
+
+Goals
+- Create financial goal
+- List goals
+- Get one goal
+- Update goal
+- Delete goal
+- Contribute money to a goal
+
+Recurring Transactions
+- Create recurring transaction
+- List recurring transactions
+- Get one recurring transaction
+- Update recurring transaction
+- Delete recurring transaction
+- Get active recurring transactions
+- Manually trigger due recurring transaction processing
+
+Notifications
+- Get all notifications
+- Get unread notifications
+- Mark one notification as read
+- Mark all notifications as read
+- Delete notification
+
+Email Integration
+- Start email listener
+- Parse Gmail transaction emails
+- Auto-create transactions from parsed emails
+
+Friend System
+- Search users by username or email
+- Send friend request
+- Accept friend request
+- Reject friend request
+- Block friend request
+- View received friend requests
+- View sent friend requests
+- View friends list
+- Remove friend
+
+Split Bills
+- Create split bill
+- Set total amount, description, and date
+- Add participants as registered users or guest names
+- Restrict registered user participants to friends only
+- View bills created by the user
+- View bills where the user is a registered participant
+- View one split bill if the user is creator or registered participant
+- Update split bill details
+- Delete split bill
+
+Split Bill Participant Actions
+- Mark participant as paid
+- Mark participant as unpaid
+- Allow creator to manage participant payment status
+- Allow registered participant to update their own payment status
+- Upload participant payment proof
+- Allow creator to upload payment proof for a participant
+- Allow registered participant to upload proof for their own participant row
+
+Split Bill Creator Receipt Actions
+- Upload creator receipt proofs for a split bill
+- Limit creator receipt upload to maximum 3 images
+- Replace previous creator receipt set when uploading again
+- Track creator receipt uploader implicitly by split bill creator identity
+
+Backend Rules and Access Behavior
+- Most endpoints require authenticated user via JWT guard
+- Split bill creator is tracked by SplitBill.creatorId
+- Only the creator can upload creator receipt proofs
+- Only registered friends can be added as split bill participants by userId
+- Guest participants can exist by name only
+- Guest participants cannot log in or upload proof themselves
+- Registered participants can only access bills they belong to

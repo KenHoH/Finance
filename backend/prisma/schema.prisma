@@ -278,17 +278,20 @@ model Friend {
 // NEW TABLES
 // ============================================================
 
-// history kontribusi ke goal tanpa relasi langsung ke saving point
+// history kontribusi ke goal, bisa pakai saving point sebagai source
 model GoalContribution {
-  id               String   @id @default(uuid())
+  id               String       @id @default(uuid())
   goalId           String
-  goal             Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  amount           Decimal  @db.Decimal(12, 2)
+  goal             Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  savingPointId    String?      // optional: kalau pakai saving point
+  savingPoint      SavingPoint? @relation(fields: [savingPointId], references: [id], onDelete: SetNull)
+  amount           Decimal      @db.Decimal(12, 2)
   contributionDate DateTime
   note             String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime     @default(now())
 
   @@index([goalId])
+  @@index([savingPointId])
   @@index([contributionDate])
   @@index([goalId, contributionDate])
 }
@@ -318,14 +321,15 @@ model Bill {
   @@index([isReminderEnabled, dueDate])
 }
 
-// total sisa uang (underbudget) per budget
+// total sisa uang (underbudget) per budget, bisa dipakai untuk goals
 model SavingPoint {
-  id           String   @id @default(uuid())
-  budgetId     String   @unique
-  budget       Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  savingAmount Decimal  @db.Decimal(12, 2)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id           String             @id @default(uuid())
+  budgetId     String             @unique
+  budget       Budget             @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  savingAmount Decimal            @db.Decimal(12, 2)
+  contributions GoalContribution[] // track penggunaan untuk goals
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 }
 
 // total amount per investment module (saham, emas, reksadana)
