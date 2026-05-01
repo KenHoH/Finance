@@ -14,13 +14,11 @@ export class SupabaseStorageService {
     );
   }
 
-  async uploadPaymentProof(file: Express.Multer.File, participantId: string): Promise<string> {
+  private async uploadImage(file: Express.Multer.File, fileName: string): Promise<string> {
     const compressed = await sharp(file.buffer)
       .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 60 })
       .toBuffer();
-
-    const fileName = `${participantId}-${Date.now()}.webp`;
 
     const { error } = await this.supabase.storage
       .from('payment-proofs')
@@ -30,8 +28,22 @@ export class SupabaseStorageService {
 
     if (error) throw new Error(`Upload failed: ${error.message}`);
 
-    const publicUrl = `${this.configService.get<string>('SUPABASE_URL')}/storage/v1/object/public/payment-proofs/${fileName}`;
-    return publicUrl;
+    return `${this.configService.get<string>('SUPABASE_URL')}/storage/v1/object/public/payment-proofs/${fileName}`;
+  }
+
+  async uploadPaymentProof(file: Express.Multer.File, participantId: string): Promise<string> {
+    const fileName = `${participantId}-${Date.now()}.webp`;
+
+    return this.uploadImage(file, fileName);
+  }
+
+  async uploadSplitBillReceiptProofs(files: Express.Multer.File[], billId: string): Promise<string[]> {
+    return Promise.all(
+      files.map((file, index) => {
+        const fileName = `split-bill-${billId}-${Date.now()}-${index}.webp`;
+        return this.uploadImage(file, fileName);
+      }),
+    );
   }
 
   async getSignedUrl(fileName: string): Promise<string | null> {
@@ -47,16 +59,36 @@ export class SupabaseStorageService {
     }
   }
 
-  async deleteFile(fileUrl: string): Promise<void> {
-    try{
+  private getFileNameFromUrl(fileUrl: string): string | null {
+    try {
       const url = new URL(fileUrl);
       const pathParts = url.pathname.split('/');
-      const fileName = pathParts[pathParts.length - 1];
+      return pathParts[pathParts.length - 1] || null;
+    } catch {
+      return null;
+    }
+  }
 
-      await this.supabase.storage
-        .from('payment-proofs')
-        .remove([fileName]);
-    }catch{
+  async deleteFiles(fileUrls: string[]): Promise<void> {
+    const fileNames = fileUrls
+      .map((fileUrl) => this.getFileNameFromUrl(fileUrl))
+      .filter((fileName): fileName is string => !!fileName);
+
+    if (fileNames.length === 0) {
+      return;
+    }
+
+    const { error } = await this.supabase.storage
+      .from('payment-proofs')
+      .remove(fileNames);
+
+    if (error) throw new Error(`Delete failed: ${error.message}`);
+  }
+
+  async deleteFile(fileUrl: string): Promise<void> {
+    try {
+      await this.deleteFiles([fileUrl]);
+    } catch {
       // Ignore errors if file doesn't exist
     }
   }

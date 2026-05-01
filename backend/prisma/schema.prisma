@@ -186,3 +186,199 @@ enum RecurringFrequency {
   QUARTERLY
   YEARLY
 }
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  BLOCKED
+}
+
+model User {
+  id            String             @id @default(uuid())
+  username      String
+  email         String             @unique
+  password      String?            // nullable kalo OAuth users
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  identities    AuthIdentities[]
+  transactions  Transaction[]
+  categories    Category[]
+  budgets       Budget[]
+  goals         Goal[]
+  createdBills  SplitBill[]        @relation("CreatedBills")
+  billShares    SplitParticipant[]
+  notifications Notification[]
+  recurringTransactions RecurringTransaction[]
+  
+  // Friend relations
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friendsAsUser1         Friend[]        @relation("User1Friends")
+  friendsAsUser2         Friend[]        @relation("User2Friends")
+}
+
+model AuthIdentities {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider      String    // for ex: google
+  providerId    String
+  providerEmail String    // store exact email dari provider
+ 
+  accessToken   String?   @db.Text
+  refreshToken  String?   @db.Text
+  tokenExpiry   DateTime? // buat background gmail parsing
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+ 
+  @@unique([provider, providerId])
+  @@unique([userId, provider]) // 1 account max per user
+}
+
+// budgeting planing
+model Category {
+  id           String          @id @default(uuid())
+  userId       String?         
+  user         User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  type         TransactionType
+  icon         String?
+  transactions Transaction[]
+  budgets      Budget[]
+  recurringTransactions RecurringTransaction[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+// auto/manual tracking
+model Transaction {
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId    String?
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  amount        Decimal         @db.Decimal(12, 2)
+  type          TransactionType
+  description   String?
+  date          DateTime
+  isAutoTracked Boolean         @default(false)
+  source        String?         // 'GMAIL_PARSER', 'MANUAL', 'BANK_API'
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+// budget planning
+model Budget {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(12, 2)
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// target finansial
+model Goal {
+  id            String     @id @default(uuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Decimal    @db.Decimal(12, 2)
+  currentAmount Decimal    @default(0) @db.Decimal(12, 2)
+  deadline      DateTime?
+  status        GoalStatus @default(IN_PROGRESS)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+// split bill
+model SplitBill {
+  id          String             @id @default(uuid())
+  creatorId   String
+  creator     User               @relation("CreatedBills", fields: [creatorId], references: [id], onDelete: Cascade)
+  totalAmount Decimal            @db.Decimal(12, 2)
+  description String
+  date        DateTime
+  status      SplitStatus        @default(PENDING)
+  receiptProofs String[]         @default([])
+  participants SplitParticipant[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+// orang yg terlibat di splitbill
+model SplitParticipant {
+  id          String    @id @default(uuid())
+  splitBillId String
+  splitBill   SplitBill @relation(fields: [splitBillId], references: [id], onDelete: Cascade)
+  userId      String?   
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name        String?   // fallback kalau temannya itu ga ada di akun
+  amountOwed  Decimal   @db.Decimal(12, 2)
+  isPaid      Boolean   @default(false)
+  paidAt      DateTime?
+  paymentProof String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
+
+model RecurringTransaction {
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  amount      Decimal            @db.Decimal(12, 2)
+  type        TransactionType
+  description String
+  frequency   RecurringFrequency
+  startDate   DateTime           // First occurrence date
+  nextDate    DateTime           // Next scheduled occurrence
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+// Friend requests between users
+model FriendRequest {
+  id         String              @id @default(uuid())
+  senderId   String
+  sender     User                @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User                @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  status     FriendRequestStatus @default(PENDING)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  
+  @@unique([senderId, receiverId])
+}
+
+// Established friendships (bidirectional)
+model Friend {
+  id        String   @id @default(uuid())
+  user1Id   String
+  user1     User     @relation("User1Friends", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id   String
+  user2     User     @relation("User2Friends", fields: [user2Id], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([user1Id, user2Id])
+}

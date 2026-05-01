@@ -15,6 +15,7 @@ import { CategoryModule } from './modules/category/category.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { NotificationModule } from './modules/notification/notification.module.js';
 import { RecurringTransactionModule } from './modules/recurring-transaction/recurring-transaction.module.js';
+import { FriendModule } from './modules/friend/friend.module.js';
 import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
 import { LoggingMiddleware } from './infrastructure/middleware/logging.middleware.js';
 
@@ -33,6 +34,7 @@ import { LoggingMiddleware } from './infrastructure/middleware/logging.middlewar
     DashboardModule,
     NotificationModule,
     RecurringTransactionModule,
+    FriendModule,
   ],
   controllers: [AppController],
   providers: [
