@@ -4,159 +4,20 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
 }
 
-model User {
-  id                    String                 @id @default(uuid())
-  username              String
-  email                 String                 @unique
-  password              String?
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
-  identities            AuthIdentities[]
-  budgets               Budget[]
-  categories            Category[]
-  goals                 Goal[]
-  notifications         Notification[]
-  recurringTransactions RecurringTransaction[]
-  createdBills          SplitBill[]            @relation("CreatedBills")
-  billShares            SplitParticipant[]
-  transactions          Transaction[]
-}
-
-model AuthIdentities {
-  id            String    @id @default(uuid())
-  userId        String
-  provider      String
-  providerId    String
-  providerEmail String
-  accessToken   String?
-  refreshToken  String?
-  createdAt     DateTime  @default(now())
-  tokenExpiry   DateTime?
-  updatedAt     DateTime  @updatedAt
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerId])
-  @@unique([userId, provider])
-}
-
-model Category {
-  id                    String                 @id @default(uuid())
-  userId                String?
-  name                  String
-  type                  TransactionType
-  icon                  String?
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
-  budgets               Budget[]
-  user                  User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recurringTransactions RecurringTransaction[]
-  transactions          Transaction[]
-}
-
-model Transaction {
-  id            String          @id @default(uuid())
-  userId        String
-  categoryId    String?
-  amount        Decimal         @db.Decimal(12, 2)
-  type          TransactionType
-  description   String?
-  date          DateTime
-  isAutoTracked Boolean         @default(false)
-  source        String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  category      Category?       @relation(fields: [categoryId], references: [id])
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Budget {
-  id         String    @id @default(uuid())
-  userId     String
-  categoryId String?
-  amount     Decimal   @db.Decimal(12, 2)
-  startDate  DateTime
-  endDate    DateTime
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Goal {
-  id            String     @id @default(uuid())
-  userId        String
-  name          String
-  targetAmount  Decimal    @db.Decimal(12, 2)
-  currentAmount Decimal    @default(0) @db.Decimal(12, 2)
-  deadline      DateTime?
-  status        GoalStatus @default(IN_PROGRESS)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model SplitBill {
-  id           String             @id @default(uuid())
-  creatorId    String
-  totalAmount  Decimal            @db.Decimal(12, 2)
-  description  String
-  date         DateTime
-  status       SplitStatus        @default(PENDING)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  creator      User               @relation("CreatedBills", fields: [creatorId], references: [id], onDelete: Cascade)
-  participants SplitParticipant[]
-}
-
-model SplitParticipant {
-  id           String    @id @default(uuid())
-  splitBillId  String
-  userId       String?
-  name         String?
-  amountOwed   Decimal   @db.Decimal(12, 2)
-  isPaid       Boolean   @default(false)
-  paidAt       DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  paymentProof String?
-  splitBill    SplitBill @relation(fields: [splitBillId], references: [id], onDelete: Cascade)
-  user         User?     @relation(fields: [userId], references: [id])
-}
-
-model Notification {
-  id        String           @id @default(uuid())
-  userId    String
-  type      NotificationType
-  title     String
-  message   String
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model RecurringTransaction {
-  id          String             @id @default(uuid())
-  userId      String
-  categoryId  String?
-  amount      Decimal            @db.Decimal(12, 2)
-  type        TransactionType
-  description String
-  frequency   RecurringFrequency
-  startDate   DateTime
-  nextDate    DateTime
-  isActive    Boolean            @default(true)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  category    Category?          @relation(fields: [categoryId], references: [id])
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
+// Transaction type stays as main source of truth
 enum TransactionType {
   INCOME
   EXPENSE
+}
+
+// Category type adds INVESTMENT as label for category classification
+enum CategoryType {
+  INCOME
+  EXPENSE
+  INVESTMENT
 }
 
 enum GoalStatus {
@@ -178,20 +39,17 @@ enum NotificationType {
   SYSTEM
 }
 
-enum RecurringFrequency {
-  DAILY
-  WEEKLY
-  BIWEEKLY
-  MONTHLY
-  QUARTERLY
-  YEARLY
-}
-
 enum FriendRequestStatus {
   PENDING
   ACCEPTED
   REJECTED
   BLOCKED
+}
+
+enum BillStatus {
+  PENDING
+  PAID
+  OVERDUE
 }
 
 model User {
@@ -207,11 +65,14 @@ model User {
   categories    Category[]
   budgets       Budget[]
   goals         Goal[]
+  bills         Bill[]
   createdBills  SplitBill[]        @relation("CreatedBills")
   billShares    SplitParticipant[]
   notifications Notification[]
-  recurringTransactions RecurringTransaction[]
-  
+  investments   Investment[]
+  investmentAllocations InvestmentAllocation[]
+  activityLogs  ActivityLog[]
+
   // Friend relations
   sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
   receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
@@ -226,31 +87,39 @@ model AuthIdentities {
   provider      String    // for ex: google
   providerId    String
   providerEmail String    // store exact email dari provider
- 
+
   accessToken   String?   @db.Text
   refreshToken  String?   @db.Text
-  tokenExpiry   DateTime? // buat background gmail parsing
-  
+  // tokenExpiry removed, system try-catch error instead
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
- 
+
   @@unique([provider, providerId])
   @@unique([userId, provider]) // 1 account max per user
+  @@index([userId])
+  @@index([providerEmail])
 }
 
-// budgeting planing
+// category customized by user
 model Category {
-  id           String          @id @default(uuid())
-  userId       String?         
-  user         User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String       @id @default(uuid())
+  userId       String?
+  user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
-  type         TransactionType
+  type         CategoryType // INCOME, EXPENSE, INVESTMENT label
   icon         String?
+  bills        Bill[]
   transactions Transaction[]
   budgets      Budget[]
-  recurringTransactions RecurringTransaction[]
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  investments  Investment[]
+  investmentAllocations InvestmentAllocation[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([userId, name, type])
+  @@index([userId])
+  @@index([type])
 }
 
 // auto/manual tracking
@@ -266,22 +135,39 @@ model Transaction {
   date          DateTime
   isAutoTracked Boolean         @default(false)
   source        String?         // 'GMAIL_PARSER', 'MANUAL', 'BANK_API'
+  goalId        String?         // edge case: user langsung beli barang goal
+  goal          Goal?           @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  billId        String?
+  bill          Bill?           @relation(fields: [billId], references: [id], onDelete: SetNull)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([goalId])
+  @@index([billId])
+  @@index([date])
+  @@index([userId, date])
 }
 
-// budget planning
+// budget planning - user set by time or by category or both
 model Budget {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  amount      Decimal  @db.Decimal(12, 2)
+  amount      Decimal   @db.Decimal(12, 2)
   startDate   DateTime
   endDate     DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  savingPoint SavingPoint?
+  debtPoint   DebtPoint?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([userId, startDate, endDate])
 }
 
 // target finansial
@@ -294,67 +180,68 @@ model Goal {
   currentAmount Decimal    @default(0) @db.Decimal(12, 2)
   deadline      DateTime?
   status        GoalStatus @default(IN_PROGRESS)
+  transactions  Transaction[] // edge case: langsung beli barang goal
+  contributions GoalContribution[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }
 
 // split bill
 model SplitBill {
-  id          String             @id @default(uuid())
-  creatorId   String
-  creator     User               @relation("CreatedBills", fields: [creatorId], references: [id], onDelete: Cascade)
-  totalAmount Decimal            @db.Decimal(12, 2)
-  description String
-  date        DateTime
-  status      SplitStatus        @default(PENDING)
-  receiptProofs String[]         @default([])
-  participants SplitParticipant[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id            String            @id @default(uuid())
+  creatorId     String
+  creator       User              @relation("CreatedBills", fields: [creatorId], references: [id], onDelete: Cascade)
+  totalAmount   Decimal           @db.Decimal(12, 2)
+  description   String
+  date          DateTime
+  status        SplitStatus       @default(PENDING)
+  receiptProofs String[]          @default([])
+  participants  SplitParticipant[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([creatorId])
+  @@index([date])
+  @@index([status])
 }
 
 // orang yg terlibat di splitbill
 model SplitParticipant {
-  id          String    @id @default(uuid())
-  splitBillId String
-  splitBill   SplitBill @relation(fields: [splitBillId], references: [id], onDelete: Cascade)
-  userId      String?   
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  name        String?   // fallback kalau temannya itu ga ada di akun
-  amountOwed  Decimal   @db.Decimal(12, 2)
-  isPaid      Boolean   @default(false)
-  paidAt      DateTime?
+  id           String    @id @default(uuid())
+  splitBillId  String
+  splitBill    SplitBill @relation(fields: [splitBillId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name         String?   // fallback kalau temannya itu ga ada di akun
+  amountOwed   Decimal   @db.Decimal(12, 2)
+  isPaid       Boolean   @default(false)
+  paidAt       DateTime?
   paymentProof String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([splitBillId])
+  @@index([userId])
 }
 
 model Notification {
   id        String           @id @default(uuid())
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      NotificationType
+  type      NotificationType // distinguish notification template message
   title     String
   message   String
   isRead    Boolean          @default(false)
+  readAt    DateTime?
   createdAt DateTime         @default(now())
-}
 
-model RecurringTransaction {
-  id          String             @id @default(uuid())
-  userId      String
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryId  String?
-  category    Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  amount      Decimal            @db.Decimal(12, 2)
-  type        TransactionType
-  description String
-  frequency   RecurringFrequency
-  startDate   DateTime           // First occurrence date
-  nextDate    DateTime           // Next scheduled occurrence
-  isActive    Boolean            @default(true)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  @@index([userId])
+  @@index([userId, readAt])
+  @@index([type])
+  @@index([createdAt])
 }
 
 // Friend requests between users
@@ -367,8 +254,11 @@ model FriendRequest {
   status     FriendRequestStatus @default(PENDING)
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
-  
+
   @@unique([senderId, receiverId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([status])
 }
 
 // Established friendships (bidirectional)
@@ -379,6 +269,126 @@ model Friend {
   user2Id   String
   user2     User     @relation("User2Friends", fields: [user2Id], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  
+
   @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+// ============================================================
+// NEW TABLES
+// ============================================================
+
+// history kontribusi ke goal, bisa pakai saving point sebagai source
+model GoalContribution {
+  id               String       @id @default(uuid())
+  goalId           String
+  goal             Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  savingPointId    String?      // optional: kalau pakai saving point
+  savingPoint      SavingPoint? @relation(fields: [savingPointId], references: [id], onDelete: SetNull)
+  amount           Decimal      @db.Decimal(12, 2)
+  contributionDate DateTime
+  note             String?
+  createdAt        DateTime     @default(now())
+
+  @@index([goalId])
+  @@index([savingPointId])
+  @@index([contributionDate])
+  @@index([goalId, contributionDate])
+}
+
+model Bill {
+  id                String      @id @default(uuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId        String?
+  category          Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  title             String
+  amount            Decimal     @db.Decimal(12, 2)
+  dueDate           DateTime
+  status            BillStatus  @default(PENDING)
+  isReminderEnabled Boolean     @default(true)
+  remindAt          DateTime?
+  paidAt            DateTime?
+  transactions      Transaction[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([userId, dueDate])
+  @@index([isReminderEnabled, dueDate])
+}
+
+// total sisa uang (underbudget) per budget, bisa dipakai untuk goals
+model SavingPoint {
+  id           String             @id @default(uuid())
+  budgetId     String             @unique
+  budget       Budget             @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  savingAmount Decimal            @db.Decimal(12, 2)
+  contributions GoalContribution[] // track penggunaan untuk goals
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+// total amount per investment module (saham, emas, reksadana)
+model Investment {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  totalAmount Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, categoryId]) // 1 row per user per investment category
+  @@index([userId])
+  @@index([categoryId])
+}
+
+// detail saving yang dialokasikan ke investment
+model InvestmentAllocation {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount         Decimal   @db.Decimal(12, 2)
+  allocationDate DateTime
+  note           String?
+  createdAt      DateTime  @default(now())
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([allocationDate])
+  @@index([userId, categoryId])
+}
+
+// total overbudget per budget
+model DebtPoint {
+  id         String   @id @default(uuid())
+  budgetId   String   @unique
+  budget     Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  debtAmount Decimal  @db.Decimal(12, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// optional logging table
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // CREATE, UPDATE, DELETE, LOGIN, etc
+  entity    String   // Transaction, Budget, Goal, etc
+  entityId  String?
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
 }

@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import { BudgetService } from '../core/app/budget.service.js';
-import { CreateBudgetDto } from '../core/app/create-budget.dto.js';
-import { UpdateBudgetDto } from '../core/app/update-budget.dto.js';
+import { CreateBudgetDto } from './dtos/create-budget.dto.js';
+import { UpdateBudgetDto } from './dtos/update-budget.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('budgets')

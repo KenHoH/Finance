@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import { CategoryService } from '../core/app/category.service.js';
-import { CreateCategoryDto } from '../core/app/create-category.dto.js';
-import { UpdateCategoryDto } from '../core/app/update-category.dto.js';
+import { CreateCategoryDto } from './dtos/create-category.dto.js';
+import { UpdateCategoryDto } from './dtos/update-category.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('categories')

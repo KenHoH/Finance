@@ -54,7 +54,6 @@ export class AuthService {
       update: {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token ?? undefined,
-        tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
         providerEmail: profile.email,
       },
       create: {
@@ -64,7 +63,6 @@ export class AuthService {
         providerEmail: profile.email,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token ?? undefined,
-        tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
       }
     });
 

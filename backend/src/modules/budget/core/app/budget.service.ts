@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
-import { CreateBudgetDto } from './create-budget.dto.js';
-import { UpdateBudgetDto } from './update-budget.dto.js';
+import { CreateBudgetDto } from '../../framework/dtos/create-budget.dto.js';
+import { UpdateBudgetDto } from '../../framework/dtos/update-budget.dto.js';
 
 @Injectable()
 export class BudgetService {

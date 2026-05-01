@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { NotificationService } from '../../../notification/core/app/notification.service.js';
-import { CreateTransactionDto } from './create-transaction.dto.js';
-import { UpdateTransactionDto } from './update-transaction.dto.js';
-import { FilterTransactionDto } from './filter-transaction.dto.js';
+import { CreateTransactionDto } from '../../framework/dtos/create-transaction.dto.js';
+import { UpdateTransactionDto } from '../../framework/dtos/update-transaction.dto.js';
+import { FilterTransactionDto } from '../../framework/dtos/filter-transaction.dto.js';
+import { Prisma } from 'generated/prisma/browser.js';
 
 @Injectable()
 export class TransactionService {
@@ -33,6 +34,7 @@ export class TransactionService {
     return transaction;
   }
 
+  
   private async checkBudgetAlert(userId: string, transaction: any){
     const today = new Date();
     const budgets = await this.prisma.budget.findMany({
@@ -81,7 +83,7 @@ export class TransactionService {
   }
 
   async findAll(userId: string, filters?: FilterTransactionDto){
-    const where: any = { userId };
+    const where: Prisma.TransactionWhereInput = { userId };
 
     if(filters?.type){
       where.type = filters.type;
@@ -97,27 +99,35 @@ export class TransactionService {
       if(filters.endDate) where.date.lte = new Date(filters.endDate);
     }
 
-    const page = Math.max(1, parseInt(filters?.page || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(filters?.limit || '20', 10)));
-    const skip = (page - 1) * limit;
+    const cursorId = filters?.categoryId;
+    const limit = Number(filters?.limit);
 
-    const [data, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where,
-        orderBy: {date: 'desc'},
-        include: {category: true},
-        skip,
-        take: limit,
-      }),
-      this.prisma.transaction.count({ where }),
-    ]);
+    if (limit == undefined || cursorId == undefined) {
+      const allData = await this.prisma.transaction.findMany( {
+        where: {
+          userId: userId
+        }
+      })
+      return {
+        allData,
+        cursor: undefined
+      }
+    }
 
+    const data = await this.prisma.transaction.findMany({
+    where: { userId },
+    take: limit,
+    ...(cursorId && {
+      skip: 1, 
+      cursor: { id: cursorId },
+    }),
+    orderBy: { date: 'desc' },
+  });
+
+    const nextCursor = data.length === limit ? data[data.length - 1].id : null;
     return {
-      data,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      data: data,
+      cursor: nextCursor,
     };
   }
 

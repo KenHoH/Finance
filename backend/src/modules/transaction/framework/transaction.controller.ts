@@ -4,9 +4,9 @@ import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { TransactionService } from '../core/app/transaction.service.js';
 import { OcrService, OcrResponse } from '../core/app/ocr.service.js';
-import { CreateTransactionDto } from '../core/app/create-transaction.dto.js';
-import { UpdateTransactionDto } from '../core/app/update-transaction.dto.js';
-import { FilterTransactionDto } from '../core/app/filter-transaction.dto.js';
+import { CreateTransactionDto } from './dtos/create-transaction.dto.js';
+import { UpdateTransactionDto } from './dtos/update-transaction.dto.js';
+import { FilterTransactionDto } from './dtos/filter-transaction.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('transactions')
