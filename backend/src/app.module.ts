@@ -10,6 +10,7 @@ import { GoalModule } from './modules/goal/goal.module.js';
 import { SavingPointModule } from './modules/saving-point/saving-point.module.js';
 import { BillModule } from './modules/bill/bill.module.js';
 import { InvestmentModule } from './modules/investment/investment.module.js';
+import { ActivityLogModule } from './modules/activity-log/activity-log.module.js';
 import { SplitBillModule } from './modules/split-bill/split-bill.module.js';
 import { FriendModule } from './modules/friend/friend.module.js';
 import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
@@ -25,6 +26,7 @@ import { LoggingMiddleware } from './infrastructure/middleware/logging.middlewar
     SavingPointModule,
     BillModule,
     InvestmentModule,
+    ActivityLogModule,
     SplitBillModule,
     FriendModule,
   ],
