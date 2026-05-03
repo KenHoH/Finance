@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Query, Redirect, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query, Redirect, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from '../core/app/auth.service.js';
+import { JwtAuthGuard } from '../core/app/jwt-auth-guard.js';
+import { UpdateProfileDto } from './dto/index.js';
 import { generateCsrfToken, setCsrfCookie } from '../../../infrastructure/utils/csrf-token.js';
 
 @Controller('auth')
@@ -73,5 +75,16 @@ export class AuthController {
       path: '/'
     });
     return {message: 'logout succeed'};
+  }
+
+  @Patch('/profile')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(@Req() req: Request, @Body() dto: UpdateProfileDto){
+    if(!req.user){
+      return {error: 'not authenticated'};
+    }
+    const userId = req.user.sub;
+    const user = await this.authService.updateProfile(userId, dto);
+    return {id: user.id, email: user.email, username: user.username};
   }
 }

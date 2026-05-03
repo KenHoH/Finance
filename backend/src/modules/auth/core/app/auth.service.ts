@@ -54,7 +54,6 @@ export class AuthService {
       update: {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token ?? undefined,
-        tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
         providerEmail: profile.email,
       },
       create: {
@@ -64,7 +63,6 @@ export class AuthService {
         providerEmail: profile.email,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token ?? undefined,
-        tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
       }
     });
 
@@ -98,7 +96,7 @@ export class AuthService {
     }
   }
 
-  async getMe(token: string): Promise<{user: {id: string; email: string; username: string | null} | null; isInvalid: boolean}>{
+  async getMe(token: string): Promise<{user: {id: string; email: string; username: string; createdAt: Date} | null; isInvalid: boolean}>{
     try{
       const payload = this.jwtService.verify(token);
       const user = await this.prisma.user.findUnique({
@@ -107,10 +105,21 @@ export class AuthService {
       if(!user){
         return {user: null, isInvalid: false};
       }
-      return {user: {id: user.id, email: user.email, username: user.username}, isInvalid: false};
+      return {user: {id: user.id, email: user.email, username: user.username, createdAt: user.createdAt}, isInvalid: false};
     } catch{
       return {user: null, isInvalid: true};
     }
+  }
+
+  async updateProfile(userId: string, data: {username?: string}){
+    if(!data.username || data.username.trim().length === 0){
+      throw new Error('username is required');
+    }
+
+    return this.prisma.user.update({
+      where: {id: userId},
+      data: {username: data.username.trim()},
+    });
   }
 
   private encodeOauthState(returnTo?: string){
