@@ -18,6 +18,7 @@ import { FriendModule } from './modules/friend/friend.module.js';
 import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
 import { LoggingMiddleware } from './infrastructure/middleware/logging.middleware.js';
 import { DebtModule } from './modules/debt/debt.module.js';
+import { SettingsModule } from './modules/settings/settings.module.js';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { DebtModule } from './modules/debt/debt.module.js';
     NotificationModule,
     FriendModule,
     DebtModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [
