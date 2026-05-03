@@ -52,6 +52,19 @@ enum BillStatus {
   OVERDUE
 }
 
+model Settings {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
 model User {
   id            String             @id @default(uuid())
   username      String
@@ -66,6 +79,7 @@ model User {
   budgets       Budget[]
   goals         Goal[]
   bills         Bill[]
+  settings      Settings[]
   createdBills  SplitBill[]        @relation("CreatedBills")
   billShares    SplitParticipant[]
   notifications Notification[]
