@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DebtController } from './framework/debt.controller.js';
-import { DebtService } from './core/debt.service.js';
+import { DebtService } from './core/app/debt.service.js';
 import { ConfigService } from '@nestjs/config/dist/index.js';
 import { JwtModule } from '@nestjs/jwt/dist/index.js';
 
@@ -14,6 +14,7 @@ import { JwtModule } from '@nestjs/jwt/dist/index.js';
     }),
   ],
   controllers: [DebtController],
-  providers: [DebtService]
+  providers: [DebtService],
+  exports: [DebtService]
 })
 export class DebtModule {}

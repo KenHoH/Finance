@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
-import { DebtService } from '../core/debt.service.js';
+import { DebtService } from '../core/app/debt.service.js';
 import { CreateDebtDto } from './dtos/create-debt.dto.js';
 import { UpdateDebtDto } from './dtos/update-debt.dto.js';
 

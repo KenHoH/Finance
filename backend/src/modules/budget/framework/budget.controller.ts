@@ -30,6 +30,38 @@ export class BudgetController {
     return budget;
   }
 
+  @Get('daily/:id')
+  async getDailyBudget(
+    @Req() req: Request, 
+    @Param('id') id: string
+  ){
+    const userId = (req as any).user.sub;
+    const dailyBudget = await this.budgetService.getDailyBudget(userId, id);
+    if(!dailyBudget) throw new NotFoundException('Daily budget not found');
+    return dailyBudget;
+  }
+
+  @Get('category')
+  async getBudgetPerCategory(
+    @Req() req: Request, 
+  ){
+    const userId = (req as any).user.sub;
+    const budgetPerCategory = await this.budgetService.getBudgetPerCategory(userId);
+    if(!budgetPerCategory) throw new NotFoundException('Budget per category not found');
+    return budgetPerCategory;
+  }
+
+  @Get('daily/category/:id')
+  async getDailyBudgetPerCategory(
+    @Req() req: Request, 
+    @Param('id') id: string
+  ){
+    const userId = (req as any).user.sub;
+    const dailyBudgetPerCategory = await this.budgetService.getDailyBudgetPerCategory(userId, id);
+    if(!dailyBudgetPerCategory) throw new NotFoundException('Daily budget per category not found');
+    return dailyBudgetPerCategory;
+  } 
+
   @Put(':id')
   async update(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateBudgetDto){
     const userId = (req as any).user.sub;
