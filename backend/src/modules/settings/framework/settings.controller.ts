@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { SettingsService } from '../core/app/settings.service.js';
 import { CreateSettingsDto } from './dtos/create-settings.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
+import { UpdateSettingsDto } from './dtos/update-settings.dto.js';
 
 @Controller('settings')
 @UseGuards(JwtAuthGuard)
@@ -35,6 +36,16 @@ export class SettingsController {
     ) {
         const userId = (req as any).user.sub;
         return this.settingsService.findOneByKey(userId, key);
+    }
+
+    @Put(':key')
+    async update(
+        @Req() req,
+        @Param('key') key: string,
+        @Body() dto: UpdateSettingsDto
+    ) {
+        const userId = (req as any).user.sub;
+        return this.settingsService.update(userId, key, dto.value);
     }
 
     @Delete(':key')

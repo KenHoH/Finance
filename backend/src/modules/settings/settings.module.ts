@@ -13,6 +13,7 @@ import { ConfigService } from '@nestjs/config/dist/index.js';
     }),
   ],
   controllers: [SettingsController],
-  providers: [SettingsService]
+  providers: [SettingsService],
+  exports: [SettingsService],
 })
 export class SettingsModule {}

@@ -49,6 +49,21 @@ export class SettingsService {
         return setting;
     }
 
+    async update(userId: string, key: string, value: string){
+        const setting = await this.prisma.settings.update({
+            where: {
+                userId_key: {
+                    userId,
+                    key
+                }
+            },
+            data: {
+                value,
+            }
+        })
+        return setting;
+    }
+
     async delete(userId: string, key: string){
         const setting = await this.prisma.settings.delete({
             where: {
