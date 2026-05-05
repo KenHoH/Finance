@@ -5,6 +5,7 @@ import { BudgetController } from './framework/budget.controller.js';
 import { BudgetService } from './core/app/budget.service.js';
 import { NotificationModule } from '../notification/notification.module.js';
 import { DebtModule } from '../debt/debt.module.js';
+import { SettingsModule } from '../settings/settings.module.js';
 
 @Module({
   imports: [
@@ -15,9 +16,11 @@ import { DebtModule } from '../debt/debt.module.js';
       inject: [ConfigService],
     }),
     NotificationModule,
+    SettingsModule,
     DebtModule
   ],
   controllers: [BudgetController],
   providers: [BudgetService],
+  exports: [BudgetService],
 })
 export class BudgetModule {}

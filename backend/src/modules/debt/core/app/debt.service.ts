@@ -11,13 +11,16 @@ export class DebtService {
     ){}
 
     async create(dto: CreateDebtDto) {
-        const debt = await this.prisma.debtPoint.create({
-            data: {
+        const debt = await this.prisma.debtPoint.upsert({
+            where: { budgetId: dto.budgetId },
+            create: {
                 budgetId: dto.budgetId,
                 debtAmount: dto.debtAmount,
+            },
+            update: {
+                debtAmount: dto.debtAmount,
             }
-        })
-
+            })
         return debt;
     }   
     

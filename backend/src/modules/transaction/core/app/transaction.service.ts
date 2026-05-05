@@ -5,12 +5,14 @@ import { CreateTransactionDto } from '../../framework/dtos/create-transaction.dt
 import { UpdateTransactionDto } from '../../framework/dtos/update-transaction.dto.js';
 import { FilterTransactionDto } from '../../framework/dtos/filter-transaction.dto.js';
 import { Prisma } from 'generated/prisma/browser.js';
+import { BudgetService } from '../../../budget/core/app/budget.service.js';
 
 @Injectable()
 export class TransactionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly budgetService: BudgetService
   ) {}
 
   async create(userId: string, dto: CreateTransactionDto){
@@ -28,13 +30,13 @@ export class TransactionService {
     });
 
     if(transaction.type === 'EXPENSE'){
-      await this.checkBudgetAlert(userId, transaction);
+      await this.budgetService.checkBudgetOverall(userId, transaction);
     }
 
     return transaction;
   }
 
-  
+  // UNUSED function replaced by budgetService checkBudgetOverall
   private async checkBudgetAlert(userId: string, transaction: any){
     const today = new Date();
     const budgets = await this.prisma.budget.findMany({
@@ -48,6 +50,7 @@ export class TransactionService {
     });
 
     for(const budget of budgets){
+      // total spent in the budget period and category
       const spentAgg = await this.prisma.transaction.aggregate({
         where: {
           userId,

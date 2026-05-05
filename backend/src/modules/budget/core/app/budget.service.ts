@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateBudgetDto } from '../../framework/dtos/create-budget.dto.js';
 import { UpdateBudgetDto } from '../../framework/dtos/update-budget.dto.js';
 import { NotificationService } from '../../../notification/core/app/notification.service.js';
 import { DebtService } from '../../../debt/core/app/debt.service.js';
+import { SettingsService } from '../../../settings/core/app/settings.service.js';
 
 @Injectable()
 export class BudgetService {
@@ -11,6 +12,7 @@ export class BudgetService {
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
     private readonly debtService: DebtService,
+    private readonly settingsService: SettingsService
   ) {}
 
   async create(userId: string, dto: CreateBudgetDto){
@@ -182,7 +184,7 @@ export class BudgetService {
   }
 
   public async checkBudgetOverall(userId: string, transaction: any) {
-    const today = new Date();
+    const today = transaction.date instanceof Date ? transaction.date : new Date(transaction.date);
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
     const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
@@ -195,6 +197,8 @@ export class BudgetService {
       },
       include: { category: true },
     });
+
+    Logger.debug(`BUDGETS TO CHECK: ${JSON.stringify(budgets)}`, 'BudgetService.checkBudgetOverall');
 
     for (const budget of budgets) {
       const budgetAmount = Number(budget.amount);
@@ -217,24 +221,35 @@ export class BudgetService {
         _sum: { amount: true },
       });
 
-      const spentToday = Number(todaySpentAgg._sum.amount || 0);
+      // FIND the user settings preference 
+      let userSettings = await this.settingsService.findOneByKey(userId, 'BUDGET_TIME_PREFERENCE');
 
-      if (spentToday > dailyAllowance) {
-        const totalDebt = spentToday - dailyAllowance;
-        
-        // add to debt point
-        await this.debtService.create({
-          budgetId: budget.id,
-          debtAmount: totalDebt,
-        })
+      Logger.debug(`User settings for budget time preference: ${JSON.stringify(userSettings)}`, 'BudgetService.checkBudgetOverall');
+      let timePreference = userSettings?.value ?? 'daily'; // default to daily
+      
+      // DAILY budget system tracker if the user choose daily
+      if(timePreference === 'daily'){
+        const spentToday = Number(todaySpentAgg._sum.amount || 0);
+        Logger.debug(`Checking DAILY budget for budget ${budget.id} with daily allowance ${dailyAllowance} and today's spending ${spentToday}`, 'BudgetService.checkBudgetOverall');
 
-        // notify the user
-        await this.notificationService.create(
-          userId,
-          'BUDGET_ALERT',
-          'Daily Budget Exceeded',
-          `You spent Rp ${spentToday.toLocaleString('id-ID')} today, which is over your daily ${categoryName} allowance of Rp ${Math.round(dailyAllowance).toLocaleString('id-ID')}.`,
-        );
+        if (spentToday > dailyAllowance) {
+          const totalDebt = spentToday - dailyAllowance;
+          
+          // add to debt point
+          await this.debtService.create({
+            budgetId: budget.id,
+            debtAmount: totalDebt,
+          })
+
+          // notify the user
+          await this.notificationService.create(
+            userId,
+            'BUDGET_ALERT',
+            'Daily Budget Exceeded',
+            `You spent Rp ${spentToday.toLocaleString('id-ID')} today, which is over your daily ${categoryName} allowance of Rp ${Math.round(dailyAllowance).toLocaleString('id-ID')}.`,
+          );
+        }
+        return;
       }
 
       const totalSpentAgg = await this.prisma.transaction.aggregate({
@@ -247,9 +262,30 @@ export class BudgetService {
         _sum: { amount: true },
       });
 
+
       const totalSpent = Number(totalSpentAgg._sum.amount || 0);
       const percentage = budgetAmount > 0 ? Math.round((totalSpent / budgetAmount) * 100) : 0;
 
+      if(totalSpent > budgetAmount){
+        const totalDebt = totalSpent - budgetAmount;
+          
+          // add to debt point
+        Logger.debug(`Checking MONTHLY budget for budget ${budget.id} with monthly allowance ${budgetAmount} and total spending ${totalSpent}`, 'BudgetService.checkBudgetOverall');
+          await this.debtService.create({
+            budgetId: budget.id,
+            debtAmount: totalDebt,
+          })
+
+          // notify the user
+          await this.notificationService.create(
+            userId,
+            'BUDGET_ALERT',
+            'MONTHLY Budget Exceeded',
+            `You spent Rp ${totalSpent.toLocaleString('id-ID')} today, which is over your monthly ${categoryName} allowance of Rp ${Math.round(budgetAmount).toLocaleString('id-ID')}.`,
+          );
+      }
+
+      // notification for the user 
       if (percentage >= 100) {
         await this.notificationService.create(
           userId,
