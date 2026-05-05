@@ -12,8 +12,6 @@ import { BillModule } from './modules/bill/bill.module.js';
 import { InvestmentModule } from './modules/investment/investment.module.js';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module.js';
 import { SplitBillModule } from './modules/split-bill/split-bill.module.js';
-import { CategoryModule } from './modules/category/category.module.js';
-import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { NotificationModule } from './modules/notification/notification.module.js';
 import { FriendModule } from './modules/friend/friend.module.js';
 import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
@@ -33,8 +31,6 @@ import { SettingsModule } from './modules/settings/settings.module.js';
     InvestmentModule,
     ActivityLogModule,
     SplitBillModule,
-    CategoryModule,
-    DashboardModule,
     NotificationModule,
     FriendModule,
     DebtModule,
