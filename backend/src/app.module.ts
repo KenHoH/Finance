@@ -18,6 +18,9 @@ import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
 import { LoggingMiddleware } from './infrastructure/middleware/logging.middleware.js';
 import { DebtModule } from './modules/debt/debt.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
+import { TransactionModule } from './modules/transaction/transaction.module.js';
+import { BudgetModule } from './modules/budget/budget.module.js';
+import { CategoryModule } from './modules/category/category.module.js';
 
 @Module({
   imports: [
@@ -35,6 +38,9 @@ import { SettingsModule } from './modules/settings/settings.module.js';
     FriendModule,
     DebtModule,
     SettingsModule,
+    TransactionModule,
+    BudgetModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [

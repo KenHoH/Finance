@@ -4,7 +4,7 @@ import { NotificationService } from '../../../notification/core/app/notification
 import { CreateTransactionDto } from '../../framework/dtos/create-transaction.dto.js';
 import { UpdateTransactionDto } from '../../framework/dtos/update-transaction.dto.js';
 import { FilterTransactionDto } from '../../framework/dtos/filter-transaction.dto.js';
-import { Prisma } from 'generated/prisma/browser.js';
+import { Prisma } from 'generated/prisma/client.js'; // browser.js itu buat front, pakaii client.js baru bisa konek db
 import { BudgetService } from '../../../budget/core/app/budget.service.js';
 
 @Injectable()
