@@ -3,7 +3,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { TransactionService } from '../core/app/transaction.service.js';
-import { OcrService, OcrResponse } from '../core/app/ocr.service.js';
 import { CreateTransactionDto } from './dtos/create-transaction.dto.js';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto.js';
 import { FilterTransactionDto } from './dtos/filter-transaction.dto.js';
@@ -14,7 +13,6 @@ import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 export class TransactionController{
   constructor(
     private readonly transactionService: TransactionService,
-    private readonly ocrService: OcrService,
   ) {}
 
   @Post()
@@ -51,29 +49,5 @@ export class TransactionController{
     const transaction = await this.transactionService.delete(userId, id);
     if (!transaction) throw new NotFoundException('Transaction not found');
     return {message: 'Transaction deleted'};
-  }
-
-  @Post('scan-receipt')
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    description: 'Receipt image file',
-    schema: {
-      type: 'object',
-      properties: {
-        receipt: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @UseInterceptors(FileInterceptor('receipt'))
-  async scanReceipt(@Req() req: Request, @UploadedFile() file: Express.Multer.File){
-    if(!file){
-      throw new NotFoundException('No receipt image uploaded');
-    }
-
-    const result = await this.ocrService.scanReceipt(file.buffer, file.originalname);
-    return result;
   }
 }

@@ -3,7 +3,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TransactionController } from './framework/transaction.controller.js';
 import { TransactionService } from './core/app/transaction.service.js';
-import { OcrService } from './core/app/ocr.service.js';
 import { NotificationModule } from '../notification/notification.module.js';
 import { BudgetModule } from '../budget/budget.module.js';
 
@@ -20,7 +19,7 @@ import { BudgetModule } from '../budget/budget.module.js';
     BudgetModule
   ],
   controllers: [TransactionController],
-  providers: [TransactionService, OcrService],
+  providers: [TransactionService],
   exports: [TransactionService],
 })
 export class TransactionModule {}
