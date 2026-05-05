@@ -5,6 +5,7 @@ import { UpdateBudgetDto } from '../../framework/dtos/update-budget.dto.js';
 import { NotificationService } from '../../../notification/core/app/notification.service.js';
 import { DebtService } from '../../../debt/core/app/debt.service.js';
 import { SettingsService } from '../../../settings/core/app/settings.service.js';
+import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 
 @Injectable()
 export class BudgetService {
@@ -12,11 +13,12 @@ export class BudgetService {
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
     private readonly debtService: DebtService,
-    private readonly settingsService: SettingsService
+    private readonly settingsService: SettingsService,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   async create(userId: string, dto: CreateBudgetDto){
-    return this.prisma.budget.create({
+    const budget = await this.prisma.budget.create({
       data: {
         userId,
         categoryId: dto.categoryId ?? undefined,
@@ -26,6 +28,10 @@ export class BudgetService {
       },
       include: {category: true},
     });
+
+    await this.activityLogService.logActivity(userId, 'CREATE', 'Budget', budget.id, {amount: Number(budget.amount)});
+
+    return budget;
   }
 
   // find all budgets created by the user 
@@ -53,7 +59,7 @@ export class BudgetService {
 
     if(!budget) return null;
 
-    return this.prisma.budget.update({
+    const updated = await this.prisma.budget.update({
       where: {id},
       data: {
         amount: dto.amount,
@@ -62,6 +68,10 @@ export class BudgetService {
       },
       include: {category: true},
     });
+
+    await this.activityLogService.logActivity(userId, 'UPDATE', 'Budget', id, {amount: Number(updated.amount)});
+
+    return updated;
   }
 
   async delete(userId: string, id: string){
@@ -70,6 +80,8 @@ export class BudgetService {
     });
 
     if(!budget) return null;
+
+    await this.activityLogService.logActivity(userId, 'DELETE', 'Budget', id);
 
     return this.prisma.budget.delete({
       where: {id},

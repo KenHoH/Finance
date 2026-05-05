@@ -5,6 +5,7 @@ import { TransactionController } from './framework/transaction.controller.js';
 import { TransactionService } from './core/app/transaction.service.js';
 import { NotificationModule } from '../notification/notification.module.js';
 import { BudgetModule } from '../budget/budget.module.js';
+import { ActivityLogModule } from '../activity-log/activity-log.module.js';
 
 @Module({
   imports: [
@@ -16,7 +17,8 @@ import { BudgetModule } from '../budget/budget.module.js';
       }),
       inject: [ConfigService],
     }),
-    BudgetModule
+    BudgetModule,
+    ActivityLogModule
   ],
   controllers: [TransactionController],
   providers: [TransactionService],

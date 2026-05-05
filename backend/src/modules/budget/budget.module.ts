@@ -6,6 +6,7 @@ import { BudgetService } from './core/app/budget.service.js';
 import { NotificationModule } from '../notification/notification.module.js';
 import { DebtModule } from '../debt/debt.module.js';
 import { SettingsModule } from '../settings/settings.module.js';
+import { ActivityLogModule } from '../activity-log/activity-log.module.js';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { SettingsModule } from '../settings/settings.module.js';
     }),
     NotificationModule,
     SettingsModule,
-    DebtModule
+    DebtModule,
+    ActivityLogModule
   ],
   controllers: [BudgetController],
   providers: [BudgetService],

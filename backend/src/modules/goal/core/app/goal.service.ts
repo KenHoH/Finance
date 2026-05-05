@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateGoalDto, UpdateGoalDto, ContributeGoalDto } from '../../framework/dto/index.js';
+import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 
 @Injectable()
 export class GoalService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityLogService: ActivityLogService,
+  ) {}
 
   async create(userId: string, dto: CreateGoalDto){
-    return this.prisma.goal.create({
+    const goal = await this.prisma.goal.create({
       data: {
         userId,
         name: dto.name,
@@ -15,6 +19,10 @@ export class GoalService {
         deadline: dto.deadline ? new Date(dto.deadline) : null,
       },
     });
+
+    await this.activityLogService.logActivity(userId, 'CREATE', 'Goal', goal.id, {name: goal.name, targetAmount: Number(goal.targetAmount)});
+
+    return goal;
   }
 
   async findAll(userId: string){
@@ -37,7 +45,7 @@ export class GoalService {
 
     if(!goal) return null;
 
-    return this.prisma.goal.update({
+    const updated = await this.prisma.goal.update({
       where: {id},
       data: {
         name: dto.name,
@@ -47,6 +55,10 @@ export class GoalService {
         status: dto.status,
       },
     });
+
+    await this.activityLogService.logActivity(userId, 'UPDATE', 'Goal', id, {name: updated.name, targetAmount: Number(updated.targetAmount)});
+
+    return updated;
   }
 
   async delete(userId: string, id: string) {
@@ -55,6 +67,8 @@ export class GoalService {
     });
 
     if(!goal) return null;
+
+    await this.activityLogService.logActivity(userId, 'DELETE', 'Goal', id);
 
     return this.prisma.goal.delete({
       where: {id},
@@ -107,6 +121,8 @@ export class GoalService {
         note: dto.note ?? null,
       },
     });
+
+    await this.activityLogService.logActivity(userId, 'CONTRIBUTE', 'Goal', id, {amount: dto.amount, note: dto.note});
 
     return this.prisma.goal.findUnique({
       where: {id},

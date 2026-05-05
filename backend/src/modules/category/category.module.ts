@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { CategoryController } from './framework/category.controller.js';
 import { CategoryService } from './core/app/category.service.js';
+import { ActivityLogModule } from '../activity-log/activity-log.module.js';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { CategoryService } from './core/app/category.service.js';
       }),
       inject: [ConfigService],
     }),
+    ActivityLogModule,
   ],
   controllers: [CategoryController],
   providers: [CategoryService],

@@ -6,13 +6,15 @@ import { UpdateTransactionDto } from '../../framework/dtos/update-transaction.dt
 import { FilterTransactionDto } from '../../framework/dtos/filter-transaction.dto.js';
 import { Prisma } from 'generated/prisma/client.js'; // browser.js itu buat front, pakaii client.js baru bisa konek db
 import { BudgetService } from '../../../budget/core/app/budget.service.js';
+import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 
 @Injectable()
 export class TransactionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
-    private readonly budgetService: BudgetService
+    private readonly budgetService: BudgetService,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   async create(userId: string, dto: CreateTransactionDto){
@@ -32,6 +34,8 @@ export class TransactionService {
     if(transaction.type === 'EXPENSE'){
       await this.budgetService.checkBudgetOverall(userId, transaction);
     }
+
+    await this.activityLogService.logActivity(userId, 'CREATE', 'Transaction', transaction.id, {amount: Number(transaction.amount), type: transaction.type});
 
     return transaction;
   }
@@ -148,7 +152,7 @@ export class TransactionService {
 
     if(!transaction) return null;
 
-    return this.prisma.transaction.update({
+    const updated = await this.prisma.transaction.update({
       where: {id},
       data: {
         amount: dto.amount,
@@ -158,6 +162,10 @@ export class TransactionService {
         categoryId: dto.categoryId,
       },
     });
+
+    await this.activityLogService.logActivity(userId, 'UPDATE', 'Transaction', id, {amount: Number(updated.amount), type: updated.type});
+
+    return updated;
   }
 
   async delete(userId: string, id: string){
@@ -166,6 +174,8 @@ export class TransactionService {
     });
 
     if(!transaction) return null;
+
+    await this.activityLogService.logActivity(userId, 'DELETE', 'Transaction', id);
 
     return this.prisma.transaction.delete({
       where: {id},

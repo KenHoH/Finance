@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateSavingPointDto, UpdateSavingPointDto, AllocateToGoalDto } from '../../framework/dto/index.js';
+import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 
 @Injectable()
 export class SavingPointService{
-  constructor(private readonly prisma: PrismaService){}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityLogService: ActivityLogService,
+  ) {}
 
   async create(userId: string, dto: CreateSavingPointDto){
     // Verify budget belongs to user
@@ -13,12 +17,16 @@ export class SavingPointService{
     });
     if(!budget) throw new Error('Budget not found');
 
-    return this.prisma.savingPoint.create({
+    const savingPoint = await this.prisma.savingPoint.create({
       data: {
         budgetId: dto.budgetId,
         savingAmount: dto.savingAmount,
       },
     });
+
+    await this.activityLogService.logActivity(userId, 'CREATE', 'SavingPoint', savingPoint.id, {budgetId: dto.budgetId, savingAmount: Number(savingPoint.savingAmount)});
+
+    return savingPoint;
   }
 
   async findAllByUser(userId: string){
@@ -48,10 +56,14 @@ export class SavingPointService{
     });
     if(!savingPoint) return null;
 
-    return this.prisma.savingPoint.update({
+    const updated = await this.prisma.savingPoint.update({
       where: {id},
       data: {savingAmount: dto.savingAmount},
     });
+
+    await this.activityLogService.logActivity(userId, 'UPDATE', 'SavingPoint', id, {savingAmount: Number(updated.savingAmount)});
+
+    return updated;
   }
 
   async delete(userId: string, id: string){
@@ -59,6 +71,8 @@ export class SavingPointService{
       where: {id, budget: {userId}},
     });
     if(!savingPoint) return null;
+
+    await this.activityLogService.logActivity(userId, 'DELETE', 'SavingPoint', id);
 
     return this.prisma.savingPoint.delete({
       where: {id},
@@ -111,6 +125,8 @@ export class SavingPointService{
         note: dto.note ?? null,
       },
     });
+
+    await this.activityLogService.logActivity(userId, 'ALLOCATE', 'SavingPoint', savingPointId, {goalId: dto.goalId, amount: dto.amount});
 
     return this.prisma.savingPoint.findUnique({
       where: {id: savingPointId},

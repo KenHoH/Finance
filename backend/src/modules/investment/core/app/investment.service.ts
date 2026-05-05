@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateInvestmentDto, UpdateInvestmentDto, CreateAllocationDto } from '../../framework/dto/index.js';
+import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 
 @Injectable()
 export class InvestmentService{
-  constructor(private readonly prisma: PrismaService){}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityLogService: ActivityLogService,
+  ){}
 
   async create(userId: string, dto: CreateInvestmentDto){
     // Verify category exists and belongs to user
@@ -13,13 +17,17 @@ export class InvestmentService{
     });
     if(!category) throw new Error('Investment category not found');
 
-    return this.prisma.investment.create({
+    const investment = await this.prisma.investment.create({
       data: {
         userId,
         categoryId: dto.categoryId,
         totalAmount: dto.totalAmount,
       },
     });
+
+    await this.activityLogService.logActivity(userId, 'CREATE', 'Investment', investment.id, {categoryId: dto.categoryId, totalAmount: Number(investment.totalAmount)});
+
+    return investment;
   }
 
   async findAllByUser(userId: string){
@@ -45,10 +53,14 @@ export class InvestmentService{
     });
     if(!investment) return null;
 
-    return this.prisma.investment.update({
+    const updated = await this.prisma.investment.update({
       where: {id},
       data: {totalAmount: dto.totalAmount},
     });
+
+    await this.activityLogService.logActivity(userId, 'UPDATE', 'Investment', id, {totalAmount: Number(updated.totalAmount)});
+
+    return updated;
   }
 
   async delete(userId: string, id: string){
@@ -56,6 +68,8 @@ export class InvestmentService{
       where: {id, userId},
     });
     if(!investment) return null;
+
+    await this.activityLogService.logActivity(userId, 'DELETE', 'Investment', id);
 
     return this.prisma.investment.delete({
       where: {id},
@@ -98,6 +112,8 @@ export class InvestmentService{
         totalAmount: dto.amount,
       },
     });
+
+    await this.activityLogService.logActivity(userId, 'CREATE_ALLOCATION', 'InvestmentAllocation', allocation.id, {categoryId: dto.categoryId, amount: Number(allocation.amount)});
 
     return allocation;
   }
