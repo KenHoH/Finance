@@ -13,8 +13,6 @@ export class AuthController {
   @Redirect()
   googleAuth(@Query('returnTo') returnTo?: string){
     const url = this.authService.getGoogleAuthUrl(returnTo);
-  googleAuth() {
-    const url = this.authService.getGoogleAuthUrl();
     return { url };
   }
 
@@ -65,10 +63,6 @@ export class AuthController {
       return {message: 'no activate session bro'};
     }
     response.clearCookie('token', {
-  async googleCallback(@Query('code') code: string, @Res({ passthrough: true }) response: Response,) {
-    const token: string = await this.authService.getToken(code);
-    response.cookie('accessToken', token, {
-      maxAge: 900000,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

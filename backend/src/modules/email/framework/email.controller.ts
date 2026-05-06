@@ -1,18 +1,18 @@
-import { ConsoleLogger, Controller, Get, Query, Req } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { EmailService } from '../core/app/email.service.js';
+import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 import type { Request } from 'express';
 
 @Controller('email')
+@UseGuards(JwtAuthGuard)
 export class EmailController {
   constructor(private readonly emailService: EmailService) {}
   @Get()
-  getMailBoxes(
-    @Query('userEmail') userEmail: string,
+  async getMailBoxes(
     @Req() request: Request
   ) {
-    console.log('Received request to get mailboxes');
-    console.log(request.cookies);
-    console.log(userEmail);
-    return this.emailService.getMailboxs(userEmail, request.cookies['accessToken']);
+    const userId = (request as any).user.sub;
+    const email = (request as any).user.email;
+    return this.emailService.getMailboxs(userId, email);
   }
 }
