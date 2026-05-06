@@ -21,7 +21,6 @@ import { SettingsModule } from './modules/settings/settings.module.js';
 import { TransactionModule } from './modules/transaction/transaction.module.js';
 import { BudgetModule } from './modules/budget/budget.module.js';
 import { CategoryModule } from './modules/category/category.module.js';
-import { SavingProcessorService } from './processor/saving-processor/saving-processor.service';
 
 @Module({
   imports: [
@@ -48,7 +47,6 @@ import { SavingProcessorService } from './processor/saving-processor/saving-proc
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
-    SavingProcessorService,
   ],
 })
 export class AppModule implements NestModule {
