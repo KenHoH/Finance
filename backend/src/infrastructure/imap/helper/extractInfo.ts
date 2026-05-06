@@ -7,25 +7,27 @@ export interface ExtractedInfo {
     amount: number;
     date: string;
     recipient: string;
+    emailId?: string;
 }
 
-export function extractInfo(subject: string, sender: string, html:string) : ExtractedInfo {
+export function extractInfo(subject: string, sender: string, html:string, emailId?: string) : ExtractedInfo {
 
 
     if(subject === 'Transaksimu Pakai blu Berhasil'){
-        return extractInfoFromHTMLBLU(html);
+        return {...extractInfoFromHTMLBLU(html), emailId};
     }
     else if(subject === 'Internet Transaction Journal'){
-        return extractInfoFromHTMLBCA(html);
+        return {...extractInfoFromHTMLBCA(html), emailId};
     }
     else if(subject === 'OVO QR Payment Receipt'){
-        return extractInfoFromHTMLOVO(html);
+        return {...extractInfoFromHTMLOVO(html), emailId};
     }
 
     return {
         status: false,
         amount: 0,
         date: "",
-        recipient: ""
+        recipient: "",
+        emailId
     };
 }

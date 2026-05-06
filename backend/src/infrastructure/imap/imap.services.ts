@@ -31,7 +31,7 @@ export async function connectToImap(userEmail: string, googleAccessToken: string
                 const parsed = await simpleParser(message.source);
 
                 if(parsed.subject && parsed.from?.text && parsed.html){
-                    let result = extractInfo(parsed.subject, parsed.from.text, parsed.html);
+                    let result = extractInfo(parsed.subject, parsed.from.text, parsed.html, parsed.messageId || undefined);
                     if(result.status){
                         results.push(result);
                     }

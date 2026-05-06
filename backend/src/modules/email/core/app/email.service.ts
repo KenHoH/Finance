@@ -20,9 +20,20 @@ export class EmailService {
     }
 
     const extracted = await connectToImap(userEmail, authIdentity.accessToken);
-    const created: any[] = [];
 
-    for(const item of extracted){
+    // Batch deduplication: 1 query for all emailIds
+    const emailIds = extracted.map(e => e.emailId).filter(Boolean) as string[];
+    const existingRows = await this.prisma.transaction.findMany({
+      where: {userId, source: 'EMAIL', sourceId: {in: emailIds}},
+      select: {sourceId: true},
+    });
+    const existingSet = new Set(existingRows.map(r => r.sourceId));
+
+    const toCreate = extracted.filter(item => !item.emailId || !existingSet.has(item.emailId));
+    const skipped = extracted.length - toCreate.length;
+
+    const created: any[] = [];
+    for(const item of toCreate){
       const transaction = await this.prisma.transaction.create({
         data: {
           userId,
@@ -31,6 +42,7 @@ export class EmailService {
           description: item.recipient || 'Email transaction',
           date: item.date ? new Date(item.date) : new Date(),
           source: 'EMAIL',
+          sourceId: item.emailId || null,
           isAutoTracked: true,
         },
       });
@@ -49,6 +61,7 @@ export class EmailService {
     return {
       extracted: extracted.length,
       created: created.length,
+      skipped,
       transactions: created,
     };
   }
