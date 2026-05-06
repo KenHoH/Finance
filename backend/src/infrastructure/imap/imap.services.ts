@@ -3,7 +3,7 @@ import { simpleParser } from 'mailparser';
 import { extractInfo, ExtractedInfo } from "./helper/extractInfo.js";
 import { AuthError, ConnectionError } from "../errors/error.js";
 
-export async function connectToImap(userEmail: string, googleAccessToken: string): Promise<ExtractedInfo[]> {
+export async function connectToImap(userEmail: string, googleAccessToken: string, since?: Date): Promise<ExtractedInfo[]> {
 
     const client = new ImapFlow({
         host: 'imap.gmail.com',
@@ -17,11 +17,8 @@ export async function connectToImap(userEmail: string, googleAccessToken: string
     });
 
     try {
-        // Connect to the IMAP server
         await client.connect();
 
-        // Label "Important Stuff" because i filterize the important email like OVO, BLU and BCA into this label
-        // You can change the label name into 'INBOX'
         let lock = await client.getMailboxLock('Important Stuff');
 
         const results: ExtractedInfo[] = [];
@@ -29,6 +26,10 @@ export async function connectToImap(userEmail: string, googleAccessToken: string
         try {
             for await (let message of client.fetch('1:*', { source: true })) {
                 const parsed = await simpleParser(message.source);
+
+                if(since && parsed.date && new Date(parsed.date) < since){
+                    continue;
+                }
 
                 if(parsed.subject && parsed.from?.text && parsed.html){
                     let result = extractInfo(parsed.subject, parsed.from.text, parsed.html, parsed.messageId || undefined);

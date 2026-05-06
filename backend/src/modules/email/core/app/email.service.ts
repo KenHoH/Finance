@@ -11,6 +11,16 @@ export class EmailService {
   ) {}
 
   async getMailboxs(userId: string, userEmail: string) {
+    const result = await this.syncUserEmails(userId, userEmail, true);
+    return result;
+  }
+
+  async syncUserEmails(userId: string, userEmail: string, updateLastSync: boolean = false) {
+    const user = await this.prisma.user.findUnique({
+      where: {id: userId},
+      select: {lastEmailSync: true},
+    });
+
     const authIdentity = await this.prisma.authIdentities.findFirst({
       where: {userId, provider: 'google'},
     });
@@ -19,9 +29,10 @@ export class EmailService {
       throw new Error('Google account not linked or access token expired');
     }
 
-    const extracted = await connectToImap(userEmail, authIdentity.accessToken);
+    const since = user?.lastEmailSync || undefined;
+    const imapEmail = authIdentity.providerEmail || userEmail;
+    const extracted = await connectToImap(imapEmail, authIdentity.accessToken, since);
 
-    // Batch deduplication: 1 query for all emailIds
     const emailIds = extracted.map(e => e.emailId).filter(Boolean) as string[];
     const existingRows = await this.prisma.transaction.findMany({
       where: {userId, source: 'EMAIL', sourceId: {in: emailIds}},
@@ -29,7 +40,7 @@ export class EmailService {
     });
     const existingSet = new Set(existingRows.map(r => r.sourceId));
 
-    const toCreate = extracted.filter(item => !item.emailId || !existingSet.has(item.emailId));
+    const toCreate = extracted.filter(item => item.emailId && !existingSet.has(item.emailId));
     const skipped = extracted.length - toCreate.length;
 
     const created: any[] = [];
@@ -56,6 +67,13 @@ export class EmailService {
       );
 
       created.push(transaction);
+    }
+
+    if(updateLastSync){
+      await this.prisma.user.update({
+        where: {id: userId},
+        data: {lastEmailSync: new Date()},
+      });
     }
 
     return {
