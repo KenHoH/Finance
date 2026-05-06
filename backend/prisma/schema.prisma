@@ -70,6 +70,7 @@ model User {
   username      String
   email         String             @unique
   password      String?            // nullable kalo OAuth users
+  lastEmailSync DateTime?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
@@ -149,6 +150,7 @@ model Transaction {
   date          DateTime
   isAutoTracked Boolean         @default(false)
   source        String?         // 'GMAIL_PARSER', 'MANUAL', 'BANK_API'
+  sourceId      String?         // email messageId, receipt hash, etc. for deduplication
   goalId        String?         // edge case: user langsung beli barang goal
   goal          Goal?           @relation(fields: [goalId], references: [id], onDelete: SetNull)
   billId        String?

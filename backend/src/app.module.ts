@@ -1,6 +1,7 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { AppService } from './app.service.js'
 import { AppController } from './app.controller.js';
@@ -21,9 +22,11 @@ import { SettingsModule } from './modules/settings/settings.module.js';
 import { TransactionModule } from './modules/transaction/transaction.module.js';
 import { BudgetModule } from './modules/budget/budget.module.js';
 import { CategoryModule } from './modules/category/category.module.js';
+import { EmailModule } from './modules/email/email.module.js';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 40 }]), //max 40request/60sec per ip
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     AuthModule,
@@ -41,6 +44,7 @@ import { CategoryModule } from './modules/category/category.module.js';
     TransactionModule,
     BudgetModule,
     CategoryModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [
