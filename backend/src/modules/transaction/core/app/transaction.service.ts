@@ -40,7 +40,85 @@ export class TransactionService {
     return transaction;
   }
 
-  // UNUSED function replaced by budgetService checkBudgetOverall
+  public async getTotalSpentByDay(userId: string, date: Date): Promise<number> {
+    const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+
+    const result = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        type: 'EXPENSE',
+        date: {
+          gte: startOfDay,
+          lt: endOfDay,
+        },
+      },
+      _sum: {amount: true},
+    });
+    return Number(result._sum.amount || 0);
+  }
+
+  public async getTotalSpentByDayByCategory(userId: string, categoryId: string, date: Date): Promise<number> {
+    const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+
+    const result = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        type: 'EXPENSE',
+        date: {
+          gte: startOfDay,
+          lt: endOfDay,
+        },
+        categoryId: categoryId,
+      },
+      _sum: {amount: true},
+    });
+    return Number(result._sum.amount || 0);
+  }
+
+
+  public async getTotalSpentThisMonth(userId: string, startDate: string, endDate: string) : Promise<number> {
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const result = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        type: 'EXPENSE',
+        date: {
+          gte: start,
+          lt: end,
+        },
+      },
+      _sum: {amount: true},
+    });
+    return Number(result._sum.amount || 0);
+  }
+
+  public async getTotalSpentThisMonthByCategory(userId: string, categoryId: string, startDate: string, endDate: string): Promise<number> {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const result = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        type: 'EXPENSE',
+        date: {
+          gte: start,
+          lt: end,
+        },
+        categoryId: categoryId,
+      },
+      _sum: {amount: true},
+    });
+    return Number(result._sum.amount || 0);
+  }
+
+  /**
+   *  UNUSED function replaced by budgetService checkBudgetOverall 
+   */
   private async checkBudgetAlert(userId: string, transaction: any){
     const today = new Date();
     const budgets = await this.prisma.budget.findMany({

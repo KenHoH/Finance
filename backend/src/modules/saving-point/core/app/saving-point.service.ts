@@ -2,13 +2,91 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateSavingPointDto, UpdateSavingPointDto, AllocateToGoalDto } from '../../framework/dto/index.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
+import { Cron } from '@nestjs/schedule';
+import { Budget } from '../../../../../generated/prisma/client.js';
+import { TransactionService } from 'src/modules/transaction/core/app/transaction.service.js';
 
 @Injectable()
 export class SavingPointService{
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogService: ActivityLogService,
+    private readonly transactionService: TransactionService,
   ) {}
+
+  // CRON JOB daily
+  @Cron('0 0 1 * * *')   // Runs once at 1:00:00 AM every day
+  async handleCron() {
+    // find all budget that is stil valid till today 
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const today = new Date();
+
+    // Budgets still active (endDate >= today)
+    const budgets = await this.prisma.budget.findMany({
+      where: { endDate: { gte: today } }, // gte not lt — active budgets
+    });
+
+    for(const budget of budgets){
+      // get user preference settings
+      const settings = await this.prisma.settings.findUnique({
+        where: {
+          userId_key: {
+            userId: budget.userId,
+            key: 'BUDGET_TIME_PREFERENCE',
+          },
+        },
+      });
+
+      // if user settings doesn't exist we skip the user 
+      if(!settings) continue;
+
+      if(settings.value === 'daily') {
+        await this.savingDaily(budget.userId, budget, yesterday);
+      } 
+    }
+  }
+
+  async savingDaily(userId: string, budget: any, date: Date) {
+    const periodDays = Math.ceil(
+      (budget.endDate - budget.startDate) / (1000 * 60 * 60 * 24)
+    );
+    const dailyLimit = Number(budget.amount) / periodDays;
+
+    // Fixed: correct branch logic
+    const totalSpent = budget.categoryId
+      ? await this.transactionService.getTotalSpentByDayByCategory(userId, budget.categoryId, date) 
+      : await this.transactionService.getTotalSpentByDay(userId, date);
+
+    // TODO: implement upsert
+    if (totalSpent < dailyLimit) {
+      await this.prisma.savingPoint.create({
+        data: { budgetId: budget.id, savingAmount: dailyLimit - totalSpent },
+      });
+    }
+  }
+
+  async savingMonthly(userId: string, budgetId: string, startDate: string, endDate: string) {
+    const budget = await this.prisma.budget.findUnique(
+      {
+        where: {
+          id: budgetId,
+        }
+      }
+    )
+    if(!budget) throw new Error('Budget not found');
+    const totalSpent = budget.categoryId
+      ? await this.transactionService.getTotalSpentThisMonthByCategory(userId, budget.categoryId, startDate, endDate) 
+      : await this.transactionService.getTotalSpentThisMonth(userId,  startDate, endDate);
+
+    const monthLimit = Number(budget.amount)
+
+    // TODO: implement upsert
+    if(totalSpent < monthLimit) {
+      await this.prisma.savingPoint.create({
+        data: { budgetId: budget.id, savingAmount: monthLimit - totalSpent },
+      });
+    }
+  }
 
   async create(userId: string, dto: CreateSavingPointDto){
     // Verify budget belongs to user

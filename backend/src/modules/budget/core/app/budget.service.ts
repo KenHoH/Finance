@@ -6,6 +6,8 @@ import { NotificationService } from '../../../notification/core/app/notification
 import { DebtService } from '../../../debt/core/app/debt.service.js';
 import { SettingsService } from '../../../settings/core/app/settings.service.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
+import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
 
 @Injectable()
 export class BudgetService {
@@ -15,6 +17,7 @@ export class BudgetService {
     private readonly debtService: DebtService,
     private readonly settingsService: SettingsService,
     private readonly activityLogService: ActivityLogService,
+    @InjectQueue('saving') private readonly savingQueue: Queue,
   ) {}
 
   async create(userId: string, dto: CreateBudgetDto){
@@ -31,6 +34,20 @@ export class BudgetService {
 
     await this.activityLogService.logActivity(userId, 'CREATE', 'Budget', budget.id, {amount: Number(budget.amount)});
 
+    const settings = await this.settingsService.findOneByKey(userId, 'BUDGET_TIME_PREFERENCE');
+
+    const userPreference = settings?.value ?? 'daily'; // default to daily
+
+    // monthly preference
+    if(userPreference !== 'daily') {
+      const endDate = new Date(dto.endDate);
+      const delay = endDate.getTime() - Date.now();
+
+      await this.savingQueue.add('calculate', { budgetId: budget.id, userId: userId, startDate: dto.startDate, endDate: dto.endDate }, {
+        delay: delay,
+        jobId: `saving-${budget.id}`, 
+      });
+    }
     return budget;
   }
 

@@ -7,6 +7,7 @@ import { NotificationModule } from '../notification/notification.module.js';
 import { DebtModule } from '../debt/debt.module.js';
 import { SettingsModule } from '../settings/settings.module.js';
 import { ActivityLogModule } from '../activity-log/activity-log.module.js';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -15,6 +16,12 @@ import { ActivityLogModule } from '../activity-log/activity-log.module.js';
         secret: configService.get('JWT_SECRET'),
       }),
       inject: [ConfigService],
+    }),
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
     }),
     NotificationModule,
     SettingsModule,
