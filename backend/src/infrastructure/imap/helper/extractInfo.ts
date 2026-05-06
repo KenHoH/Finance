@@ -1,6 +1,7 @@
 import { extractInfoFromHTMLBCA } from "./parseEmail/helperBCA.js";
 import { extractInfoFromHTMLBLU } from "./parseEmail/helperBLU.js";
 import { extractInfoFromHTMLOVO } from "./parseEmail/helperOVO.js";
+import { extractInfoFromHTMLFLIP } from "./parseEmail/helperFLIP.js";
 
 export interface ExtractedInfo {
     status: boolean;
@@ -21,6 +22,9 @@ export function extractInfo(subject: string, sender: string, html:string, emailI
     }
     else if(subject === 'OVO QR Payment Receipt'){
         return {...extractInfoFromHTMLOVO(html), emailId};
+    }
+    else if(subject.includes('QRIS PAYMENT SUCCESS')){
+        return {...extractInfoFromHTMLFLIP(html), emailId};
     }
 
     return {
