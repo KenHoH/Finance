@@ -4,6 +4,7 @@ import AppLayout from '../components/layout/AppLayout';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import { investments, fmt } from '../data/mock';
+import Logo from '../components/ui/Logo';
 
 export default function Investment() {
   const [showModal, setShowModal] = useState(false);
@@ -93,6 +94,8 @@ export default function Investment() {
         <Modal title="Tambah Investasi" onClose={() => setShowModal(false)}
           footer={<><button className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button><button className="btn btn-primary">Tambah</button></>}>
           <div className="form-group"><label className="form-label">Nama Investasi</label><input className="form-input" placeholder="e.g. BBRI, Bitcoin" /></div>
+          <Logo ticker="BBRI" alt="Logo BBRI" className="w-10 h-10 rounded-md mb-2" />
+          <Logo ticker="BTC" alt="Logo Bitcoin" className="w-10 h-10 rounded-md mb-2" />
           <div className="form-row">
             <div className="form-group"><label className="form-label">Tipe</label><select className="form-input"><option>Saham</option><option>Reksa Dana</option><option>Crypto</option><option>Obligasi</option><option>Lainnya</option></select></div>
             <div className="form-group"><label className="form-label">Nilai Awal (IDR)</label><input className="form-input" type="number" placeholder="0" /></div>
