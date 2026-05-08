@@ -23,6 +23,7 @@ import { TransactionModule } from './modules/transaction/transaction.module.js';
 import { BudgetModule } from './modules/budget/budget.module.js';
 import { CategoryModule } from './modules/category/category.module.js';
 import { EmailModule } from './modules/email/email.module.js';
+import { ReceiptModule } from './modules/receipt/receipt.module.js';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { EmailModule } from './modules/email/email.module.js';
     BudgetModule,
     CategoryModule,
     EmailModule,
+    ReceiptModule,
   ],
   controllers: [AppController],
   providers: [
