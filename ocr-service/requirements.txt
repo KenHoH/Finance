@@ -1,8 +1,9 @@
 fastapi==0.115.0
 uvicorn==0.32.0
-paddlepaddle==2.6.2
+paddlepaddle==3.0.0
 paddleocr==2.9.1
 groq==0.13.0
 python-multipart==0.0.17
 pillow==11.0.0
 python-dotenv==1.0.1
+opencv-python-headless==4.10.0
