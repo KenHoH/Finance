@@ -15,7 +15,7 @@ import { ConfigService } from '@nestjs/config';
       inject: [ConfigService]
     }),
   ],
-
+  exports: [GoogleOauthService, AuthService],
   controllers: [AuthController],
   providers: [AuthService, GoogleOauthService],
 })

@@ -122,6 +122,18 @@ export class AuthService {
     });
   }
 
+  async getRefreshTokenByEmail(email: string){
+    const user = await this.prisma.authIdentities.findFirst({
+      where: {
+        providerEmail: email
+      }
+    });
+    if(!user){
+      throw new Error('User not found');
+    }
+    return user.refreshToken;
+  }
+
   private encodeOauthState(returnTo?: string){
     if(!returnTo){
       return undefined;

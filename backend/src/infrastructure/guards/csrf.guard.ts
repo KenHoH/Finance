@@ -11,6 +11,10 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
+    if (request.path === '/pubsub') {
+     return true; 
+    }
+
     // Skip CSRF for API requests with Bearer token (JWT auth)
     const authHeader = request.headers.authorization;
     if(authHeader?.startsWith('Bearer ')){
