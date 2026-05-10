@@ -11,7 +11,8 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
-    if (request.path === '/pubsub') {
+    // allowed google pub sub to post /email
+    if (request.path === '/email' && method === 'POST') {
      return true; 
     }
 
