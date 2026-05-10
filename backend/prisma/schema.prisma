@@ -73,6 +73,7 @@ model User {
   lastEmailSync DateTime?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
+  lastHistoryId String? 
 
   identities    AuthIdentities[]
   transactions  Transaction[]
