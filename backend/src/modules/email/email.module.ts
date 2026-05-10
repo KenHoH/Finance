@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { ActivityLogModule } from '../activity-log/activity-log.module.js';
@@ -8,7 +8,7 @@ import { EmailCronService } from './core/app/email-cron.service.js';
 import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
-  imports: [JwtModule.register({}), PrismaModule, ActivityLogModule, AuthModule],
+  imports: [JwtModule.register({}), PrismaModule, ActivityLogModule, forwardRef(() => AuthModule)],
   controllers: [EmailController],
   providers: [EmailService, EmailCronService],
   exports: [EmailService],
