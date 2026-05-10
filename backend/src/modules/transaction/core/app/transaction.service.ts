@@ -28,6 +28,7 @@ export class TransactionService {
         categoryId: dto.categoryId,
         isAutoTracked: dto.isAutoTracked ?? false,
         source: dto.source ?? 'MANUAL',
+        sourceId: dto.sourceId,
       },
     });
 
