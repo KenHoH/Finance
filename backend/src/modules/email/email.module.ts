@@ -5,9 +5,10 @@ import { ActivityLogModule } from '../activity-log/activity-log.module.js';
 import { EmailController } from './framework/email.controller.js';
 import { EmailService } from './core/app/email.service.js';
 import { EmailCronService } from './core/app/email-cron.service.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
-  imports: [JwtModule.register({}), PrismaModule, ActivityLogModule],
+  imports: [JwtModule.register({}), PrismaModule, ActivityLogModule, AuthModule],
   controllers: [EmailController],
   providers: [EmailService, EmailCronService],
   exports: [EmailService],
