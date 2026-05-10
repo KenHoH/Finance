@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { GoogleOauthService } from './google-oauth.service.js';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { EmailService } from '../../../email/core/app/email.service.js';
 
 
 @Injectable()
@@ -12,6 +13,7 @@ export class AuthService {
     private readonly googleOauthService: GoogleOauthService,
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   getGoogleAuthUrl(returnTo?: string){
@@ -67,6 +69,9 @@ export class AuthService {
     });
 
     this.logger.log('Google tokens saved to database');
+
+    // calling watch email after user login or register
+    await this.emailService.watchGmail(user.email);
 
     const jwt = this.jwtService.sign({
       sub: user.id,
