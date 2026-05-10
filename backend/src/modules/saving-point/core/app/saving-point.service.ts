@@ -3,7 +3,6 @@ import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateSavingPointDto, UpdateSavingPointDto, AllocateToGoalDto } from '../../framework/dto/index.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 import { Cron } from '@nestjs/schedule';
-import { Budget } from '../../../../../generated/prisma/client.js';
 import { TransactionService } from '../../../transaction/core/app/transaction.service.js';
 
 @Injectable()
