@@ -9,22 +9,23 @@ export interface ExtractedInfo {
     date: string;
     recipient: string;
     emailId?: string;
+    source: string;
 }
 
 export function extractInfo(subject: string, sender: string, html:string, emailId?: string) : ExtractedInfo {
 
 
     if(subject === 'Transaksimu Pakai blu Berhasil'){
-        return {...extractInfoFromHTMLBLU(html), emailId};
+        return {...extractInfoFromHTMLBLU(html), emailId, source: 'BLU'};
     }
     else if(subject === 'Internet Transaction Journal'){
-        return {...extractInfoFromHTMLBCA(html), emailId};
+        return {...extractInfoFromHTMLBCA(html), emailId, source: 'BCA'};
     }
     else if(subject === 'OVO QR Payment Receipt'){
-        return {...extractInfoFromHTMLOVO(html), emailId};
+        return {...extractInfoFromHTMLOVO(html), emailId, source: 'OVO'};
     }
     else if(subject.includes('QRIS PAYMENT SUCCESS')){
-        return {...extractInfoFromHTMLFLIP(html), emailId};
+        return {...extractInfoFromHTMLFLIP(html), emailId, source: 'FLIP'};
     }
 
     return {
@@ -32,6 +33,7 @@ export function extractInfo(subject: string, sender: string, html:string, emailI
         amount: 0,
         date: "",
         recipient: "",
-        emailId
+        emailId,
+        source: 'UNKNOWN'
     };
 }

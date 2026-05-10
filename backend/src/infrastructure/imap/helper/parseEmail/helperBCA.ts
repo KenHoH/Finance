@@ -23,7 +23,7 @@ export function extractInfoFromHTMLBCA(html: string): ExtractedInfo {
         .next('td')
         .next('td')
         .text()
-    .trim();
+        .trim();
     const dateRaw = $('td')
         .filter((i, el) => $(el).text().trim() === 'Tanggal Transaksi')
         .next('td').next('td')
@@ -38,7 +38,7 @@ export function extractInfoFromHTMLBCA(html: string): ExtractedInfo {
     console.log(`Total:      ${totalAmount.toFixed(2)}`);
 
     return {
-        status: recipientName || totalAmount > 0  || dateRaw ? true : false,
+        status: recipientName || totalAmount > 0 || dateRaw ? true : false,
         amount: totalAmount,
         date: dateRaw,
         recipient: recipientName

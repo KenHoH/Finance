@@ -225,12 +225,13 @@ export class EmailService {
             let amount = Number(extracted.amount);
             let date = new Date();
             let receipient = extracted.recipient || 'Recipient not found';
+            let source = extracted.source || 'UNKNOWN';
 
             this.logger.log(`Creating transaction for user ${userId} from email ${messageId} with amount ${amount}, date ${date}, recipient ${receipient}`);
             const description = `${extracted.date} - ${receipient} - ${subject} - ${amount}`;
 
             const existing = await this.prisma.transaction.findFirst({
-              where: { userId, source: 'EMAIL', sourceId: messageId }
+              where: { userId, source: source, sourceId: messageId }
             });
 
             if (existing) {
@@ -243,7 +244,7 @@ export class EmailService {
               type: 'EXPENSE',
               description,
               date: date.toISOString(),
-              source: 'EMAIL',
+              source: source,
               sourceId: messageId,
               isAutoTracked: true,
             })
@@ -253,7 +254,7 @@ export class EmailService {
               'CREATE',
               'Transaction',
               transaction.id,
-              { amount: extracted.amount, source: 'EMAIL', description: extracted.recipient }
+              { amount: extracted.amount, source: source, description: extracted.recipient }
             );
 
           } else {
