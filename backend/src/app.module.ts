@@ -48,7 +48,7 @@ import { PubsubModule } from './modules/pubsub/pubsub.module.js';
     CategoryModule,
     EmailModule,
     ReceiptModule,
-    PubsubModule,
+    PubsubModule
   ],
   controllers: [AppController],
   providers: [
