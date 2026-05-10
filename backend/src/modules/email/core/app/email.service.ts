@@ -6,6 +6,7 @@ import { GoogleOauthService } from '../../../auth/core/app/google-oauth.service.
 import { google } from 'googleapis';
 import { Cron } from '@nestjs/schedule';
 import { extractInfo } from '../../../../infrastructure/imap/helper/extractInfo.js';
+import { TransactionService } from '../../../transaction/core/app/transaction.service.js';
 
 @Injectable()
 export class EmailService {
@@ -13,6 +14,7 @@ export class EmailService {
     private readonly prisma: PrismaService,
     private readonly activityLogService: ActivityLogService,
     private readonly googleOauthService: GoogleOauthService,
+    private readonly transactionService: TransactionService,
   ) { }
 
   private readonly logger = new Logger(EmailService.name);
@@ -221,41 +223,38 @@ export class EmailService {
           if (extracted.status) {
             this.logger.log(`Extracted transaction info: ${JSON.stringify(extracted)}`);
             let amount = Number(extracted.amount);
-            let date = extracted.date ? new Date(extracted.date) : new Date();
+            let date = new Date();
             let receipient = extracted.recipient || 'Recipient not found';
 
             this.logger.log(`Creating transaction for user ${userId} from email ${messageId} with amount ${amount}, date ${date}, recipient ${receipient}`);
-            const description = `${date} - ${receipient} - ${subject} - ${amount}`;
+            const description = `${extracted.date} - ${receipient} - ${subject} - ${amount}`;
 
-            // const existing = await this.prisma.transaction.findFirst({
-            //   where: { userId, source: 'EMAIL', sourceId: messageId }
-            // });
+            const existing = await this.prisma.transaction.findFirst({
+              where: { userId, source: 'EMAIL', sourceId: messageId }
+            });
 
-            // if (existing) {
-            //   this.logger.log(`Transaction for email ${messageId} already exists. Skipping.`);
-            //   continue;
-            // }
+            if (existing) {
+              this.logger.log(`Transaction for email ${messageId} already exists. Skipping.`);
+              continue;
+            }
 
-            // const transaction = await this.prisma.transaction.create({
-            //   data: {
-            //     userId,
-            //     amount: extracted.amount,
-            //     type: 'EXPENSE',
-            //     description: extracted.recipient || 'Email transaction',
-            //     date: extracted.date ? new Date(extracted.date) : new Date(),
-            //     source: 'EMAIL',
-            //     sourceId: messageId,
-            //     isAutoTracked: true,
-            //   },
-            // });
+            const transaction = await this.transactionService.create(userId, {
+              amount,
+              type: 'EXPENSE',
+              description,
+              date: date.toISOString(),
+              source: 'EMAIL',
+              sourceId: messageId,
+              isAutoTracked: true,
+            })
 
-            // await this.activityLogService.logActivity(
-            //   userId,
-            //   'CREATE',
-            //   'Transaction',
-            //   transaction.id,
-            //   { amount: extracted.amount, source: 'EMAIL', description: extracted.recipient }
-            // );
+            await this.activityLogService.logActivity(
+              userId,
+              'CREATE',
+              'Transaction',
+              transaction.id,
+              { amount: extracted.amount, source: 'EMAIL', description: extracted.recipient }
+            );
 
           } else {
             this.logger.log(`No transaction info matched for email (${messageId}).`);

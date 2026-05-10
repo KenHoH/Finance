@@ -6,9 +6,10 @@ import { EmailController } from './framework/email.controller.js';
 import { EmailService } from './core/app/email.service.js';
 import { EmailCronService } from './core/app/email-cron.service.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { TransactionModule } from '../transaction/transaction.module.js';
 
 @Module({
-  imports: [JwtModule.register({}), PrismaModule, ActivityLogModule, forwardRef(() => AuthModule)],
+  imports: [JwtModule.register({}), PrismaModule, ActivityLogModule, forwardRef(() => AuthModule), TransactionModule],
   controllers: [EmailController],
   providers: [EmailService, EmailCronService],
   exports: [EmailService],
