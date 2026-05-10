@@ -41,6 +41,7 @@ export function extractInfoFromHTMLBCA(html: string): ExtractedInfo {
         status: recipientName || totalAmount > 0 || dateRaw ? true : false,
         amount: totalAmount,
         date: dateRaw,
-        recipient: recipientName
+        recipient: recipientName,
+        source: 'BCA'
     };
 }

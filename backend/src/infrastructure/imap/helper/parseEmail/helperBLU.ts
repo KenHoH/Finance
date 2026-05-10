@@ -28,6 +28,7 @@ export function extractInfoFromHTMLBLU(html: string) : ExtractedInfo {
         status: receipentName || totalAmount > 0 || dateTimeRaw ? true : false,
         amount: totalAmount,
         date: dateTimeRaw,
-        recipient: receipentName
+        recipient: receipentName,
+        source: 'BLU'
     };
 }

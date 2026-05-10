@@ -39,5 +39,6 @@ export function extractInfoFromHTMLFLIP(html: string): ExtractedInfo {
         amount: totalAmount,
         date: dateRaw,
         recipient: merchantName,
+        source: 'FLIP'
     };
 }
