@@ -2,11 +2,29 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, PieChart, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, PieChart, ArrowRight, Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !email || !password) return;
+    setIsLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      document.cookie = "auth-token=dummy-token; path=/; max-age=86400"; // 1 day
+      setIsLoading(false);
+      router.push("/");
+    }, 1500);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
@@ -27,12 +45,15 @@ export default function RegisterPage() {
           Create an account to manage your finances.
         </p>
 
-        <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+        <form className="space-y-4" onSubmit={handleRegister}>
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-foreground">Full Name</label>
             <input 
               type="text" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               placeholder="John Doe" 
+              required
               className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium"
             />
           </div>
@@ -41,7 +62,10 @@ export default function RegisterPage() {
             <label className="text-sm font-bold text-foreground">Email</label>
             <input 
               type="email" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email" 
+              required
               className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium"
             />
           </div>
@@ -51,7 +75,10 @@ export default function RegisterPage() {
             <div className="relative">
               <input 
                 type={showPassword ? "text" : "password"} 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Create a password" 
+                required
                 className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium"
               />
               <button 
@@ -64,8 +91,16 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <button className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] mt-6">
-            Create Account <ArrowRight className="w-4 h-4" />
+          <button 
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] mt-6 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>Create Account <ArrowRight className="w-4 h-4" /></>
+            )}
           </button>
         </form>
 

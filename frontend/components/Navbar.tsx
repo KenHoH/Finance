@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Wallet, TrendingUp, Target, Receipt, Menu, X, PieChart } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Home, Wallet, TrendingUp, Target, Receipt, Menu, X, PieChart, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -19,7 +19,13 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    router.push("/login");
+  };
 
   return (
     <>
@@ -51,6 +57,15 @@ export function Navbar() {
             );
           })}
         </nav>
+        <div className="p-4 border-t border-border mt-auto">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Mobile Topbar */}
@@ -78,7 +93,7 @@ export function Navbar() {
       {/* Mobile Sidebar */}
       <div
         className={cn(
-          "lg:hidden fixed inset-y-0 left-0 w-64 bg-card border-r border-border shadow-2xl z-50 transform transition-transform duration-300 ease-in-out",
+          "lg:hidden fixed inset-y-0 left-0 w-64 bg-card border-r border-border shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -94,7 +109,7 @@ export function Navbar() {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <nav className="p-4 space-y-1">
+        <nav className="p-4 space-y-1 flex-1 overflow-y-auto">
           {NAV_LINKS.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -115,6 +130,18 @@ export function Navbar() {
             );
           })}
         </nav>
+        <div className="p-4 border-t border-border mt-auto">
+          <button
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              handleLogout();
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
       </div>
     </>
   );
