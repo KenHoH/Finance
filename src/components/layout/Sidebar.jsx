@@ -2,9 +2,10 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, TrendingUp, TrendingDown, Target, PieChart,
   Wallet, CreditCard, Receipt, Users, Settings, LogOut,
-  Landmark, BookOpen, Split
+  Landmark, Split, DollarSign, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { currentUser } from '../../data/mock';
+import { logout } from '../../lib/api';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
@@ -24,14 +25,31 @@ const navItems = [
   { label: 'Settings', icon: Settings, to: '/settings' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed, onToggle }) {
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {}
+    navigate('/', { replace: true });
+  };
+
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" aria-label="Main navigation">
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">💰</div>
+        <div className="sidebar-logo-icon"><DollarSign size={18} /></div>
         <div className="sidebar-logo-text">Fin<span>Track</span></div>
+        <button
+          className="icon-btn sidebar-collapse-btn"
+          onClick={onToggle}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+        </button>
       </div>
+
       <nav className="sidebar-nav">
         {navItems.map((item, i) =>
           item.section ? (
@@ -41,13 +59,15 @@ export default function Sidebar() {
               key={item.to}
               to={item.to}
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              title={collapsed ? item.label : undefined}
             >
               <item.icon size={16} />
-              {item.label}
+              <span className="nav-item-label">{item.label}</span>
             </NavLink>
           )
         )}
       </nav>
+
       <div className="sidebar-user">
         <div className="user-avatar">{currentUser.avatar}</div>
         <div className="user-info">
@@ -57,8 +77,9 @@ export default function Sidebar() {
         <button
           className="icon-btn"
           style={{ marginLeft: 'auto', flexShrink: 0 }}
-          onClick={() => navigate('/')}
+          onClick={handleLogout}
           title="Logout"
+          aria-label="Logout"
         >
           <LogOut size={14} />
         </button>

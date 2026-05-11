@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-ssr
+.env
+.env.*
+backend
+ocr-service
+.git
+.idea
+.vscode
+npm-debug.log*

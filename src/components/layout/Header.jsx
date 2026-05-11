@@ -1,5 +1,6 @@
-import { Bell, Search } from 'lucide-react';
+import { Bell, Monitor, Moon, Search, Sun } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { useTheme } from '../../pages/Themecontext';
 
 const titles = {
   '/dashboard': 'Dashboard',
@@ -16,14 +17,38 @@ const titles = {
   '/settings': 'Settings',
 };
 
+const themeOptions = [
+  { value: 'light', label: 'Light mode', icon: Sun },
+  { value: 'dark', label: 'Dark mode', icon: Moon },
+  { value: 'system', label: 'Use system theme', icon: Monitor },
+];
+
 export default function Header() {
   const { pathname } = useLocation();
+  const { theme, setTheme } = useTheme();
   const base = '/' + pathname.split('/')[1];
   const title = titles[base] || 'FinTrack';
+
   return (
     <header className="header">
       <span className="header-title">{title}</span>
       <div className="header-actions">
+        <div className="theme-toggle" aria-label="Theme picker">
+          {themeOptions.map((option) => {
+            const Icon = option.icon;
+            return (
+              <button
+                key={option.value}
+                className={`theme-toggle-btn${theme === option.value ? ' active' : ''}`}
+                onClick={() => setTheme(option.value)}
+                title={option.label}
+                aria-label={option.label}
+              >
+                <Icon size={14} />
+              </button>
+            );
+          })}
+        </div>
         <button className="icon-btn"><Search size={15} /></button>
         <button className="icon-btn" style={{ position: 'relative' }}>
           <Bell size={15} />

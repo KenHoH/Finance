@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { User, Lock, Bell, Sliders, Shield, Link2, Download } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
 import { currentUser } from '../data/mock';
+import { useTheme } from './Themecontext';
 
 const SECTIONS = [
   { key: 'profile', label: 'Profile', icon: User },
@@ -43,6 +44,7 @@ function Row({ label, sub, children }) {
 
 export default function Settings() {
   const [active, setActive] = useState('profile');
+  const { theme, setTheme } = useTheme();
 
   const renderContent = () => {
     if (active === 'profile') return (
@@ -101,7 +103,14 @@ export default function Settings() {
       <div>
         <div className="form-group"><label className="form-label">Mata Uang</label><select className="form-input"><option>IDR — Rupiah Indonesia</option><option>USD — US Dollar</option><option>SGD — Singapore Dollar</option></select></div>
         <div className="form-group"><label className="form-label">Bahasa</label><select className="form-input"><option>Bahasa Indonesia</option><option>English</option></select></div>
-        <div className="form-group"><label className="form-label">Tema</label><select className="form-input"><option>Dark</option><option>Light</option><option>System</option></select></div>
+        <div className="form-group">
+          <label className="form-label">Tema</label>
+          <select className="form-input" value={theme} onChange={(event) => setTheme(event.target.value)}>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="system">System</option>
+          </select>
+        </div>
         <div className="form-group"><label className="form-label">Format Tanggal</label><select className="form-input"><option>DD/MM/YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select></div>
         <button className="btn btn-primary">Simpan Preferensi</button>
       </div>

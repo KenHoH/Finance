@@ -1,0 +1,65 @@
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        VITE_API_URL: http://localhost:3000
+    container_name: finance-app-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+    container_name: finance-app-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      FRONTEND_URL: http://localhost:5173
+      ALLOWED_ORIGINS: http://localhost:5173
+      OCR_SERVICE_URL: http://ocr-service:5000
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+      - ocr-service
+
+  ocr-service:
+    build:
+      context: ./ocr-service
+    container_name: finance-app-ocr
+    restart: unless-stopped
+    env_file:
+      - ./ocr-service/.env
+    environment:
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+    ports:
+      - "5000:5000"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: finance-app-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: finance_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - finance_app_postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: finance-app-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+volumes:
+  finance_app_postgres:

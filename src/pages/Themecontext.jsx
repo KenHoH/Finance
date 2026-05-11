@@ -1,14 +1,17 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext(null);
+const STORAGE_KEY = 'ft-theme';
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => localStorage.getItem('ft-theme') || 'system');
+  const [theme, setTheme] = useState(() => localStorage.getItem(STORAGE_KEY) || 'system');
+  const [resolvedTheme, setResolvedTheme] = useState('dark');
 
   useEffect(() => {
     const root = document.documentElement;
     const apply = (mode) => {
       root.setAttribute('data-theme', mode);
+      setResolvedTheme(mode);
     };
 
     if (theme === 'system') {
@@ -24,11 +27,11 @@ export function ThemeProvider({ children }) {
 
   const setAndSave = (t) => {
     setTheme(t);
-    localStorage.setItem('ft-theme', t);
+    localStorage.setItem(STORAGE_KEY, t);
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme: setAndSave }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme: setAndSave }}>
       {children}
     </ThemeContext.Provider>
   );
