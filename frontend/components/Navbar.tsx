@@ -9,7 +9,12 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Income", href: "/income", icon: Wallet },
+  { name: "Expenses", href: "/expenses", icon: Receipt },
+  { name: "Goals", href: "/goals", icon: Target },
+  { name: "Budgets", href: "/budgets", icon: PieChart },
   { name: "Investments", href: "/investments", icon: TrendingUp },
+  { name: "Debts & Savings", href: "/debts", icon: Wallet },
+  { name: "Split Bills", href: "/bills", icon: Receipt },
 ];
 
 export function Navbar() {
