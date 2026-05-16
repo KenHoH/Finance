@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, PieChart, ArrowRight, Loader2 } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function RegisterPage() {
     // Simulate API call
     setTimeout(() => {
       document.cookie = "auth-token=dummy-token; path=/; max-age=86400"; // 1 day
+      useAuthStore.getState().login({ id: "1", name, email }, "dummy-token");
       setIsLoading(false);
       router.push("/");
     }, 1500);

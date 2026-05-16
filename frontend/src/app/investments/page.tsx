@@ -11,8 +11,9 @@ import {
   List
 } from "lucide-react";
 import { investments, investmentSummary } from "@/dummy-data/src/data/investments";
-import { InvestmentCard } from "@/components/InvestmentCard";
+import { InvestmentCard } from "@/components/common/InvestmentCard";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/Modal";
 
 // Utility for formatting Rupiah
 const formatCurrency = (amount: number) => {
@@ -26,6 +27,17 @@ const formatCurrency = (amount: number) => {
 export default function InvestmentsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const handleCreateInvestment = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSuccess(true);
+    setTimeout(() => {
+      setIsSuccess(false);
+      setIsModalOpen(false);
+    }, 2000);
+  };
 
   const filteredInvestments = investments.filter((inv) =>
     inv.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -48,11 +60,51 @@ export default function InvestmentsPage() {
           </p>
         </div>
 
-        <button className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all active:scale-95">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-semibold shadow-md btn-ripple transition-all active:scale-95"
+        >
           <Plus className="w-5 h-5" />
           Add Investment
         </button>
       </header>
+
+      {/* Add Investment Modal */}
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title="Add New Investment" 
+        description="Track a new asset in your portfolio."
+        isSuccess={isSuccess}
+        successMessage="Investment successfully added!"
+      >
+        <form className="space-y-4" onSubmit={handleCreateInvestment}>
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-foreground">Asset Name</label>
+            <input type="text" placeholder="e.g. Apple Inc, Bitcoin" required className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-foreground">Ticker Symbol</label>
+            <input type="text" placeholder="e.g. AAPL, BTC" required className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium uppercase" />
+          </div>
+          
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-foreground">Initial Amount Invested</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">Rp</span>
+              <input type="number" placeholder="0" required className="w-full pl-11 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
+            </div>
+          </div>
+
+          <button 
+            type="submit"
+            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] mt-6 shadow-md btn-ripple"
+          >
+            Save Investment
+          </button>
+        </form>
+      </Modal>
 
       {/* Portfolio Summary */}
       <motion.div
@@ -60,7 +112,7 @@ export default function InvestmentsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
       >
-        <div className="col-span-1 md:col-span-2 relative overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-sm flex flex-col justify-center group">
+        <div className="col-span-1 md:col-span-2 relative overflow-hidden rounded-3xl border border-border glass-panel p-8 shadow-sm flex flex-col justify-center group hover-pop">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none">
             <PieChart className="w-48 h-48 text-primary" />
           </div>

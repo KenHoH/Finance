@@ -1,13 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Target, Plus, Edit2, Trash2, CheckCircle2, Clock, AlertCircle, PlusCircle
 } from "lucide-react";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { goalsData } from "@/dummy-data/src/data/goals";
+import { Confetti } from "@/components/ui/Confetti";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/Modal";
 
 // Utility for formatting Rupiah
 const formatCurrency = (amount: number) => {
@@ -16,6 +18,37 @@ const formatCurrency = (amount: number) => {
 
 export default function GoalsPage() {
   const currentDate = new Date("2025-05-11T12:00:00Z");
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  
+  const [isAddFundsOpen, setIsAddFundsOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  const handleCreateGoal = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSuccess(true);
+    setTimeout(() => {
+      setIsSuccess(false);
+      setIsModalOpen(false);
+    }, 2000);
+  };
+
+  const handleAddFunds = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSuccess(true);
+    
+    // Trigger confetti explosion
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 4000);
+
+    setTimeout(() => {
+      setIsSuccess(false);
+      setIsAddFundsOpen(false);
+      setSelectedGoal(null);
+    }, 2000);
+  };
 
   const totalGoals = goalsData.length;
   const completedGoals = goalsData.filter(g => g.status === 'completed').length;
@@ -35,10 +68,50 @@ export default function GoalsPage() {
           <p className="text-muted-foreground mt-2 text-base">Plan and track your saving targets</p>
         </div>
 
-        <button className="flex items-center gap-2 bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all active:scale-95">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all active:scale-95"
+        >
           <Plus className="w-5 h-5" /> Add Goal
         </button>
       </header>
+
+      {/* Add Goal Modal */}
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title="Add Financial Goal" 
+        description="Set a new savings target to achieve your dreams."
+        isSuccess={isSuccess}
+        successMessage="Goal successfully created!"
+      >
+        <form className="space-y-4" onSubmit={handleCreateGoal}>
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-foreground">Goal Name</label>
+            <input type="text" placeholder="e.g. New Car, Vacation" required className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
+          </div>
+          
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-foreground">Target Amount</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">Rp</span>
+              <input type="number" placeholder="0" required className="w-full pl-11 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-foreground">Target Date</label>
+            <input type="date" required className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
+          </div>
+
+          <button 
+            type="submit"
+            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] mt-6 shadow-md shadow-primary/20"
+          >
+            Save Goal
+          </button>
+        </form>
+      </Modal>
 
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -101,7 +174,10 @@ export default function GoalsPage() {
               <div className="flex items-center justify-between pt-4 border-t border-border">
                 <p className="text-sm text-muted-foreground font-medium">Target: <span className="text-foreground font-bold">{format(deadlineDate, 'dd MMM yyyy')}</span></p>
                 {goal.status === 'active' && (
-                  <button className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 bg-accent hover:bg-accent/80 text-foreground rounded-xl transition-colors">
+                  <button 
+                    onClick={() => { setSelectedGoal(goal); setIsAddFundsOpen(true); }}
+                    className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 bg-accent hover:bg-accent/80 text-foreground rounded-xl transition-colors"
+                  >
                     <PlusCircle className="w-4 h-4" /> Add Funds
                   </button>
                 )}
@@ -110,6 +186,41 @@ export default function GoalsPage() {
           );
         })}
       </div>
+
+      {/* Add Funds Modal */}
+      <Modal 
+        isOpen={isAddFundsOpen} 
+        onClose={() => setIsAddFundsOpen(false)} 
+        title="Add Funds" 
+        description={selectedGoal ? `Add money towards your ${selectedGoal.name} goal.` : "Add funds to your goal."}
+        isSuccess={isSuccess}
+        successMessage="Target Reached! Goal Completed!"
+      >
+        <form className="space-y-4" onSubmit={handleAddFunds}>
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-foreground">Amount to Add</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">Rp</span>
+              <input type="number" placeholder="0" required className="w-full pl-11 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
+            </div>
+            {selectedGoal && (
+              <p className="text-xs text-muted-foreground font-semibold mt-2">
+                Remaining to reach target: {formatCurrency(selectedGoal.targetAmount - selectedGoal.currentAmount).replace(',00', '')}
+              </p>
+            )}
+          </div>
+
+          <button 
+            type="submit"
+            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] mt-6 shadow-md shadow-primary/20"
+          >
+            Deposit Funds
+          </button>
+        </form>
+      </Modal>
+
+      {/* Confetti Explosion Layer */}
+      <Confetti active={showConfetti} />
     </div>
   );
 }

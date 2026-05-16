@@ -11,6 +11,8 @@ import {
   Edit2,
   Trash2,
   Eye,
+  icons,
+  PieChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,19 +55,21 @@ export function InvestmentCard({
   const isPositive = data.gainLoss >= 0;
   const [showMenu, setShowMenu] = React.useState(false);
 
+  const IconComponent = icons[data.icon as keyof typeof icons] || PieChart;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative rounded-3xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-shadow group flex flex-col justify-between"
+      className="relative rounded-3xl border border-border glass-panel hover-pop p-6 shadow-sm flex flex-col justify-between"
     >
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
           <div
-            className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm"
+            className="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm"
             style={{ backgroundColor: `${data.color}20`, color: data.color }}
           >
-            {data.icon}
+            <IconComponent className="w-6 h-6" />
           </div>
           <div>
             <h3 className="font-bold text-lg text-card-foreground line-clamp-1">
