@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { GoogleOauthService } from './google-oauth.service.js';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../prisma/prisma.service.js';
@@ -12,6 +14,7 @@ export class AuthService {
     private readonly googleOauthService: GoogleOauthService,
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   getGoogleAuthUrl(returnTo?: string){
@@ -122,13 +125,28 @@ export class AuthService {
     });
   }
 
+  private getHmacSecret(): string{
+    return this.configService.get<string>('JWT_SECRET') || 'fallback-hmac-secret';
+  }
+
+  private signPayload(payload: string): string{
+    return createHmac('sha256', this.getHmacSecret()).update(payload).digest('hex');
+  }
+
+  private verifySignature(payload: string, signature: string): boolean{
+    const expected = this.signPayload(payload);
+    if(expected.length !== signature.length) return false;
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  }
+
   private encodeOauthState(returnTo?: string){
     if(!returnTo){
       return undefined;
     }
 
     if(returnTo.startsWith('/')){
-      return Buffer.from(JSON.stringify({returnTo}), 'utf8').toString('base64url');
+      const p1 = Buffer.from(JSON.stringify({returnTo}), 'utf8').toString('base64url');
+      return `${p1}.${this.signPayload(p1)}`;
     }
 
     try{
@@ -136,7 +154,8 @@ export class AuthService {
       if(!this.isAllowedFrontendOrigin(url.origin)){
         return undefined;
       }
-      return Buffer.from(JSON.stringify({returnTo: url.toString()}), 'utf8').toString('base64url');
+      const p2 = Buffer.from(JSON.stringify({returnTo: url.toString()}), 'utf8').toString('base64url');
+      return `${p2}.${this.signPayload(p2)}`;
     }catch{
       return undefined;
     }
@@ -148,7 +167,15 @@ export class AuthService {
     }
 
     try{
-      const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8')) as {returnTo?: string};
+      const dotIndex = state.lastIndexOf('.');
+      if(dotIndex === -1) return null;
+      const payload = state.substring(0, dotIndex);
+      const sig = state.substring(dotIndex + 1);
+      if(!this.verifySignature(payload, sig)){
+        this.logger.warn('OAuth state signature verification failed');
+        return null;
+      }
+      const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {returnTo?: string};
       if(!decoded.returnTo){
         return null;
       }
