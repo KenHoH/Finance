@@ -70,6 +70,7 @@ model User {
   username      String
   email         String             @unique
   password      String?            // nullable kalo OAuth users
+  avatar        String?
   lastEmailSync DateTime?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
@@ -408,3 +409,4 @@ model ActivityLog {
   @@index([entity])
   @@index([createdAt])
 }
+

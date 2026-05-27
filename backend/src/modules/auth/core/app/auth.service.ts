@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { GoogleOauthService } from './google-oauth.service.js';
@@ -99,7 +99,7 @@ export class AuthService {
     }
   }
 
-  async getMe(token: string): Promise<{user: {id: string; email: string; username: string; createdAt: Date} | null; isInvalid: boolean}>{
+  async getMe(token: string): Promise<{user: {id: string; email: string; username: string; avatar: string | null; createdAt: Date} | null; isInvalid: boolean}>{
     try{
       const payload = this.jwtService.verify(token);
       const user = await this.prisma.user.findUnique({
@@ -108,7 +108,7 @@ export class AuthService {
       if(!user){
         return {user: null, isInvalid: false};
       }
-      return {user: {id: user.id, email: user.email, username: user.username, createdAt: user.createdAt}, isInvalid: false};
+      return {user: {id: user.id, email: user.email, username: user.username, avatar: user.avatar, createdAt: user.createdAt}, isInvalid: false};
     } catch{
       return {user: null, isInvalid: true};
     }
