@@ -1,77 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  /* Dynamic Light Mode - Vibrant Sunrise */
-  --background: #ffffff;
-  --foreground: #0f172a;
+  /* Dynamic Dark Theme - Deep Space & Neon (Default) */
+  --background: #020617;
+  --foreground: #f8fafc;
 
-  /* Card uses rgba for glassmorphism */
-  --card: rgba(255, 255, 255, 0.6);
-  --card-foreground: #0f172a;
+  /* Frosted dark glass */
+  --card: rgba(15, 23, 42, 0.6);
+  --card-foreground: #f8fafc;
 
-  /* Primary (Vibrant Pink/Coral) */
-  --primary: #f43f5e;
-  --primary-foreground: #ffffff;
+  /* Primary (Neon Cyan/Blue for tech feel) */
+  --primary: #06b6d4;
+  --primary-foreground: #020617;
 
-  --secondary: rgba(241, 245, 249, 0.7);
-  --secondary-foreground: #334155;
+  --secondary: rgba(30, 41, 59, 0.7);
+  --secondary-foreground: #f8fafc;
 
-  --muted: rgba(241, 245, 249, 0.5);
-  --muted-foreground: #64748b;
+  --muted: rgba(30, 41, 59, 0.5);
+  --muted-foreground: #94a3b8;
 
-  --accent: rgba(255, 255, 255, 0.9);
-  --accent-foreground: #0f172a;
+  --accent: rgba(30, 41, 59, 0.8);
+  --accent-foreground: #f8fafc;
 
-  --border: rgba(226, 232, 240, 0.8);
-  --input: rgba(255, 255, 255, 0.9);
-  --ring: #f43f5e;
+  --border: rgba(51, 65, 85, 0.5);
+  --input: rgba(15, 23, 42, 0.7);
+  --ring: #06b6d4;
 
   --radius: 1.2rem;
   
-  /* Background gradients (Sunrise: Warm Pink, Vibrant Yellow, Mint) */
-  --bg-gradient-1: #ffe4e6; /* Rose */
-  --bg-gradient-2: #fef08a; /* Yellow */
-  --bg-gradient-3: #ccfbf1; /* Teal/Mint */
+  /* Background gradients */
+  --bg-gradient-1: #1e1b4b;
+  --bg-gradient-2: #312e81;
+  --bg-gradient-3: #0f172a;
   
   /* Dot Matrix Color */
-  --dot-color: rgba(15, 23, 42, 0.15); /* Darker dots for light mode to be more visible */
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dynamic Dark Theme - Deep Space & Neon */
-    --background: #020617;
-    --foreground: #f8fafc;
-
-    /* Frosted dark glass */
-    --card: rgba(15, 23, 42, 0.6);
-    --card-foreground: #f8fafc;
-
-    /* Primary (Neon Cyan/Blue for tech feel) */
-    --primary: #06b6d4;
-    --primary-foreground: #020617;
-
-    --secondary: rgba(30, 41, 59, 0.7);
-    --secondary-foreground: #f8fafc;
-
-    --muted: rgba(30, 41, 59, 0.5);
-    --muted-foreground: #94a3b8;
-
-    --accent: rgba(30, 41, 59, 0.8);
-    --accent-foreground: #f8fafc;
-
-    --border: rgba(51, 65, 85, 0.5);
-    --input: rgba(15, 23, 42, 0.7);
-    --ring: #06b6d4;
-    
-    /* Background gradients */
-    --bg-gradient-1: #1e1b4b;
-    --bg-gradient-2: #312e81;
-    --bg-gradient-3: #0f172a;
-    
-    /* Dot Matrix Color */
-    --dot-color: rgba(248, 250, 252, 0.05); /* Very subtle light dots for dark mode */
-  }
+  --dot-color: rgba(248, 250, 252, 0.05); /* Very subtle light dots for dark mode */
 }
 
 @theme inline {

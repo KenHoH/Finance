@@ -203,7 +203,7 @@ export default function InvestmentDetailPage() {
                   <RechartsTooltip
                     contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--card-foreground)' }}
                     itemStyle={{ fontWeight: 600 }}
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: any) => formatCurrency(Number(value))}
                   />
                   <Area
                     type="monotone"

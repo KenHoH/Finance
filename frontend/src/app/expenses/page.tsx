@@ -148,7 +148,7 @@ export default function ExpensesPage() {
                   <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                     {categoryData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  <RechartsTooltip formatter={(val: number) => formatCurrency(val)} />
+                  <RechartsTooltip formatter={(val: any) => formatCurrency(Number(val))} />
                   <Legend verticalAlign="middle" align="right" layout="vertical" />
                 </PieChart>
               </ResponsiveContainer>
@@ -166,7 +166,7 @@ export default function ExpensesPage() {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} dy={10} />
               <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `Rp${(val/1000000).toFixed(1)}M`} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
-              <RechartsTooltip cursor={{ fill: 'var(--accent)' }} formatter={(val: number) => formatCurrency(val)} />
+              <RechartsTooltip cursor={{ fill: 'var(--accent)' }} formatter={(val: any) => formatCurrency(Number(val))} />
               <Bar dataKey="amount" fill="#f43f5e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

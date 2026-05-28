@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Home, Wallet, TrendingUp, Target, Receipt, Menu, X, PieChart, LogOut } from "lucide-react";
+import { Home, Wallet, TrendingUp, Target, Receipt, Menu, X, PieChart, LogOut, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -17,18 +17,16 @@ const NAV_LINKS = [
   { name: "Investments", href: "/investments", icon: TrendingUp },
   { name: "Debts & Savings", href: "/debts", icon: Wallet },
   { name: "Split Bills", href: "/bills", icon: Receipt },
+  { name: "Playground", href: "/playground", icon: Sparkles },
 ];
 
-export function Navbar() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+interface NavbarProps {
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
+}
 
-  const handleLogout = () => {
-    document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    useAuthStore.getState().logout();
-    router.push("/login");
-  };
+export function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: NavbarProps) {
+  const pathname = usePathname();
 
   return (
     <>
@@ -75,29 +73,6 @@ export function Navbar() {
           })}
         </nav>
 
-        <div className="p-4 mt-auto">
-          <button
-            onClick={handleLogout}
-            className="relative w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 transition-all overflow-hidden group"
-          >
-            <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            Logout
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Glass Topbar */}
-      <div className="lg:hidden fixed top-0 inset-x-0 h-16 glass-panel border-x-0 border-t-0 flex items-center justify-between px-4 z-50">
-        <div className="flex items-center gap-2 font-extrabold text-xl text-primary">
-          <PieChart className="w-6 h-6" />
-          FinPro
-        </div>
-        <button
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="p-2 -mr-2 text-primary hover:bg-primary/10 transition-colors rounded-xl"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
       </div>
 
       {/* Mobile Menu Backdrop */}
@@ -158,18 +133,6 @@ export function Navbar() {
             );
           })}
         </nav>
-        <div className="p-4 mt-auto">
-          <button
-            onClick={() => {
-              setIsMobileMenuOpen(false);
-              handleLogout();
-            }}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-rose-500 hover:bg-rose-500/10 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
-        </div>
       </div>
     </>
   );

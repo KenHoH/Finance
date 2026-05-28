@@ -1,3 +1,11 @@
+export interface SavingPointHistory {
+  id: string;
+  date: string;
+  amount: number;
+  note: string;
+  source: string;
+}
+
 export interface InvestmentData {
   id: string;
   name: string;
@@ -10,6 +18,7 @@ export interface InvestmentData {
   gainLoss: number;
   gainLossPercent: number;
   lastUpdated: string;
+  savingPointHistory: SavingPointHistory[];
 }
 
 export const investments: InvestmentData[] = [
@@ -25,6 +34,11 @@ export const investments: InvestmentData[] = [
     gainLoss: 1500000,
     gainLossPercent: 10.7,
     lastUpdated: new Date().toISOString(),
+    savingPointHistory: [
+      { id: "h1", date: "2025-01-10", amount: 5000000, note: "Initial VOO Investment", source: "bank_transfer" },
+      { id: "h2", date: "2025-02-12", amount: 4000000, note: "Monthly Top-up", source: "digital_wallet" },
+      { id: "h3", date: "2025-03-15", amount: 5000000, note: "Bonus Invest", source: "bank_transfer" }
+    ]
   },
   {
     id: "inv-2",
@@ -38,6 +52,10 @@ export const investments: InvestmentData[] = [
     gainLoss: -2000000,
     gainLossPercent: -20.0,
     lastUpdated: new Date().toISOString(),
+    savingPointHistory: [
+      { id: "h4", date: "2025-01-15", amount: 5000000, note: "Bought the dip", source: "bank_transfer" },
+      { id: "h5", date: "2025-02-20", amount: 5000000, note: "DCA Bitcoin", source: "digital_wallet" }
+    ]
   },
   {
     id: "inv-3",
@@ -51,6 +69,11 @@ export const investments: InvestmentData[] = [
     gainLoss: 500000,
     gainLossPercent: 2.0,
     lastUpdated: new Date().toISOString(),
+    savingPointHistory: [
+      { id: "h6", date: "2025-01-05", amount: 10000000, note: "Cash Allocation", source: "bank_transfer" },
+      { id: "h7", date: "2025-02-05", amount: 10000000, note: "Cash Allocation", source: "bank_transfer" },
+      { id: "h8", date: "2025-03-05", amount: 5000000, note: "Cash Allocation", source: "bank_transfer" }
+    ]
   }
 ];
 

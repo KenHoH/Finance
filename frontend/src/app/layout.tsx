@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { MainWrapper } from "@/components/common/MainWrapper";
 import Providers from "./providers";
-import { InteractiveGlow } from "@/components/ui/InteractiveGlow";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,8 +29,6 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground relative min-h-screen dot-matrix`}
       >
-        <InteractiveGlow />
-        
         {/* Ambient Background Glows with Orbit Animation */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
           <div className="absolute -top-[40%] -left-[10%] w-[70%] h-[70%] rounded-full bg-[var(--bg-gradient-1)] opacity-40 blur-[120px] mix-blend-normal animate-orbit" style={{ animationDuration: '25s' }} />
