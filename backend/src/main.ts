@@ -7,8 +7,6 @@ import helmet from 'helmet';
 import express from 'express';
 import { GlobalExceptionFilter } from './infrastructure/filters/http-exception.filter.js';
 import { SanitizeInterceptor } from './infrastructure/interceptors/sanitize.interceptor.js';
-import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -40,7 +38,7 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   });
-  
+
   app.use(cookieParser());
 
   app.useGlobalFilters(new GlobalExceptionFilter());
@@ -51,8 +49,6 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
     transform: true,
   }));
-
-  app.useGlobalGuards(new CsrfGuard());
 
   const config = new DocumentBuilder()
     .setTitle('Finance App API')
