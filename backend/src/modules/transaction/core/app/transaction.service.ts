@@ -184,30 +184,25 @@ export class TransactionService {
       if(filters.endDate) where.date.lte = new Date(filters.endDate);
     }
 
-    const cursorId = filters?.categoryId;
-    const limit = Number(filters?.limit);
+    const cursorId = filters?.cursorId;
+    const limit = filters?.limit ? Number(filters.limit) : undefined;
 
-    if (limit == undefined || cursorId == undefined) {
-      const allData = await this.prisma.transaction.findMany( {
-        where: {
-          userId: userId
-        }
-      })
-      return {
-        allData,
-        cursor: undefined
-      }
+    if(!limit){
+      const allData = await this.prisma.transaction.findMany({
+        where,
+        include: { category: true },
+        orderBy: { date: 'desc' },
+      });
+      return { allData, cursor: undefined };
     }
 
     const data = await this.prisma.transaction.findMany({
-    where: { userId },
-    take: limit,
-    ...(cursorId && {
-      skip: 1, 
-      cursor: { id: cursorId },
-    }),
-    orderBy: { date: 'desc' },
-  });
+      where,
+      take: limit,
+      include: { category: true },
+      ...(cursorId && { skip: 1, cursor: { id: cursorId } }),
+      orderBy: { date: 'desc' },
+    });
 
     const nextCursor = data.length === limit ? data[data.length - 1].id : null;
     return {
