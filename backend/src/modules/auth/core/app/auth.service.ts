@@ -35,15 +35,24 @@ export class AuthService {
       where: {email: profile.email},
     });
 
+    const avatarUrl = (profile as unknown as Record<string, string | undefined>).picture || null;
+
     if(!user){
       user = await this.prisma.user.create({
         data: {
           email: profile.email,
           username: profile.name || profile.email.split('@')[0],
+          avatar: avatarUrl,
         }
       });
       this.logger.log(`User created: ${user.id}`)
     }else{
+      if(avatarUrl && !user.avatar){
+        user = await this.prisma.user.update({
+          where: {id: user.id},
+          data: {avatar: avatarUrl},
+        });
+      }
       this.logger.log(`User already exists: ${user.id}`)
     }
 
