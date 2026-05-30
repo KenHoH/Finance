@@ -11,6 +11,11 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
+    // Allow logout to execute so it can clear cookies even with stale token
+    if(request.path === '/auth/logout'){
+      return true;
+    }
+
     // Skip CSRF for API requests with Bearer token (JWT auth)
     const authHeader = request.headers.authorization;
     if(authHeader?.startsWith('Bearer ')){
