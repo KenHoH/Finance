@@ -68,10 +68,10 @@ export class FriendService {
       },
       include: {
         sender: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true, email: true, avatar: true },
         },
         receiver: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true, email: true, avatar: true },
         },
       },
     });
@@ -127,7 +127,7 @@ export class FriendService {
       },
       include: {
         sender: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true, email: true, avatar: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -142,7 +142,7 @@ export class FriendService {
       },
       include: {
         receiver: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true, email: true, avatar: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -159,10 +159,10 @@ export class FriendService {
       },
       include: {
         user1: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true, email: true, avatar: true },
         },
         user2: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true, email: true, avatar: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -232,6 +232,7 @@ export class FriendService {
         id: true,
         username: true,
         email: true,
+        avatar: true,
       },
       take: 10,
     });
