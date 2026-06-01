@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import { InvestmentService } from '../core/app/investment.service.js';
 import { CreateInvestmentDto, UpdateInvestmentDto, CreateAllocationDto } from './dto/index.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
+import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 
 @Controller('investments')
 @UseGuards(JwtAuthGuard)
@@ -71,3 +72,4 @@ export class InvestmentController{
     return this.investmentService.getAllocationsByCategory(req.user.sub, categoryId);
   }
 }
+

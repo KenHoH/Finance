@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from 
 import { SettingsService } from '../core/app/settings.service.js';
 import { CreateSettingsDto } from './dtos/create-settings.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
+import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 import { UpdateSettingsDto } from './dtos/update-settings.dto.js';
 
 @Controller('settings')
@@ -9,8 +10,9 @@ import { UpdateSettingsDto } from './dtos/update-settings.dto.js';
 export class SettingsController {
 
     constructor(
-        private readonly settingsService: SettingsService,
-    ){}
+    private readonly settingsService: SettingsService,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
 
     @Post()
     async create(
@@ -45,7 +47,9 @@ export class SettingsController {
         @Body() dto: UpdateSettingsDto
     ) {
         const userId = (req as any).user.sub;
-        return this.settingsService.update(userId, key, dto.value);
+        const setting = await this.settingsService.update(userId, key, dto.value);
+        this.eventsGateway.emitToUser(userId, 'settings:updated', setting);
+        return setting;
     }
 
     @Delete(':key')
@@ -54,6 +58,9 @@ export class SettingsController {
         @Param('key') key: string,
     ) {
         const userId = (req as any).user.sub;
-        return this.settingsService.delete(userId, key);
+        await this.settingsService.delete(userId, key);
+        this.eventsGateway.emitToUser(userId, 'settings:deleted', { key });
+        return { message: 'Setting deleted' };
     }
 }
+

@@ -5,25 +5,34 @@ import { FriendService } from '../core/app/friend.service.js';
 import { SendFriendRequestDto } from '../core/app/send-friend-request.dto.js';
 import { RespondFriendRequestDto, FriendResponseAction } from '../core/app/respond-friend-request.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
+import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 
 @Controller('friends')
 @UseGuards(JwtAuthGuard)
 @ApiTags('Friends')
 export class FriendController {
-  constructor(private readonly friendService: FriendService) {}
+  constructor(
+    private readonly friendService: FriendService,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
 
   @Post('request')
   @ApiOperation({ summary: 'Send a friend request' })
   async sendRequest(@Req() req: Request, @Body() dto: SendFriendRequestDto){
     const userId = (req as any).user.sub;
-    return this.friendService.sendFriendRequest(userId, dto.receiverId);
+    const request = await this.friendService.sendFriendRequest(userId, dto.receiverId);
+    this.eventsGateway.emitToUser(userId, 'friend:request-sent', request);
+    this.eventsGateway.emitToUser(dto.receiverId, 'friend:request-received', request);
+    return request;
   }
 
   @Put('request/respond')
   @ApiOperation({ summary: 'Accept, reject, or block a friend request' })
   async respondToRequest(@Req() req: Request, @Body() dto: RespondFriendRequestDto){
     const userId = (req as any).user.sub;
-    return this.friendService.respondToRequest(userId, dto.requestId, dto.action);
+    const result = await this.friendService.respondToRequest(userId, dto.requestId, dto.action);
+    this.eventsGateway.emitToUser(userId, 'friend:request-responded', { requestId: dto.requestId, action: dto.action });
+    return result;
   }
 
   @Get('requests/received')
@@ -51,7 +60,9 @@ export class FriendController {
   @ApiOperation({ summary: 'Remove a friend' })
   async removeFriend(@Req() req: Request, @Param('friendId') friendId: string){
     const userId = (req as any).user.sub;
-    return this.friendService.removeFriend(userId, friendId);
+    await this.friendService.removeFriend(userId, friendId);
+    this.eventsGateway.emitToUser(userId, 'friend:removed', { friendId });
+    return { message: 'Friend removed' };
   }
 
   @Get('search')
@@ -65,3 +76,4 @@ export class FriendController {
     return this.friendService.searchUsers(query, userId);
   }
 }
+

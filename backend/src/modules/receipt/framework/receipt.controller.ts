@@ -4,12 +4,16 @@ import type { Request } from 'express';
 import { ReceiptService } from '../core/app/receipt.service.js';
 import { ConfirmReceiptDto } from '../core/app/scan-receipt.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
+import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 
 @Controller('receipts')
 @UseGuards(JwtAuthGuard)
 export class ReceiptController {
-  constructor(private readonly receiptService: ReceiptService) {}
+  constructor(
+    private readonly receiptService: ReceiptService,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
 
   @Post('scan')
   @UseInterceptors(FileInterceptor('image', { limits: { fileSize: 5 * 1024 * 1024 } }))
@@ -50,3 +54,4 @@ export class ReceiptController {
     return result;
   }
 }
+

@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import { SavingPointService } from '../core/app/saving-point.service.js';
 import { CreateSavingPointDto, UpdateSavingPointDto, AllocateToGoalDto } from './dto/index.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
+import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 
 @Controller('saving-points')
 @UseGuards(JwtAuthGuard)
@@ -59,3 +60,4 @@ export class SavingPointController{
     }
   }
 }
+

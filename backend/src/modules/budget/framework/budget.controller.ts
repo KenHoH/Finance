@@ -4,11 +4,15 @@ import { BudgetService } from '../core/app/budget.service.js';
 import { CreateBudgetDto } from './dtos/create-budget.dto.js';
 import { UpdateBudgetDto } from './dtos/update-budget.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
+import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 
 @Controller('budgets')
 @UseGuards(JwtAuthGuard)
 export class BudgetController {
-  constructor(private readonly budgetService: BudgetService) {}
+  constructor(
+    private readonly budgetService: BudgetService,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateBudgetDto){

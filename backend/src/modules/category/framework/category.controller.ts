@@ -4,11 +4,15 @@ import { CategoryService } from '../core/app/category.service.js';
 import { CreateCategoryDto } from './dtos/create-category.dto.js';
 import { UpdateCategoryDto } from './dtos/update-category.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
+import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard)
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
+  constructor(
+    private readonly categoryService: CategoryService,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateCategoryDto){
@@ -46,3 +50,4 @@ export class CategoryController {
     return { message: 'Category deleted' };
   }
 }
+
