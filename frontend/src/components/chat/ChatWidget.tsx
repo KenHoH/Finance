@@ -2,7 +2,8 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Trash2, Square, ChevronDown } from "lucide-react";
+import { X, Send, Trash2, Square, ChevronDown, Maximize2, Minimize2 } from "lucide-react";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useChat, MODELS } from "@/hooks/useChat";
@@ -28,6 +29,8 @@ export function ChatWidget() {
 
   const isOpen = useChatWidgetStore((s) => s.isOpen);
   const setIsOpen = useChatWidgetStore((s) => s.setIsOpen);
+  const isExpanded = useChatWidgetStore((s) => s.isExpanded);
+  const setIsExpanded = useChatWidgetStore((s) => s.setIsExpanded);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
@@ -65,15 +68,11 @@ export function ChatWidget() {
     }
   }, [isOpen]);
 
-  // Smart auto-scroll: only scroll if user is near bottom
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if(!scrollRef.current) return;
     const el = scrollRef.current;
-    const threshold = 80; // px from bottom
-    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-    if(isNearBottom){
-      el.scrollTop = el.scrollHeight;
-    }
+    el.scrollTop = el.scrollHeight;
   }, [messages, isStreaming]);
 
   // Auto-resize textarea
@@ -107,16 +106,17 @@ export function ChatWidget() {
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "fixed z-[70] flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl",
-              "bottom-0 left-0 right-0 h-[85vh]",
-              "sm:bottom-20 sm:right-6 sm:left-auto sm:h-[600px] sm:w-[420px] sm:max-w-[95vw]"
+              "fixed z-[70] flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl transition-all duration-300",
+              isExpanded
+                ? "bottom-4 left-4 right-4 top-4 h-auto w-auto sm:bottom-8 sm:left-auto sm:right-8 sm:top-8 sm:h-[calc(100vh-64px)] sm:w-[700px]"
+                : "bottom-0 left-0 right-0 h-[85vh] sm:bottom-20 sm:right-6 sm:left-auto sm:h-[600px] sm:w-[420px]"
             )}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 text-white">
-                  <MessageCircle size={16} />
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 overflow-hidden">
+                  <Image src="/finbot.png" alt="FinBot" width={32} height={32} className="object-cover" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold">FinBot</div>
@@ -151,6 +151,14 @@ export function ChatWidget() {
                   </button>
                 )}
                 <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  aria-label={isExpanded ? "Minimize chat" : "Expand chat"}
+                  title={isExpanded ? "Minimize" : "Expand"}
+                >
+                  {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
+                <button
                   onClick={() => setIsOpen(false)}
                   className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   aria-label="Close FinBot"
@@ -164,8 +172,8 @@ export function ChatWidget() {
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
               {messages.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/10 text-sky-500">
-                    <MessageCircle size={24} />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/10 overflow-hidden">
+                    <Image src="/finbot.png" alt="FinBot" width={48} height={48} className="object-cover" />
                   </div>
                   <div className="text-sm font-medium">Ask me about your finances</div>
                   <div className="max-w-[240px] text-xs text-muted-foreground">

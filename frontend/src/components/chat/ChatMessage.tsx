@@ -60,14 +60,16 @@ export function ChatMessage({ message, formatTime }: ChatMessageProps) {
           className="whitespace-pre-wrap"
           dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
         />
-        <div
-          className={cn(
-            "mt-1 text-[10px] opacity-60",
-            isUser ? "text-right" : "text-left"
-          )}
-        >
-          {formatTime(message.timestamp)}
-        </div>
+        {!(message.role === "assistant" && !message.content) && (
+          <div
+            className={cn(
+              "mt-1 text-[10px] opacity-60",
+              isUser ? "text-right" : "text-left"
+            )}
+          >
+            {formatTime(message.timestamp)}
+          </div>
+        )}
       </div>
     </div>
   );

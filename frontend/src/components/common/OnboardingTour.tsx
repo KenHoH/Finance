@@ -134,7 +134,7 @@ export function OnboardingTour(){
     if(!step) return;
     const el = document.querySelector(step.target) as HTMLElement | null;
     if(el){
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [stepIndex]);
 

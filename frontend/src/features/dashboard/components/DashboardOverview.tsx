@@ -151,7 +151,7 @@ export function DashboardOverview(){
           key={i}
           variants={itemVariants}
           className={cn(
-            "relative overflow-hidden rounded-xl border border-white/[0.08] bg-card/90 p-5 transition-all duration-200 hover:border-white/15 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)]",
+            "relative overflow-hidden rounded-xl border border-white/[0.08] bg-card/25 p-5 transition-all duration-200 hover:border-white/15 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)]",
             "bg-gradient-to-br",
             stat.gradient
           )}

@@ -53,12 +53,6 @@ export default function LoginPage(){
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                <Image src="/logo.png" alt="" width={96} height={96} />
-              </div>
-              <span className="font-bold text-4xl tracking-tight text-foreground">FinPro</span>
-            </div>
             <h2 className="text-3xl font-bold text-foreground leading-tight mb-4">
               Take control of your finances
             </h2>

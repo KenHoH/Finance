@@ -31,14 +31,14 @@ interface ProviderRateLimit {
 const RATE_LIMIT_KEY = "finbot_rate_limit";
 const PROVIDER_RATE_LIMIT_KEY = "finbot_provider_rate_limit";
 const MAX_MESSAGES_PER_HOUR = 30;
-const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MODEL_KEY = "finbot_selected_model";
 
 export const MODELS = [
-  { id: "nousresearch/hermes-3-llama-3.1-405b:free", name: "Hermes 3 (405B)" },
-  { id: "google/gemma-4-26b-a4b-it:free", name: "Gemma 4 (26B)" },
-  { id: "moonshotai/kimi-k2.6:free", name: "Kimi 2.6" },
-  { id: "qwen/qwen3-next-80b-a3b-instruct:free", name: "Qwen3 Next (80B)" },
+  { id: "openai/gpt-oss-120b:free", name: "GPT-OSS 120B" },
+  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B" },
+  // { id: "google/gemini-2.5-pro-preview-05-06:free", name: "Gemini 2.5 Pro" },
+  // { id: "deepseek/deepseek-chat-v3-0324:free", name: "DeepSeek V3" },
+  // { id: "nousresearch/hermes-3-llama-3.1-405b:free", name: "Hermes 3 (405B)" },
 ] as const;
 
 function getSavedModel(): string {
@@ -92,18 +92,6 @@ function saveProviderRateLimit(entry: ProviderRateLimit): void {
   localStorage.setItem(PROVIDER_RATE_LIMIT_KEY, JSON.stringify(entry));
 }
 
-function parseProviderRetryAfter(errText: string): number | null {
-  try{
-    const parsed = JSON.parse(errText);
-    const raw = parsed?.error?.metadata?.retry_after_seconds_raw;
-    const retry = parsed?.error?.metadata?.retry_after_seconds;
-    if(typeof raw === "number" && raw > 0) return Math.ceil(raw);
-    if(typeof retry === "number" && retry > 0) return retry;
-  } catch{
-    // ignore
-  }
-  return null;
-}
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -187,7 +175,6 @@ export function useChat(): UseChatReturn {
     // Off-topic guard (Layer 1) — no rate limit penalty
     const guard = isOffTopic(text);
     if(guard.blocked){
-      addToast("I can only help with personal finance and FinPro-related questions.", "error");
       const userMsg: ChatMessage = {
         id: generateId(),
         role: "user",
@@ -197,7 +184,7 @@ export function useChat(): UseChatReturn {
       const refusalMsg: ChatMessage = {
         id: generateId(),
         role: "assistant",
-        content: "I can only help with personal finance and FinPro-related questions.",
+        content: "I can only help with personal finance and FinPro-related questions. Please ask about budgets, expenses, goals, investments, or debts.",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, userMsg, refusalMsg]);
@@ -214,22 +201,6 @@ export function useChat(): UseChatReturn {
     };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
-
-    // API key check — no rate limit penalty if not configured
-    const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
-    if(!apiKey){
-      addToast("FinBot is not configured. Please add your OpenRouter API key.", "error");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "assistant",
-          content: "FinBot is unavailable right now. Please try again later.",
-          timestamp: new Date(),
-        },
-      ]);
-      return;
-    }
 
     // Rate limit check — only count when we are about to hit the API
     if(!checkAndUpdateRateLimit()){
@@ -273,47 +244,41 @@ export function useChat(): UseChatReturn {
     abortRef.current = controller;
 
     try{
-      const res = await fetch(API_URL, {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "",
-          "X-Title": "FinPro",
         },
         body: JSON.stringify({
           model: selectedModel,
           messages: apiMessages,
-          stream: true,
-          temperature: 0.7,
-          max_tokens: 800,
         }),
         signal: controller.signal,
       });
 
       if(!res.ok){
-        const errText = await res.text().catch(() => "unknown error");
-        console.error("OpenRouter API error:", res.status, errText);
+        const errData = await res.json().catch(() => ({ error: "unknown error" }));
+        console.error("Chat API error:", res.status, errData);
         if(res.status === 429){
-          const retrySeconds = parseProviderRetryAfter(errText);
-          const resetAt = new Date(Date.now() + (retrySeconds || 60) * 1000).toISOString();
+          const retrySeconds = 60;
+          const resetAt = new Date(Date.now() + retrySeconds * 1000).toISOString();
           const modelId = selectedModel;
           const providerLimit: ProviderRateLimit = {
-            retryAfter: retrySeconds || 60,
+            retryAfter: retrySeconds,
             resetAt,
             modelId,
           };
           saveProviderRateLimit(providerLimit);
           setProviderRateLimit(providerLimit);
-          const minutes = Math.ceil((retrySeconds || 60) / 60);
+          const minutes = Math.ceil(retrySeconds / 60);
           const otherModels = MODELS.filter((m) => m.id !== modelId);
           const suggestion = otherModels.length > 0
             ? ` Try switching to ${otherModels[0].name} or try again in ${minutes} minute${minutes > 1 ? "s" : ""}.`
             : ` Please try again in ${minutes} minute${minutes > 1 ? "s" : ""}.`;
           addToast(`Rate limited by provider.${suggestion}`, "error");
-          throw new Error(`Rate limited: retry in ${retrySeconds || 60}s`);
+          throw new Error(`Rate limited: retry in ${retrySeconds}s`);
         }
-        throw new Error(`API error ${res.status}`);
+        throw new Error(`API error ${res.status}: ${errData.error || "unknown"}`);
       }
 
       const reader = res.body?.getReader();
@@ -324,6 +289,21 @@ export function useChat(): UseChatReturn {
       const decoder = new TextDecoder();
       let buffer = "";
       let fullContent = "";
+      let pendingContent = "";
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const flush = () => {
+        flushTimer = null;
+        if(pendingContent){
+          fullContent += pendingContent;
+          pendingContent = "";
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiMsgId ? { ...m, content: fullContent } : m
+            )
+          );
+        }
+      };
 
       while(true){
         const { done, value } = await reader.read();
@@ -343,18 +323,19 @@ export function useChat(): UseChatReturn {
             const data = JSON.parse(dataStr);
             const delta = data.choices?.[0]?.delta?.content;
             if(typeof delta === "string"){
-              fullContent += delta;
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === aiMsgId ? { ...m, content: fullContent } : m
-                )
-              );
+              pendingContent += delta;
+              if(!flushTimer){
+                flushTimer = setTimeout(flush, 60);
+              }
             }
           } catch{
             // ignore malformed JSON lines
           }
         }
       }
+
+      if(flushTimer) clearTimeout(flushTimer);
+      flush();
 
       // Final update
       setMessages((prev) =>

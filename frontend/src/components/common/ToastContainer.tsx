@@ -26,14 +26,14 @@ export function ToastContainer() {
   const removeToast = useToastStore((s) => s.removeToast);
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none">
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none">
       <AnimatePresence>
         {toasts.map((toast) => (
           <motion.div
             key={toast.id}
-            initial={{ opacity: 0, y: 24, scale: 0.92 }}
+            initial={{ opacity: 0, y: -24, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.92 }}
+            exit={{ opacity: 0, y: -16, scale: 0.92 }}
             transition={{ duration: 0.25, type: "spring", stiffness: 400, damping: 28 }}
             className={cn(
               "pointer-events-auto flex items-center gap-3 rounded-2xl border px-5 py-4 backdrop-blur-xl",

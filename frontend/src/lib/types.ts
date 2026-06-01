@@ -86,13 +86,12 @@ export interface FriendUser {
   id: string;
   username: string;
   email: string;
+  avatar?: string;
 }
 
 export interface Friend {
-  id: string;
-  user1: FriendUser;
-  user2: FriendUser;
-  status: "PENDING" | "ACCEPTED";
+  friendshipId: string;
+  friend: FriendUser;
   createdAt: string;
 }
 

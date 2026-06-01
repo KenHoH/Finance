@@ -92,10 +92,8 @@ export default function FriendsPage(){
         if(req){
           const currentUser = useAuthStore.getState().user;
           const newFriend: Friend = {
-            id: `opt-${Date.now()}`,
-            user1: { id: req.sender.id, username: req.sender.username, email: req.sender.email },
-            user2: { id: currentUser?.id || "", username: currentUser?.username || "", email: currentUser?.email || "" },
-            status: "ACCEPTED",
+            friendshipId: `opt-${Date.now()}`,
+            friend: { id: req.sender.id, username: req.sender.username, email: req.sender.email, avatar: req.sender.avatar },
             createdAt: new Date().toISOString(),
           };
           queryClient.setQueryData<Friend[]>(["friends"], (old) => [...(old || []), newFriend]);
@@ -123,13 +121,13 @@ export default function FriendsPage(){
   });
 
   const removeFriend = useMutation({
-    mutationFn: (friendId: string) => api.delete(`/friends/${friendId}`),
-    onMutate: async (friendId) => {
+    mutationFn: (friendshipId: string) => api.delete(`/friends/${friendshipId}`),
+    onMutate: async (friendshipId) => {
       const previous = queryClient.getQueryData<Friend[]>(["friends"]) || [];
-      queryClient.setQueryData<Friend[]>(["friends"], (old) => (old || []).filter((f) => f.id !== friendId));
+      queryClient.setQueryData<Friend[]>(["friends"], (old) => (old || []).filter((f) => f.friendshipId !== friendshipId));
       return { previous };
     },
-    onError: (err, friendId, context) => {
+    onError: (err, friendshipId, context) => {
       rollbackOnError(queryClient, ["friends"], context);
       addToast(extractApiError(err, "Failed to remove friend"), "error");
     },
@@ -185,18 +183,27 @@ export default function FriendsPage(){
       />
 
       {/* Search Results */}
-      {searchQuery.length >= 2 && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+      {searchQuery.length >= 2 ? (
+        <motion.div key="search-results" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
           <p className="text-sm font-bold text-muted-foreground">Search Results</p>
           {searchResults.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No users found.</p>
+            <p key="no-search" className="text-sm text-muted-foreground">No users found.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {searchResults.map((user) => (
                 <div key={user.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
-                  <div>
-                    <p className="font-bold text-foreground">{user.username}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                      {user.avatar ? (
+                        <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-primary font-bold text-xs">{getInitials(user.username)}</span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground">{user.username}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                    </div>
                   </div>
                   {sentIdsSet.has(user.id) ? (
                     <span className="flex items-center gap-1.5 px-4 py-2 bg-sky-500/10 text-sky-400 rounded-xl text-sm font-bold">
@@ -216,7 +223,7 @@ export default function FriendsPage(){
             </div>
           )}
         </motion.div>
-      )}
+      ) : null}
 
       {/* Tabs */}
       <div className="flex rounded-xl p-1.5 w-fit shadow-sm bg-card border border-border">
@@ -245,14 +252,15 @@ export default function FriendsPage(){
         </button>
       </div>
 
-      {/* Friends Tab */}
-      {activeTab === "friends" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {friends.map((friend, i) => {
-            const otherUser = friend.user1?.id === currentUserId ? friend.user2 : friend.user1;
+      {activeTab === "friends" ? (
+        <div key="friends-tab" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {friends.length > 0 ? friends.map((friend, i) => {
+            const otherUser = friend.friend;
+            const displayName = otherUser?.username || otherUser?.email?.split("@")[0] || "Unknown";
+            const displayEmail = otherUser?.email || "";
             return (
               <motion.div
-                key={friend.id}
+                key={friend.friendshipId}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
@@ -260,19 +268,19 @@ export default function FriendsPage(){
               >
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                    {otherUser?.username ? (
-                      <span className="text-primary font-bold text-sm">{getInitials(otherUser.username)}</span>
+                    {otherUser?.avatar ? (
+                      <img src={otherUser.avatar} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <User className="w-6 h-6 text-primary" />
+                      <span className="text-primary font-bold text-sm">{getInitials(displayName)}</span>
                     )}
                   </div>
                   <div>
-                    <p className="font-bold text-foreground">{otherUser?.username || "Unknown"}</p>
-                    <p className="text-sm text-muted-foreground">{otherUser?.email || ""}</p>
+                    <p className="font-bold text-foreground">{displayName}</p>
+                    {displayEmail && <p className="text-sm text-muted-foreground">{displayEmail}</p>}
                   </div>
                 </div>
                 <button
-                  onClick={() => setFriendToRemove(friend.id)}
+                  onClick={() => setFriendToRemove(friend.friendshipId)}
                   className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
                   aria-label="Remove friend"
                 >
@@ -280,8 +288,7 @@ export default function FriendsPage(){
                 </button>
               </motion.div>
             );
-          })}
-          {friends.length === 0 && (
+          }) : (
             <EmptyState
               image="/empty-friends.png"
               title="No friends yet"
@@ -289,18 +296,15 @@ export default function FriendsPage(){
             />
           )}
         </div>
-      )}
-
-      {/* Requests Tab — unified incoming + outgoing */}
-      {activeTab === "requests" && (
-        <div className="space-y-8">
+      ) : activeTab === "requests" ? (
+        <div key="requests-tab" className="space-y-8">
           {/* Incoming */}
           <div>
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
               <UserPlus className="w-4 h-4" /> Incoming ({receivedRequests.length})
             </h2>
             <div className="space-y-3">
-              {receivedRequests.map((req, i) => (
+              {receivedRequests.length > 0 ? receivedRequests.map((req, i) => (
                 <motion.div
                   key={req.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -310,7 +314,9 @@ export default function FriendsPage(){
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-sky-500/10 flex items-center justify-center overflow-hidden">
-                      {req.sender?.username ? (
+                      {req.sender?.avatar ? (
+                        <img src={req.sender.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : req.sender?.username ? (
                         <span className="text-sky-500 font-bold text-sm">{getInitials(req.sender.username)}</span>
                       ) : (
                         <User className="w-6 h-6 text-sky-500" />
@@ -336,8 +342,7 @@ export default function FriendsPage(){
                     </button>
                   </div>
                 </motion.div>
-              ))}
-              {receivedRequests.length === 0 && (
+              )) : (
                 <p className="text-sm text-muted-foreground py-2">No incoming friend requests.</p>
               )}
             </div>
@@ -349,7 +354,7 @@ export default function FriendsPage(){
               <UserCheck className="w-4 h-4" /> Outgoing ({sentRequests.length})
             </h2>
             <div className="space-y-3">
-              {sentRequests.map((req, i) => (
+              {sentRequests.length > 0 ? sentRequests.map((req, i) => (
                 <motion.div
                   key={req.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -359,7 +364,9 @@ export default function FriendsPage(){
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-sky-500/10 flex items-center justify-center overflow-hidden">
-                      {req.receiver?.username ? (
+                      {req.receiver?.avatar ? (
+                        <img src={req.receiver.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : req.receiver?.username ? (
                         <span className="text-sky-400 font-bold text-sm">{getInitials(req.receiver.username)}</span>
                       ) : (
                         <User className="w-6 h-6 text-sky-400" />
@@ -380,14 +387,13 @@ export default function FriendsPage(){
                     {req.status}
                   </span>
                 </motion.div>
-              ))}
-              {sentRequests.length === 0 && (
+              )) : (
                 <p className="text-sm text-muted-foreground py-2">No outgoing friend requests.</p>
               )}
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       <ConfirmDialog
         isOpen={!!friendToRemove}
