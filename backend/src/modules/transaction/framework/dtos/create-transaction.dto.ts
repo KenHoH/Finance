@@ -32,4 +32,9 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsString()
   source?: string;
+
+  @ApiPropertyOptional({description: 'Transaction source ID', example: 'source-123'})
+  @IsOptional()
+  @IsString()
+  sourceId?: string;
 }

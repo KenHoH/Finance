@@ -15,6 +15,10 @@ export class CsrfGuard implements CanActivate {
     if(request.path === '/auth/logout'){
       return true;
     }
+    // allowed google pub sub to post /email
+    if(request.path === '/email' && method === 'POST'){
+      return true;
+    }
 
     // Skip CSRF for API requests with Bearer token (JWT auth)
     const authHeader = request.headers.authorization;

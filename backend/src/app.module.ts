@@ -25,6 +25,7 @@ import { CategoryModule } from './modules/category/category.module.js';
 import { EmailModule } from './modules/email/email.module.js';
 import { ReceiptModule } from './modules/receipt/receipt.module.js';
 import { EventsGateway } from './infrastructure/gateway/events.gateway.js';
+import { PubsubModule } from './modules/pubsub/pubsub.module.js';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { EventsGateway } from './infrastructure/gateway/events.gateway.js';
     CategoryModule,
     EmailModule,
     ReceiptModule,
+    PubsubModule
   ],
   controllers: [AppController],
   providers: [

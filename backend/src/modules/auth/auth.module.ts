@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthController } from './framework/auth.controller.js';
 import { AuthService } from './core/app/auth.service.js';
 import { GoogleOauthService } from './core/app/google-oauth.service.js';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { EmailModule } from '../email/email.module.js';
 
 @Module({
   imports: [
@@ -14,8 +15,9 @@ import { ConfigService } from '@nestjs/config';
       }),
       inject: [ConfigService]
     }),
+    forwardRef(() => EmailModule),
   ],
-
+  exports: [GoogleOauthService, AuthService],
   controllers: [AuthController],
   providers: [AuthService, GoogleOauthService],
 })

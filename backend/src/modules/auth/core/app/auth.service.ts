@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { GoogleOauthService } from './google-oauth.service.js';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { EmailService } from '../../../email/core/app/email.service.js';
 
 
 @Injectable()
@@ -15,6 +16,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
   ) {}
 
   getGoogleAuthUrl(returnTo?: string){
@@ -79,6 +81,9 @@ export class AuthService {
     });
 
     this.logger.log('Google tokens saved to database');
+
+    // calling watch email after user login or register
+    await this.emailService.watchGmail(user.email);
 
     const jwt = this.jwtService.sign({
       sub: user.id,
@@ -146,6 +151,18 @@ export class AuthService {
     const expected = this.signPayload(payload);
     if(expected.length !== signature.length) return false;
     return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  }
+
+  async getRefreshTokenByEmail(email: string){
+    const user = await this.prisma.authIdentities.findFirst({
+      where: {
+        providerEmail: email
+      }
+    });
+    if(!user){
+      throw new Error('User not found');
+    }
+    return user.refreshToken;
   }
 
   private encodeOauthState(returnTo?: string){

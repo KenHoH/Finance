@@ -34,6 +34,7 @@ export function extractInfoFromHTMLOVO(html: string): ExtractedInfo {
         status: recipient || totalAmount > 0 || dateRaw ? true : false,
         amount: totalAmount,
         date: dateRaw,
-        recipient: recipient
+        recipient: recipient,
+        source: 'OVO'
     };
 }

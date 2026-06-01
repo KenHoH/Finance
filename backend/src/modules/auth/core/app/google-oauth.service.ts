@@ -24,6 +24,10 @@ export class GoogleOauthService {
         );
     }
 
+    public getOauthClient(){
+        return this.oauth2Client;
+    }
+
     public getAuthUrl(state?: string){
 
         const scopes = [
