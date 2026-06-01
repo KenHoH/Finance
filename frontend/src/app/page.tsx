@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  Sparkles,
   BarChart3,
   Wallet,
   Loader2,
@@ -140,61 +139,10 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden">
-
-      {/* Navbar */}
-      <nav className="fixed top-0 inset-x-0 z-50 h-16 flex items-center justify-between px-6 bg-card/80 backdrop-blur-md border-b border-border">
-        <div className="flex items-center gap-3">
-          <img
-            src="/logo.png"
-            alt=""
-            className="w-14 h-14 rounded-lg"
-          />
-          <span className="text-xl font-bold tracking-tight">FinPro</span>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <a
-            href="#features"
-            className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Features
-          </a>
-
-          <a
-            href="#how-it-works"
-            className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            How it works
-          </a>
-
-          {user ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sky-500/[0.03] border border-sky-500/10">
-                <AvatarImg src={user.avatar} />
-                <span className="text-sm font-semibold text-foreground hidden sm:inline">{user.username || "User"}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors"
-                aria-label="Log out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleLogin}
-              className="px-4 py-2 text-sm font-bold rounded-xl bg-sky-400 text-black hover:bg-sky-300 transition-all active:scale-[0.98]"
-            >
-              Sign In
-            </button>
-          )}
-        </div>
-      </nav>
+    <div className="min-h-screen bg-background text-foreground overflow-hidden pt-16">
 
       {/* Hero Section */}
-      <section className="relative max-w-6xl mx-auto px-6 pt-40 pb-24">
+      <section className="relative max-w-6xl mx-auto px-6 pt-10 pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/15 blur-[150px] pointer-events-none" />
@@ -208,7 +156,6 @@ export default function LandingPage() {
           className="relative z-10"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 text-sm font-medium rounded-full border border-primary/20 bg-primary/10 text-primary">
-            <Sparkles className="w-3.5 h-3.5" />
             All-in-one personal finance
           </div>
 
@@ -413,13 +360,13 @@ export default function LandingPage() {
       <footer className="px-6 py-10 border-t border-border">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
 
-          <div className="flex items-center gap-2 font-bold text-foreground">
+          <div className="flex items-center gap-2.5 font-bold text-foreground">
             <img
               src="/logo.png"
               alt=""
-              className="w-10 h-10 rounded-lg"
+              className="w-14 h-14 rounded-xl"
             />
-            FinPro
+            <span className="text-lg">FinPro</span>
           </div>
 
           <div className="flex items-center gap-7">

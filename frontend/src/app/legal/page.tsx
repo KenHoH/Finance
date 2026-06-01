@@ -1,17 +1,12 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { ArrowLeft, Shield, FileText } from "lucide-react";
+import { Shield, FileText } from "lucide-react";
 
 export default function LegalPage(){
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-6 py-12">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
-          <ArrowLeft className="w-4 h-4" /> Back
-        </Link>
-
+      <div className="max-w-3xl mx-auto px-6 pt-6 pb-12">
         <h1 className="text-3xl font-bold tracking-tight mb-2">Legal</h1>
         <p className="text-muted-foreground mb-12">Last updated: May 31, 2026</p>
 
@@ -56,7 +51,7 @@ export default function LegalPage(){
         <div className="border-t border-border mb-16" />
 
         {/* Privacy Policy */}
-        <section>
+        <section className="pb-16">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Shield className="w-5 h-5 text-primary" />
