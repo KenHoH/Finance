@@ -5,7 +5,6 @@ import { SplitBillService } from '../core/app/split-bill.service.js';
 import { CreateSplitBillDto } from '../core/app/create-split-bill.dto.js';
 import { UpdateSplitBillDto, UpdateParticipantDto } from '../core/app/update-split-bill.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
-import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 
 @Controller('split-bills')

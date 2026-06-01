@@ -2,16 +2,13 @@ import { Controller, Get, Post, Put, Delete, Param, Req, UseGuards, NotFoundExce
 import type { Request } from 'express';
 import { NotificationService } from '../core/app/notification.service.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
-import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 import { CreateNotificationDto } from './dtos/create-notification.js';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationController {
   constructor(
-    private readonly notificationService: NotificationService,
-    private readonly eventsGateway: EventsGateway,
-  ) {}
+    private readonly notificationService: NotificationService,  ) {}
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateNotificationDto ) {

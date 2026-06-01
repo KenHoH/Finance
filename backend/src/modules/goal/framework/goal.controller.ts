@@ -3,15 +3,12 @@ import type { Request } from 'express';
 import { GoalService } from '../core/app/goal.service.js';
 import { CreateGoalDto, UpdateGoalDto, ContributeGoalDto } from './dto/index.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
-import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 
 @Controller('goals')
 @UseGuards(JwtAuthGuard)
 export class GoalController {
   constructor(
-    private readonly goalService: GoalService,
-    private readonly eventsGateway: EventsGateway,
-  ) {}
+    private readonly goalService: GoalService,  ) {}
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateGoalDto){

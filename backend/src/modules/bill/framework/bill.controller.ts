@@ -3,7 +3,6 @@ import type { Request } from 'express';
 import { BillService } from '../core/app/bill.service.js';
 import { CreateBillDto, UpdateBillDto, PayBillDto } from './dto/index.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
-import { EventsGateway } from '../../../infrastructure/gateway/events.gateway.js';
 
 @Controller('bills')
 @UseGuards(JwtAuthGuard)
