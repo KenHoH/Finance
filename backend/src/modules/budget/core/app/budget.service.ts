@@ -209,6 +209,7 @@ export class BudgetService {
       remaining,
       percentage,
       isOverBudget: spent > budgetAmount,
+      status: spent > budgetAmount ? "OVER_BUDGET" : "WITHIN_BUDGET",
     };
   }
 
