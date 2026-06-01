@@ -1,7 +1,8 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { MainWrapper } from "@/components/common/MainWrapper";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import Providers from "./providers";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -18,7 +19,24 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "FinPro - Finance Dashboard",
-  description: "Track your income and investments",
+  description: "Track your income, expenses, budgets, goals, investments, debts, and split bills all in one beautifully simple dashboard.",
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png", sizes: "any" },
+    ],
+    apple: "/logo.png",
+  },
+  manifest: "/manifest.json",
+  openGraph: {
+    title: "FinPro - Finance Dashboard",
+    description: "Track your income, expenses, budgets, goals, investments, debts, and split bills all in one beautifully simple dashboard.",
+    images: ["/og-image.png"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({
@@ -32,9 +50,11 @@ export default function RootLayout({
         className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} antialiased bg-background text-foreground min-h-screen`}
       >
         <Providers>
-          <MainWrapper>
-            {children}
-          </MainWrapper>
+          <ErrorBoundary>
+            <MainWrapper>
+              {children}
+            </MainWrapper>
+          </ErrorBoundary>
         </Providers>
       </body>
     </html>

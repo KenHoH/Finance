@@ -1,0 +1,18 @@
+{
+  "name": "Finance - Personal Finance Tracker",
+  "short_name": "Finance",
+  "description": "All-in-one personal finance tracker. Income, expenses, budgets, goals, investments, debts, and split bills.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050507",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

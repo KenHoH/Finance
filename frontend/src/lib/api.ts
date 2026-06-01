@@ -1,40 +1,123 @@
-import axios from 'axios';
-import { useAuthStore } from '@/store/useAuthStore';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-// Create a centralized axios instance
+let csrfToken = "";
+
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: "/api",
+  withCredentials: true,
+  headers: { "Content-Type": "application/json" },
 });
 
-// Request interceptor to attach auth token
+function readCsrfFromCookie(): string{
+  const match = document.cookie.match(/csrf-token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 api.interceptors.request.use(
-  (config) => {
-    // Get token from Zustand store
-    const token = useAuthStore.getState().token;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config: InternalAxiosRequestConfig) => {
+    if(config.method && config.method.toLowerCase() !== "get"){
+      const fromCookie = readCsrfFromCookie();
+      if(fromCookie && fromCookie !== csrfToken){
+        csrfToken = fromCookie;
+      } else if(!fromCookie && csrfToken){
+        // Cookie expired or was cleared; stale memory value must be discarded
+        csrfToken = "";
+      }
+      if(!csrfToken && config.url !== "/auth/csrf"){
+        try{
+          await fetchCsrfToken();
+        } catch{
+          // silent fail
+        }
+      }
+      if(csrfToken){
+        config.headers.set("X-CSRF-Token", csrfToken);
+      }
     }
     return config;
   },
-  (error) => {
+  (error) => Promise.reject(error)
+);
+
+api.interceptors.response.use(
+  (response) => response,
+  async(error: AxiosError) => {
+    const status = error.response?.status;
+    const originalConfig = error.config as InternalAxiosRequestConfig & { _csrfRetry?: boolean };
+
+    if((status === 401 || status === 403) && !originalConfig._csrfRetry){
+      csrfToken = "";
+      const fromCookie = readCsrfFromCookie();
+      if(fromCookie) csrfToken = fromCookie;
+
+      if(!csrfToken && originalConfig.url !== "/auth/csrf"){
+        try{
+          await fetchCsrfToken();
+          const afterFetch = readCsrfFromCookie();
+          if(afterFetch) csrfToken = afterFetch;
+        } catch{
+          // silent fail
+        }
+      }
+
+      if(csrfToken && originalConfig.headers){
+        originalConfig._csrfRetry = true;
+        originalConfig.headers.set("X-CSRF-Token", csrfToken);
+        return api(originalConfig);
+      }
+    }
+
+    if(status === 401 || status === 403){
+      csrfToken = "";
+      if(status === 401 && originalConfig.url !== "/auth/csrf"){
+        if(typeof window !== "undefined"){
+          import("@/store/useAuthStore").then(({ useAuthStore }) => {
+            useAuthStore.getState().logout();
+          });
+        }
+      }
+    }
+
     return Promise.reject(error);
   }
 );
 
-// Response interceptor to handle global errors (e.g., 401 Unauthorized)
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Auto logout if 401 response returned from api
-      useAuthStore.getState().logout();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+export async function fetchCsrfToken(){
+  try{
+    const { data } = await api.get<{ csrfToken: string }>("/auth/csrf");
+    if(data?.csrfToken){
+      csrfToken = data.csrfToken;
     }
-    return Promise.reject(error);
+  } catch{
+    // silent fail — protected routes will redirect if truly unauthorized
   }
-);
+}
+
+export function setCsrfToken(token: string){
+  csrfToken = token;
+}
+
+export function extractApiError(err: unknown, fallback = "Failed to complete the request. Please try again."): string{
+  const axiosErr = err as AxiosError<{ message?: string }>;
+  return axiosErr.response?.data?.message || fallback;
+}
+
+export function get<T>(url: string, config?: Parameters<typeof api.get>[1]) {
+  return api.get<T>(url, config).then((r) => r.data);
+}
+
+export function post<T>(url: string, data?: unknown, config?: Parameters<typeof api.post>[2]) {
+  return api.post<T>(url, data, config).then((r) => r.data);
+}
+
+export function put<T>(url: string, data?: unknown, config?: Parameters<typeof api.put>[2]) {
+  return api.put<T>(url, data, config).then((r) => r.data);
+}
+
+export function del<T>(url: string, config?: Parameters<typeof api.delete>[1]) {
+  return api.delete<T>(url, config).then((r) => r.data);
+}
+
+export function patch<T>(url: string, data?: unknown, config?: Parameters<typeof api.patch>[2]) {
+  return api.patch<T>(url, data, config).then((r) => r.data);
+}

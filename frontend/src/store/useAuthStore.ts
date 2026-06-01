@@ -1,32 +1,38 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-}
+import { create } from "zustand";
+import { api, setCsrfToken } from "@/lib/api";
+import type { User } from "@/lib/types";
 
 interface AuthState {
   user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  login: (user: User, token: string) => void;
-  logout: () => void;
+  isLoading: boolean;
+  fetchUser: () => Promise<void>;
+  logout: () => Promise<void>;
+  setUser: (user: User | null) => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      login: (user, token) => set({ user, token, isAuthenticated: true }),
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
-    }),
-    {
-      name: 'auth-storage', // unique name for localStorage
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  isLoading: true,
+  fetchUser: async() => {
+    try{
+      const { data } = await api.get("/auth/me");
+      set({ user: data.user ?? null, isLoading: false });
+    } catch{
+      set({ user: null, isLoading: false });
     }
-  )
-);
+  },
+  logout: async() => {
+    try{
+      await api.post("/auth/logout");
+    } catch{
+      // ignore — server route clears cookies regardless
+    }
+    document.cookie = "csrf-token=; path=/; max-age=0; SameSite=Lax";
+    setCsrfToken("");
+    set({ user: null, isLoading: false });
+    if(typeof window !== "undefined"){
+      window.location.href = "/login";
+    }
+  },
+  setUser: (user) => set({ user }),
+}));

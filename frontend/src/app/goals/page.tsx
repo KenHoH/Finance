@@ -1,226 +1,441 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import {
-  Target, Plus, Edit2, Trash2, CheckCircle2, Clock, AlertCircle, PlusCircle
-} from "lucide-react";
-import { format, parseISO, differenceInDays } from "date-fns";
-import { goalsData } from "@/dummy-data/src/data/goals";
-import { Confetti } from "@/components/ui/Confetti";
-import { cn } from "@/lib/utils";
+import { Target, Plus, Edit2, Trash2, TrendingUp, Trophy, XCircle, Coins, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { get, api, extractApiError } from "@/lib/api";
+import { useToastStore } from "@/store/useToastStore";
+import { cn, formatCurrency, dateToApiISO, apiDateToInput, unwrapArray } from "@/lib/utils";
+import { validateString, validateNumber, runValidators } from "@/lib/validation";
 import { Modal } from "@/components/ui/Modal";
-
-// Utility for formatting Rupiah
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
-};
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { FormField } from "@/components/ui/FormField";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { CurrencyInput } from "@/components/ui/CurrencyInput";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import type { Goal } from "@/lib/types";
+import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
 
 export default function GoalsPage() {
-  const currentDate = new Date("2025-05-11T12:00:00Z");
-
+  const addToast = useToastStore((s) => s.addToast);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  
-  const [isAddFundsOpen, setIsAddFundsOpen] = useState(false);
-  const [selectedGoal, setSelectedGoal] = useState<any>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [name, setName] = useState("");
+  const [targetAmount, setTargetAmount] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [contributeModal, setContributeModal] = useState<{ id: string; name: string } | null>(null);
+  const [contributeAmount, setContributeAmount] = useState("");
+  const [editGoal, setEditGoal] = useState<Goal | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editTarget, setEditTarget] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const handleCreateGoal = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSuccess(true);
-    setTimeout(() => {
-      setIsSuccess(false);
-      setIsModalOpen(false);
-    }, 2000);
-  };
+  const { data: goals = [], isLoading } = useQuery<Goal[]>({
+    queryKey: ["goals"],
+    queryFn: async() => {
+      const res = await get<unknown>("/goals");
+      return unwrapArray<Goal>(res);
+    },
+  });
 
-  const handleAddFunds = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSuccess(true);
-    
-    // Trigger confetti explosion
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 4000);
+  const totalTarget = goals.reduce((acc, curr) => acc + Number(curr.targetAmount), 0);
+  const totalCurrent = goals.reduce((acc, curr) => acc + Number(curr.currentAmount), 0);
 
-    setTimeout(() => {
-      setIsSuccess(false);
-      setIsAddFundsOpen(false);
-      setSelectedGoal(null);
-    }, 2000);
-  };
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => { if(timeoutRef.current) clearTimeout(timeoutRef.current); }, []);
 
-  const totalGoals = goalsData.length;
-  const completedGoals = goalsData.filter(g => g.status === 'completed').length;
-  const activeGoals = goalsData.filter(g => g.status === 'active').length;
+  const createMutation = useMutation({
+    mutationFn: (dto: { name: string; targetAmount: number; deadline?: string }) => api.post("/goals", dto),
+    onMutate: async (dto) => {
+      const temp: Goal = {
+        id: `opt-${Date.now()}`,
+        name: dto.name,
+        targetAmount: dto.targetAmount,
+        currentAmount: 0,
+        deadline: dto.deadline || null,
+        status: "IN_PROGRESS",
+        createdAt: new Date().toISOString(),
+      };
+      return optimisticCreate(queryClient, ["goals"], temp);
+    },
+    onError: (err, dto, context) => {
+      rollbackOnError(queryClient, ["goals"], context);
+      addToast(extractApiError(err, "Failed to create goal"), "error");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["goals"] }),
+    onSuccess: () => {
+      setIsSuccess(true);
+      setName("");
+      setTargetAmount("");
+      setDeadline("");
+      timeoutRef.current = setTimeout(() => {
+        setIsSuccess(false);
+        setIsModalOpen(false);
+      }, 1500);
+      addToast("Goal created", "success");
+    },
+  });
+
+  const contributeMutation = useMutation({
+    mutationFn: (dto: { id: string; amount: number }) =>
+      api.post(`/goals/${dto.id}/contribute`, { amount: dto.amount }),
+    onMutate: async (dto) => {
+      const goal = goals.find((g) => g.id === dto.id);
+      const current = Number(goal?.currentAmount || 0);
+      return optimisticUpdate(queryClient, ["goals"], dto.id, { currentAmount: current + dto.amount });
+    },
+    onError: (err, dto, context) => {
+      rollbackOnError(queryClient, ["goals"], context);
+      addToast(extractApiError(err, "Failed to contribute"), "error");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["goals"] }),
+    onSuccess: () => {
+      setContributeModal(null);
+      setContributeAmount("");
+      addToast("Contribution added", "success");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (dto: { id: string; name: string; targetAmount: number; deadline?: string }) => {
+      const { id, ...body } = dto;
+      return api.put(`/goals/${id}`, body);
+    },
+    onMutate: async (dto) => optimisticUpdate(queryClient, ["goals"], dto.id, { name: dto.name, targetAmount: dto.targetAmount, deadline: dto.deadline }),
+    onError: (err, dto, context) => {
+      rollbackOnError(queryClient, ["goals"], context);
+      addToast(extractApiError(err, "Failed to update goal"), "error");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["goals"] }),
+    onSuccess: () => {
+      setEditGoal(null);
+      setEditName("");
+      setEditTarget("");
+      setEditDeadline("");
+      addToast("Goal updated", "success");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/goals/${id}`),
+    onMutate: async (id) => optimisticDelete(queryClient, ["goals"], id),
+    onError: (err, id, context) => {
+      rollbackOnError(queryClient, ["goals"], context);
+      addToast(extractApiError(err, "Failed to delete goal"), "error");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["goals"] }),
+    onSuccess: () => {
+      addToast("Goal deleted", "success");
+    },
+  });
+
+  if(isLoading){
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto pb-24">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {[0,1,2].map((i) => (
+            <Skeleton key={i} className="h-28" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[0,1,2,3,4,5].map((i) => (
+            <Skeleton key={i} className="h-44" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl mx-auto pb-24">
+    <div className="space-y-6 max-w-7xl mx-auto pb-24">
       {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-7">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-            <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20">
-              <Target className="w-7 h-7 text-blue-500" />
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-4">
+            <div className="p-2 bg-sky-500/10 rounded-lg">
+              <Target className="w-5 h-5 text-sky-400" />
             </div>
-            Financial Goals
+            Goals
           </h1>
-          <p className="text-muted-foreground mt-2 text-base">Plan and track your saving targets</p>
+          <p className="text-sm text-muted-foreground mt-1">Track and achieve your savings targets</p>
         </div>
 
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all active:scale-95"
+          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.98] hover:brightness-110"
         >
-          <Plus className="w-5 h-5" /> Add Goal
+          <Plus className="w-5 h-5" /> New Goal
         </button>
       </header>
 
-      {/* Add Goal Modal */}
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title="Add Financial Goal" 
-        description="Set a new savings target to achieve your dreams."
+      {/* Create Goal Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Create New Goal"
+        description="Define a target amount and deadline."
         isSuccess={isSuccess}
         successMessage="Goal successfully created!"
       >
-        <form className="space-y-4" onSubmit={handleCreateGoal}>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">Goal Name</label>
-            <input type="text" placeholder="e.g. New Car, Vacation" required className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
-          </div>
-          
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">Target Amount</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">Rp</span>
-              <input type="number" placeholder="0" required className="w-full pl-11 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
-            </div>
-          </div>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const errors = runValidators(
+              validateString(name, "Goal Name", { min: 1, max: 100 }),
+              validateNumber(targetAmount, "Target Amount", { min: 0.01 }),
+              validateString(deadline, "Deadline")
+            );
+            const mapped: Record<string, string> = {};
+            errors.forEach((err) => { mapped[err.field] = err.message; });
+            if(new Date(deadline) < new Date()){
+              mapped["Deadline"] = "Deadline must be in the future";
+            }
+            setFieldErrors(mapped);
+            if(Object.keys(mapped).length > 0) return;
+            createMutation.mutate({
+              name: name.trim(),
+              targetAmount: Number(targetAmount),
+              deadline,
+            });
+          }}
+        >
+          <FormField label="Goal Name" htmlFor="goal-name" error={fieldErrors["Goal Name"]}>
+            <input
+              id="goal-name"
+              type="text"
+              value={name}
+              onChange={(e) => { setName(e.target.value); setFieldErrors((prev) => { const n = { ...prev }; delete n["Goal Name"]; return n; }); }}
+              placeholder="e.g. Emergency Fund"
+              className={cn(
+                "w-full px-4 py-3 bg-background border rounded-xl focus:outline-none focus:ring-1 focus:ring-primary transition-all text-base font-medium",
+                fieldErrors["Goal Name"] ? "border-rose-500 focus:border-rose-500" : "border-border focus:border-primary"
+              )}
+            />
+          </FormField>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">Target Date</label>
-            <input type="date" required className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
-          </div>
+          <FormField label="Target Amount" htmlFor="goal-amount" error={fieldErrors["Target Amount"]}>
+            <CurrencyInput
+              id="goal-amount"
+              value={targetAmount}
+              onChange={(v: string) => { setTargetAmount(v); setFieldErrors((prev) => { const n = { ...prev }; delete n["Target Amount"]; return n; }); }}
+              placeholder="0"
+              className={cn(
+                fieldErrors["Target Amount"] ? "[&_input]:border-rose-500 [&_input]:focus:border-rose-500" : ""
+              )}
+            />
+          </FormField>
 
-          <button 
+          <FormField label="Deadline" htmlFor="goal-deadline" error={fieldErrors["Deadline"]}>
+            <DatePicker
+              id="goal-deadline"
+              value={deadline}
+              onChange={(v) => { setDeadline(v); setFieldErrors((prev) => { const n = { ...prev }; delete n["Deadline"]; return n; }); }}
+              className={cn(
+                "[&_input]:border",
+                fieldErrors["Deadline"] ? "[&_input]:border-rose-500 [&_input]:focus:border-rose-500" : "[&_input]:border-border [&_input]:focus:border-primary"
+              )}
+            />
+          </FormField>
+
+          <button
             type="submit"
-            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] mt-6 shadow-md shadow-primary/20"
+            disabled={createMutation.isPending}
+            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:brightness-110 transition-all active:scale-[0.98] mt-6 disabled:opacity-60"
           >
-            Save Goal
+            {createMutation.isPending ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Goal"
+            )}
           </button>
         </form>
       </Modal>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border border-border bg-card p-6 shadow-sm flex items-center gap-4">
-          <div className="p-4 bg-primary/10 text-primary rounded-full"><Target className="w-8 h-8" /></div>
-          <div><p className="text-sm font-medium text-muted-foreground uppercase">Total Goals</p><p className="text-3xl font-bold text-foreground">{totalGoals}</p></div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-border bg-card p-7 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+          <p className="text-sm font-medium text-muted-foreground mb-1">Total Target</p>
+          <p className="text-3xl font-bold text-foreground">{formatCurrency(totalTarget)}</p>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-3xl border border-border bg-card p-6 shadow-sm flex items-center gap-4">
-          <div className="p-4 bg-emerald-500/10 text-emerald-500 rounded-full"><CheckCircle2 className="w-8 h-8" /></div>
-          <div><p className="text-sm font-medium text-muted-foreground uppercase">Completed</p><p className="text-3xl font-bold text-foreground">{completedGoals}</p></div>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-7 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+          <p className="text-sm font-medium text-muted-foreground mb-1">Saved So Far</p>
+          <p className="text-3xl font-bold text-sky-400">{formatCurrency(totalCurrent)}</p>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-3xl border border-border bg-card p-6 shadow-sm flex items-center gap-4">
-          <div className="p-4 bg-blue-500/10 text-blue-500 rounded-full"><Clock className="w-8 h-8" /></div>
-          <div><p className="text-sm font-medium text-muted-foreground uppercase">In Progress</p><p className="text-3xl font-bold text-foreground">{activeGoals}</p></div>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-7 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+          <p className="text-sm font-medium text-muted-foreground mb-1">Active Goals</p>
+          <p className="text-3xl font-bold text-foreground">{goals.filter(g => g.status === "IN_PROGRESS").length}</p>
         </motion.div>
       </div>
 
-      {/* Goal Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {goalsData.map((goal, idx) => {
-          const percentage = Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100);
-          const deadlineDate = parseISO(goal.deadline);
-          const daysLeft = differenceInDays(deadlineDate, currentDate);
-          
-          let statusBadge = null;
-          if (goal.status === 'completed') {
-            statusBadge = <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500"><CheckCircle2 className="w-3.5 h-3.5" /> Completed</span>;
-          } else if (goal.status === 'expired') {
-            statusBadge = <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-500"><AlertCircle className="w-3.5 h-3.5" /> Expired</span>;
-          } else {
-            statusBadge = <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500"><Clock className="w-3.5 h-3.5" /> {daysLeft} days left</span>;
-          }
+      {/* Goals Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {goals.map((goal, idx) => {
+          const percentage = goal.targetAmount > 0 ? Math.min((Number(goal.currentAmount) / Number(goal.targetAmount)) * 100, 100) : 0;
+          const statusIcon = goal.status === "ACHIEVED" ? <Trophy className="w-4 h-4 text-sky-300" /> : goal.status === "CANCELLED" ? <XCircle className="w-4 h-4 text-rose-300" /> : <TrendingUp className="w-4 h-4 text-sky-300" />;
+          const statusText = goal.status === "ACHIEVED" ? "Achieved" : goal.status === "CANCELLED" ? "Cancelled" : "In Progress";
+          const statusColor = goal.status === "ACHIEVED" ? "text-sky-300 bg-sky-500/20 border-sky-500/30" : goal.status === "CANCELLED" ? "text-rose-300 bg-rose-500/20 border-rose-500/30" : "text-sky-300 bg-sky-500/20 border-sky-500/30";
 
           return (
-            <motion.div key={goal.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }} className="rounded-3xl border border-border bg-card p-6 shadow-sm flex flex-col justify-between group relative overflow-hidden">
+            <motion.div key={goal.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * idx }} className="rounded-xl border border-border p-5 flex flex-col justify-between relative group overflow-hidden bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
               <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-foreground mb-2">{goal.name}</h3>
-                  {statusBadge}
-                </div>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="p-2 text-muted-foreground hover:bg-accent rounded-full transition-colors"><Edit2 className="w-4 h-4" /></button>
-                  <button className="p-2 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 rounded-full transition-colors"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <div className="flex justify-between items-end mb-2">
-                  <div className="flex flex-col">
-                    <span className="text-3xl font-extrabold" style={{ color: goal.color }}>{formatCurrency(goal.currentAmount)}</span>
-                    <span className="text-sm font-semibold text-muted-foreground mt-1">of {formatCurrency(goal.targetAmount)}</span>
+                <div className="flex items-center gap-5">
+                  <div className="w-10 h-10 bg-sky-500/10 rounded-lg flex items-center justify-center">
+                    <Target className="w-5 h-5 text-sky-400" />
                   </div>
-                  <span className="text-xl font-bold" style={{ color: goal.color }}>{percentage}%</span>
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">{goal.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">{goal.deadline ? format(new Date(goal.deadline), "dd MMM yyyy") : "No deadline"}</p>
+                  </div>
                 </div>
-                <div className="h-3 w-full bg-border rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${percentage}%`, backgroundColor: goal.color }} />
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setContributeModal({ id: goal.id, name: goal.name })}
+                    className="p-1.5 text-muted-foreground hover:bg-sky-500/10 hover:text-sky-400 rounded-lg transition-colors"
+                    aria-label="Contribute"
+                  >
+                    <Coins className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { setEditGoal(goal); setEditName(goal.name); setEditTarget(String(goal.targetAmount)); setEditDeadline(apiDateToInput(goal.deadline || "")); }}
+                    className="p-1.5 text-muted-foreground hover:bg-sky-500/[0.05] rounded-lg transition-colors"
+                    aria-label="Edit goal"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { setGoalToDelete(goal.id); setShowDeleteConfirm(true); }}
+                    disabled={deleteMutation.isPending}
+                    className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                    aria-label="Delete goal"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <p className="text-sm text-muted-foreground font-medium">Target: <span className="text-foreground font-bold">{format(deadlineDate, 'dd MMM yyyy')}</span></p>
-                {goal.status === 'active' && (
-                  <button 
-                    onClick={() => { setSelectedGoal(goal); setIsAddFundsOpen(true); }}
-                    className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 bg-accent hover:bg-accent/80 text-foreground rounded-xl transition-colors"
-                  >
-                    <PlusCircle className="w-4 h-4" /> Add Funds
-                  </button>
-                )}
+              <div className="mb-8">
+                <div className="flex justify-between items-end mb-3">
+                  <span className="text-lg font-bold tracking-tight text-sky-400">{formatCurrency(Number(goal.currentAmount))}</span>
+                  <span className="text-sm font-medium text-slate-400">of {formatCurrency(Number(goal.targetAmount))}</span>
+                </div>
+                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-3">
+                  <div className="h-full rounded-full transition-all duration-1000 ease-out shadow-sm bg-sky-500" style={{ width: `${percentage}%` }} />
+                </div>
+                <div className="flex justify-between items-center text-base font-medium">
+                  <span className="flex items-center gap-1.5 text-slate-400">
+                    <TrendingUp className="w-4 h-4 text-sky-400" /> {percentage.toFixed(1)}%
+                  </span>
+                  <span className={cn("px-3 py-1 rounded-full border shadow-sm flex items-center gap-1.5 text-sm", statusColor)}>
+                    {statusIcon} {statusText}
+                  </span>
+                </div>
               </div>
             </motion.div>
           );
         })}
+        {goals.length === 0 && (
+          <EmptyState
+            title="No goals created yet"
+            description="Create savings goals and track your progress visually."
+          />
+        )}
       </div>
 
-      {/* Add Funds Modal */}
-      <Modal 
-        isOpen={isAddFundsOpen} 
-        onClose={() => setIsAddFundsOpen(false)} 
-        title="Add Funds" 
-        description={selectedGoal ? `Add money towards your ${selectedGoal.name} goal.` : "Add funds to your goal."}
-        isSuccess={isSuccess}
-        successMessage="Target Reached! Goal Completed!"
+      <Modal
+        isOpen={!!contributeModal}
+        onClose={() => setContributeModal(null)}
+        title="Contribute"
+        description={contributeModal?.name}
       >
-        <form className="space-y-4" onSubmit={handleAddFunds}>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">Amount to Add</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">Rp</span>
-              <input type="number" placeholder="0" required className="w-full pl-11 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium" />
-            </div>
-            {selectedGoal && (
-              <p className="text-xs text-muted-foreground font-semibold mt-2">
-                Remaining to reach target: {formatCurrency(selectedGoal.targetAmount - selectedGoal.currentAmount)}
-              </p>
-            )}
-          </div>
-
-          <button 
-            type="submit"
-            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] mt-6 shadow-md shadow-primary/20"
+        <div>
+          <label className="text-sm font-medium text-foreground mb-1 block">Amount</label>
+          <CurrencyInput
+            value={contributeAmount}
+            onChange={setContributeAmount}
+            placeholder="0"
+          />
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <button onClick={() => setContributeModal(null)} className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sky-500/[0.03] transition-colors">Cancel</button>
+          <button
+            onClick={() => { if(contributeAmount && contributeModal) contributeMutation.mutate({ id: contributeModal.id, amount: Number(contributeAmount) }); }}
+            disabled={contributeMutation.isPending}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50"
           >
-            Deposit Funds
+            {contributeMutation.isPending ? "Saving..." : "Contribute"}
           </button>
-        </form>
+        </div>
       </Modal>
 
-      {/* Confetti Explosion Layer */}
-      <Confetti active={showConfetti} />
+      <Modal
+        isOpen={!!editGoal}
+        onClose={() => setEditGoal(null)}
+        title="Edit Goal"
+        description={editGoal?.name}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1 block">Name</label>
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Goal name"
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1 block">Target Amount</label>
+            <CurrencyInput
+              value={editTarget}
+              onChange={setEditTarget}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1 block">Deadline</label>
+            <DatePicker
+              value={editDeadline}
+              onChange={(val) => setEditDeadline(val)}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <button onClick={() => setEditGoal(null)} className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sky-500/[0.03] transition-colors">Cancel</button>
+          <button
+            onClick={() => { if(editName && editTarget && editGoal) updateMutation.mutate({ id: editGoal.id, name: editName, targetAmount: Number(editTarget), deadline: editDeadline ? dateToApiISO(editDeadline) : undefined }); }}
+            disabled={updateMutation.isPending}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50"
+          >
+            {updateMutation.isPending ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onConfirm={() => { if(goalToDelete) deleteMutation.mutate(goalToDelete); }}
+        onCancel={() => setShowDeleteConfirm(false)}
+        title="Delete goal?"
+        description="Are you sure you want to delete this goal? This action cannot be undone."
+        confirmLabel={deleteMutation.isPending ? "Deleting..." : "Delete"}
+        variant="danger"
+      />
     </div>
   );
 }

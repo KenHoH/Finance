@@ -1,18 +1,27 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const PUBLIC_PATHS = ['/login', '/', '/api/auth/google', '/api/auth/csrf'];
+const PROTECTED_API_PREFIX = '/api/';
+
 export function middleware(request: NextRequest) {
-  const authToken = request.cookies.get('auth-token');
+  const authToken = request.cookies.get('token');
   const { pathname } = request.nextUrl;
 
-  const isAuthPage = pathname === '/login' || pathname === '/register';
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p));
+  const isApiRoute = pathname.startsWith(PROTECTED_API_PREFIX);
 
-  if (!authToken && !isAuthPage) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // API routes without auth token get 401
+  if(isApiRoute && !isPublic && !authToken){
+    return NextResponse.json(
+      { statusCode: 401, message: 'Unauthorized', error: 'Unauthorized' },
+      { status: 401 }
+    );
   }
 
-  if (authToken && isAuthPage) {
-    return NextResponse.redirect(new URL('/', request.url));
+  // Page routes without auth token redirect to login
+  if(!isPublic && !authToken){
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
@@ -20,13 +29,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

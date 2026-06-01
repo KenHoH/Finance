@@ -15,6 +15,7 @@ import {
   PieChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { InvestmentCardProps } from "@/lib/types";
 
 // Utility for formatting Rupiah
 const formatCurrency = (amount: number) => {
@@ -24,27 +25,6 @@ const formatCurrency = (amount: number) => {
     minimumFractionDigits: 0,
   }).format(amount);
 };
-
-export interface InvestmentData {
-  id: string;
-  name: string;
-  type: string;
-  icon: string;
-  color: string;
-  platform: string;
-  totalValue: number;
-  totalInvested: number;
-  gainLoss: number;
-  gainLossPercent: number;
-  lastUpdated: string;
-}
-
-interface InvestmentCardProps {
-  data: InvestmentData;
-  onAddTransaction?: (id: string) => void;
-  onEdit?: (id: string) => void;
-  onDelete?: (id: string) => void;
-}
 
 export function InvestmentCard({
   data,
@@ -61,12 +41,12 @@ export function InvestmentCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative rounded-3xl border border-border p-6 shadow-sm flex flex-col justify-between"
+      className="relative rounded-xl border border-border p-6 shadow-sm flex flex-col justify-between"
     >
       <div className="flex items-start justify-between mb-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
           <div
-            className="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm"
+            className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm"
             style={{ backgroundColor: `${data.color}20`, color: data.color }}
           >
             <IconComponent className="w-6 h-6" />
@@ -76,7 +56,7 @@ export function InvestmentCard({
               {data.name}
             </h3>
             <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-muted-foreground capitalize mt-1">
-              {data.type.replace("_", " ")}
+              {data.type?.replace("_", " ") || "Unknown"}
             </span>
           </div>
         </div>
@@ -162,7 +142,7 @@ export function InvestmentCard({
             <div
               className={cn(
                 "flex items-center gap-1 font-bold",
-                isPositive ? "text-emerald-500" : "text-rose-500"
+                isPositive ? "text-sky-400" : "text-rose-500"
               )}
             >
               {isPositive ? (

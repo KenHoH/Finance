@@ -1,0 +1,403 @@
+"use client";
+
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Users, UserPlus, UserCheck, Check, X, User } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { get, api, extractApiError } from "@/lib/api";
+import { useToastStore } from "@/store/useToastStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import type { FriendUser, Friend, FriendRequest } from "@/lib/types";
+import { rollbackOnError } from "@/lib/optimistic";
+
+function getInitials(name: string){
+  return name.slice(0, 2).toUpperCase();
+}
+
+export default function FriendsPage(){
+  const addToast = useToastStore((s) => s.addToast);
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"friends" | "requests">("friends");
+  const [friendToRemove, setFriendToRemove] = useState<string | null>(null);
+  const [justSentIds, setJustSentIds] = useState<Set<string>>(new Set());
+
+  const { data: friends = [], isLoading: friendsLoading } = useQuery<Friend[]>({
+    queryKey: ["friends"],
+    queryFn: () => get<Friend[]>("/friends"),
+  });
+
+  const { data: receivedRequests = [], isLoading: reqLoading } = useQuery<FriendRequest[]>({
+    queryKey: ["friend-requests", "received"],
+    queryFn: () => get<FriendRequest[]>("/friends/requests/received"),
+  });
+
+  const { data: sentRequests = [] } = useQuery<FriendRequest[]>({
+    queryKey: ["friend-requests", "sent"],
+    queryFn: () => get<FriendRequest[]>("/friends/requests/sent"),
+  });
+
+  const sentIdsSet = React.useMemo(() => {
+    const ids = new Set(sentRequests.map((r) => r.receiver.id));
+    justSentIds.forEach((id) => ids.add(id));
+    return ids;
+  }, [sentRequests, justSentIds]);
+
+  const { data: searchResults = [] } = useQuery<FriendUser[]>({
+    queryKey: ["friend-search", searchQuery],
+    queryFn: () => get<FriendUser[]>(`/friends/search?q=${encodeURIComponent(searchQuery)}`),
+    enabled: searchQuery.length >= 2,
+  });
+
+  const sendRequest = useMutation({
+    mutationFn: (receiverId: string) => api.post("/friends/request", { receiverId }),
+    onMutate: (receiverId) => {
+      setJustSentIds((prev) => new Set([...prev, receiverId]));
+    },
+    onSuccess: (_, receiverId) => {
+      addToast("Friend request sent", "success");
+      queryClient.invalidateQueries({ queryKey: ["friend-requests", "sent"] });
+      setActiveTab("requests");
+      setSearchQuery("");
+      setJustSentIds((prev) => {
+        const next = new Set(prev);
+        next.delete(receiverId);
+        return next;
+      });
+    },
+    onError: (err, receiverId) => {
+      setJustSentIds((prev) => {
+        const next = new Set(prev);
+        next.delete(receiverId);
+        return next;
+      });
+      addToast(extractApiError(err, "Failed to send request"), "error");
+    },
+  });
+
+  const respondRequest = useMutation({
+    mutationFn: ({ requestId, action }: { requestId: string; action: string }) =>
+      api.put("/friends/request/respond", { requestId, action }),
+    onMutate: async ({ requestId, action }) => {
+      const previousFriends = queryClient.getQueryData<Friend[]>(["friends"]) || [];
+      const previousReceived = queryClient.getQueryData<FriendRequest[]>(["friend-requests", "received"]) || [];
+      const previousSent = queryClient.getQueryData<FriendRequest[]>(["friend-requests", "sent"]) || [];
+      if(action === "accept"){
+        const req = previousReceived.find((r) => r.id === requestId);
+        if(req){
+          const currentUser = useAuthStore.getState().user;
+          const newFriend: Friend = {
+            id: `opt-${Date.now()}`,
+            user1: { id: req.sender.id, username: req.sender.username, email: req.sender.email },
+            user2: { id: currentUser?.id || "", username: currentUser?.username || "", email: currentUser?.email || "" },
+            status: "ACCEPTED",
+            createdAt: new Date().toISOString(),
+          };
+          queryClient.setQueryData<Friend[]>(["friends"], (old) => [...(old || []), newFriend]);
+        }
+      }
+      queryClient.setQueryData<FriendRequest[]>(["friend-requests", "received"], (old) => (old || []).filter((r) => r.id !== requestId));
+      queryClient.setQueryData<FriendRequest[]>(["friend-requests", "sent"], (old) => (old || []).filter((r) => r.id !== requestId));
+      return { previousFriends, previousReceived, previousSent };
+    },
+    onError: (err, _, context) => {
+      if(context){
+        queryClient.setQueryData(["friends"], context.previousFriends);
+        queryClient.setQueryData(["friend-requests", "received"], context.previousReceived);
+        queryClient.setQueryData(["friend-requests", "sent"], context.previousSent);
+      }
+      addToast(extractApiError(err, "Failed to respond"), "error");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+      queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
+    },
+    onSuccess: () => {
+      addToast("Request updated", "success");
+    },
+  });
+
+  const removeFriend = useMutation({
+    mutationFn: (friendId: string) => api.delete(`/friends/${friendId}`),
+    onMutate: async (friendId) => {
+      const previous = queryClient.getQueryData<Friend[]>(["friends"]) || [];
+      queryClient.setQueryData<Friend[]>(["friends"], (old) => (old || []).filter((f) => f.id !== friendId));
+      return { previous };
+    },
+    onError: (err, friendId, context) => {
+      rollbackOnError(queryClient, ["friends"], context);
+      addToast(extractApiError(err, "Failed to remove friend"), "error");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["friends"] }),
+    onSuccess: () => {
+      addToast("Friend removed", "success");
+    },
+  });
+
+  const currentUserId = useAuthStore((s) => s.user?.id);
+  const isLoading = friendsLoading || reqLoading;
+  const pendingCount = receivedRequests.length + sentRequests.length;
+
+  if(isLoading){
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto pb-24">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="flex gap-3">
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28" />
+        </div>
+        <div className="space-y-4">
+          {[0,1,2,3,4].map((i) => (
+            <Skeleton key={i} className="h-16" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto pb-24">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-7">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-4">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            Friends
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage your connections</p>
+        </div>
+      </header>
+
+      <SearchInput
+        value={searchQuery}
+        onChange={(v) => setSearchQuery(v)}
+        placeholder="Search users by username or email..."
+        className="w-full"
+      />
+
+      {/* Search Results */}
+      {searchQuery.length >= 2 && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+          <p className="text-sm font-bold text-muted-foreground">Search Results</p>
+          {searchResults.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No users found.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {searchResults.map((user) => (
+                <div key={user.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
+                  <div>
+                    <p className="font-bold text-foreground">{user.username}</p>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                  </div>
+                  {sentIdsSet.has(user.id) ? (
+                    <span className="flex items-center gap-1.5 px-4 py-2 bg-sky-500/10 text-sky-400 rounded-xl text-sm font-bold">
+                      Sent
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => sendRequest.mutate(user.id)}
+                      disabled={sendRequest.isPending}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity active:scale-95 disabled:opacity-60"
+                    >
+                      <UserPlus className="w-5 h-5" /> Add
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex rounded-xl p-1.5 w-fit shadow-sm bg-card border border-border">
+        <button
+          onClick={() => setActiveTab("friends")}
+          className={cn(
+            "px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+            activeTab === "friends" ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:bg-accent/50"
+          )}
+        >
+          <Users className="w-4 h-4" /> Friends ({friends.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("requests")}
+          className={cn(
+            "px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+            activeTab === "requests" ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:bg-accent/50"
+          )}
+        >
+          <UserCheck className="w-4 h-4" /> Requests
+          {pendingCount > 0 && (
+            <span className="ml-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
+              {pendingCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Friends Tab */}
+      {activeTab === "friends" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {friends.map((friend, i) => {
+            const otherUser = friend.user1?.id === currentUserId ? friend.user2 : friend.user1;
+            return (
+              <motion.div
+                key={friend.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="rounded-xl border border-border p-5 bg-card flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                    {otherUser?.username ? (
+                      <span className="text-primary font-bold text-sm">{getInitials(otherUser.username)}</span>
+                    ) : (
+                      <User className="w-6 h-6 text-primary" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground">{otherUser?.username || "Unknown"}</p>
+                    <p className="text-sm text-muted-foreground">{otherUser?.email || ""}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setFriendToRemove(friend.id)}
+                  className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                  aria-label="Remove friend"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </motion.div>
+            );
+          })}
+          {friends.length === 0 && (
+            <EmptyState
+              image="/empty-friends.png"
+              title="No friends yet"
+              description="Search for users by username or email to add them."
+            />
+          )}
+        </div>
+      )}
+
+      {/* Requests Tab — unified incoming + outgoing */}
+      {activeTab === "requests" && (
+        <div className="space-y-8">
+          {/* Incoming */}
+          <div>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <UserPlus className="w-4 h-4" /> Incoming ({receivedRequests.length})
+            </h2>
+            <div className="space-y-3">
+              {receivedRequests.map((req, i) => (
+                <motion.div
+                  key={req.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="rounded-xl border border-border p-5 bg-card flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-sky-500/10 flex items-center justify-center overflow-hidden">
+                      {req.sender?.username ? (
+                        <span className="text-sky-500 font-bold text-sm">{getInitials(req.sender.username)}</span>
+                      ) : (
+                        <User className="w-6 h-6 text-sky-500" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground">{req.sender?.username || "Unknown"}</p>
+                      <p className="text-sm text-muted-foreground">Wants to be friends</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => respondRequest.mutate({ requestId: req.id, action: "ACCEPT" })}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-sky-500 text-white rounded-xl text-sm font-bold hover:bg-sky-400 transition-colors active:scale-95"
+                    >
+                      <Check className="w-5 h-5" /> Accept
+                    </button>
+                    <button
+                      onClick={() => respondRequest.mutate({ requestId: req.id, action: "REJECT" })}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-accent text-foreground rounded-xl text-sm font-bold hover:bg-accent/80 transition-colors active:scale-95"
+                    >
+                      <X className="w-5 h-5" /> Decline
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+              {receivedRequests.length === 0 && (
+                <p className="text-sm text-muted-foreground py-2">No incoming friend requests.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Outgoing */}
+          <div>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <UserCheck className="w-4 h-4" /> Outgoing ({sentRequests.length})
+            </h2>
+            <div className="space-y-3">
+              {sentRequests.map((req, i) => (
+                <motion.div
+                  key={req.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="rounded-xl border border-border p-5 bg-card flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-sky-500/10 flex items-center justify-center overflow-hidden">
+                      {req.receiver?.username ? (
+                        <span className="text-sky-400 font-bold text-sm">{getInitials(req.receiver.username)}</span>
+                      ) : (
+                        <User className="w-6 h-6 text-sky-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground">{req.receiver?.username || "Unknown"}</p>
+                      <p className="text-sm text-muted-foreground">Request {req.status.toLowerCase()}</p>
+                    </div>
+                  </div>
+                  <span className={cn(
+                    "px-3 py-1 rounded-full text-base font-bold",
+                    req.status === "PENDING" ? "bg-sky-500/10 text-sky-400" :
+                    req.status === "ACCEPTED" ? "bg-sky-500/10 text-sky-400" :
+                    req.status === "REJECTED" ? "bg-red-500/10 text-red-400" :
+                    "bg-muted text-muted-foreground"
+                  )}>
+                    {req.status}
+                  </span>
+                </motion.div>
+              ))}
+              {sentRequests.length === 0 && (
+                <p className="text-sm text-muted-foreground py-2">No outgoing friend requests.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        isOpen={!!friendToRemove}
+        onConfirm={() => { if(friendToRemove) removeFriend.mutate(friendToRemove); setFriendToRemove(null); }}
+        onCancel={() => setFriendToRemove(null)}
+        title="Remove friend?"
+        description="Are you sure you want to remove this friend? This action cannot be undone."
+        confirmLabel={removeFriend.isPending ? "Removing..." : "Remove"}
+        variant="danger"
+      />
+    </div>
+  );
+}
