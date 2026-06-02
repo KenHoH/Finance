@@ -106,17 +106,12 @@ export function OnboardingTour(){
   const user = useAuthStore((s) => s.user);
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
-  const [isActive, setIsActive] = useState(false);
+  const [isActive, setIsActive] = useState(() => {
+    if(typeof window === "undefined") return false;
+    return !window.localStorage.getItem(STORAGE_KEY);
+  });
   const rectRef = useRef<DOMRect | null>(null);
   const rafRef = useRef<number | undefined>(undefined);
-
-  useEffect(() => {
-    if(typeof window === "undefined") return;
-    const completed = window.localStorage.getItem(STORAGE_KEY);
-    if(!completed && user){
-      setIsActive(true);
-    }
-  }, [user]);
 
   const step = STEPS[stepIndex];
   const isLast = stepIndex === STEPS.length - 1;
@@ -136,10 +131,10 @@ export function OnboardingTour(){
     if(el){
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-  }, [stepIndex]);
+  }, [stepIndex, step]);
 
   useEffect(() => {
-    updateRect();
+    const id = requestAnimationFrame(updateRect);
     const onResize = () => updateRect();
     const onScroll = () => {
       if(rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -148,6 +143,7 @@ export function OnboardingTour(){
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, true);
     return() => {
+      cancelAnimationFrame(id);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, true);
       if(rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -176,16 +172,6 @@ export function OnboardingTour(){
     setIsActive(false);
   };
 
-  const handleStepClick = () => {
-    if(step?.action){
-      const el = document.querySelector(step.target) as HTMLElement | null;
-      if(el){
-        el.click();
-        setTimeout(() => handleNext(), 300);
-      }
-    }
-  };
-
   if(!isActive || !step || !user) return null;
 
   const padding = 8;
@@ -194,7 +180,6 @@ export function OnboardingTour(){
   let tooltipStyle: React.CSSProperties = {};
   if(rect){
     const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
     switch(step.position){
       case "top":
         tooltipStyle = {

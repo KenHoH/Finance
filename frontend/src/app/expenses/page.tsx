@@ -7,7 +7,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import {
-  CalendarRange, CreditCard, ArrowDownCircle, ArrowDownRight, X, Pencil, Trash2, Camera, Plus, Upload, FileImage, Loader2, TrendingUp
+  CreditCard, ArrowDownRight, X, Pencil, Trash2, Camera, Plus, Upload, FileImage, Loader2, TrendingUp
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -64,12 +64,15 @@ export default function ExpensesPage() {
     },
   });
 
+  const optimisticIdRef = useRef(0);
+
   const createMutation = useMutation({
     mutationFn: (dto: { description: string; amount: number; type: "EXPENSE"; date: string; categoryId?: string; interval?: string }) =>
       api.post("/transactions", dto),
     onMutate: async (dto) => {
+      optimisticIdRef.current += 1;
       const temp: Transaction = {
-        id: `opt-${Date.now()}`,
+        id: `opt-${optimisticIdRef.current}`,
         description: dto.description,
         amount: dto.amount,
         type: "EXPENSE",

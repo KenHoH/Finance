@@ -16,7 +16,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import type { SplitBill, ScannedItem } from "@/lib/types";
-import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
+import { optimisticCreate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
 
 export default function SplitBillsPage(){
   const addToast = useToastStore((s) => s.addToast);

@@ -6,7 +6,6 @@ import { Users, UserPlus, UserCheck, Check, X, User } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
 import { useToastStore } from "@/store/useToastStore";
-import { useAuthStore } from "@/store/useAuthStore";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -150,7 +149,6 @@ export default function FriendsPage(){
     },
   });
 
-  const currentUserId = useAuthStore((s) => s.user?.id);
   const isLoading = friendsLoading || reqLoading;
   const pendingCount = receivedRequests.length + sentRequests.length;
 

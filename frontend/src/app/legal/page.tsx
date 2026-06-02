@@ -34,7 +34,7 @@ export default function LegalPage(){
             </div>
             <div>
               <h3 className="text-foreground font-semibold mb-1">4. Prohibited Use</h3>
-              <p>You may not use FinPro for any unlawful purpose, attempt to gain unauthorized access, or interfere with the service's operation.</p>
+              <p>You may not use FinPro for any unlawful purpose, attempt to gain unauthorized access, or interfere with the service&apos;s operation.</p>
             </div>
             <div>
               <h3 className="text-foreground font-semibold mb-1">5. Termination</h3>

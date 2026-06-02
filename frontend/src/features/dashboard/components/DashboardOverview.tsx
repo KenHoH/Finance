@@ -74,8 +74,8 @@ export function DashboardOverview(){
       trend: totalBalance >= 0 ? "up" : "down",
       icon: Wallet,
       color: "text-primary",
-      bgColor: "bg-primary/20",
-      gradient: "from-sky-400/40 via-sky-400/10 to-transparent",
+      bgColor: "bg-primary/8",
+      gradient: "from-sky-400/18 via-sky-400/10 to-transparent",
       bgImage: "/card-bg-balance.png",
     },
     {
@@ -84,8 +84,8 @@ export function DashboardOverview(){
       trend: totalIncome > 0 ? "up" : "down",
       icon: ArrowUpRight,
       color: "text-emerald-400",
-      bgColor: "bg-emerald-500/20",
-      gradient: "from-emerald-500/40 via-emerald-500/10 to-transparent",
+      bgColor: "bg-emerald-500/8",
+      gradient: "from-emerald-500/18 via-emerald-500/10 to-transparent",
       bgImage: "/card-bg-income.png",
     },
     {
@@ -94,8 +94,8 @@ export function DashboardOverview(){
       trend: "down",
       icon: CreditCard,
       color: "text-rose-400",
-      bgColor: "bg-rose-500/20",
-      gradient: "from-rose-500/40 via-rose-500/10 to-transparent",
+      bgColor: "bg-rose-500/8",
+      gradient: "from-rose-500/18 via-rose-500/10 to-transparent",
       bgImage: "/card-bg-expense.png",
     },
     {
@@ -104,8 +104,8 @@ export function DashboardOverview(){
       trend: totalInvestments > 0 ? "up" : "down",
       icon: TrendingUp,
       color: "text-sky-300",
-      bgColor: "bg-sky-500/20",
-      gradient: "from-sky-400/40 via-sky-400/10 to-transparent",
+      bgColor: "bg-sky-500/8",
+      gradient: "from-sky-400/18 via-sky-400/10 to-transparent",
       bgImage: "/card-bg-invest.png",
     },
     {
@@ -113,8 +113,8 @@ export function DashboardOverview(){
       value: String(activeBudgetsCount),
       icon: PieChart,
       color: "text-amber-400",
-      bgColor: "bg-amber-500/20",
-      gradient: "from-amber-500/40 via-amber-500/10 to-transparent",
+      bgColor: "bg-amber-500/8",
+      gradient: "from-amber-500/18 via-amber-500/10 to-transparent",
       bgImage: "/card-bg-budget.png",
     },
     {
@@ -122,8 +122,8 @@ export function DashboardOverview(){
       value: String(activeGoalsCount),
       icon: Target,
       color: "text-violet-400",
-      bgColor: "bg-violet-500/20",
-      gradient: "from-violet-500/40 via-violet-500/10 to-transparent",
+      bgColor: "bg-violet-500/8",
+      gradient: "from-violet-500/18 via-violet-500/10 to-transparent",
       bgImage: "/card-bg-goal.png",
     },
   ];
@@ -156,7 +156,7 @@ export function DashboardOverview(){
             stat.gradient
           )}
         >
-          <img src={stat.bgImage} alt="" className="absolute right-0 top-0 h-full w-auto object-cover opacity-[0.3] pointer-events-none" />
+          <img src={stat.bgImage} alt="" className="absolute right-0 top-0 h-full w-auto object-cover opacity-[0.08] pointer-events-none" />
           <div className="relative z-10 flex items-center justify-between mb-4">
             <div className={cn("p-2.5 rounded-lg", stat.bgColor)}>
               <stat.icon className={cn("w-5 h-5", stat.color)} />

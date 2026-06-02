@@ -46,20 +46,20 @@ export function ConfirmDialog({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="w-[320px] rounded-xl border border-border bg-card p-5 shadow-xl"
+            className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-3 flex items-center gap-2 text-foreground">
+            <div className="mb-4 flex items-center gap-3 text-foreground">
               <AlertTriangle className="h-5 w-5 text-amber-400" />
-              <span className="text-sm font-semibold">{title}</span>
+              <span className="text-base font-semibold">{title}</span>
             </div>
-            <p className="mb-5 text-xs leading-relaxed text-muted-foreground">
+            <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
               {description}
             </p>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <button
                 onClick={onCancel}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent"
               >
                 {cancelLabel}
               </button>
@@ -68,7 +68,7 @@ export function ConfirmDialog({
                   onConfirm();
                   onCancel();
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors ${
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
                   variant === "danger"
                     ? "bg-rose-500 hover:bg-rose-600"
                     : "bg-amber-500 hover:bg-amber-600"

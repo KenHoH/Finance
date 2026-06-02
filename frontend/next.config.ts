@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const backendUrl = process.env.BACKEND_URL || "https://footsore-uptake-autopilot.ngrok-free.dev";
 
 const nextConfig: NextConfig = {

@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   ChevronLeft, ChevronRight,
-  ArrowUpRight, X, Tag, FileText, Wallet, CalendarRange, ArrowUpCircle, Pencil, Trash2, Plus, Camera, Upload, FileImage, Loader2, TrendingUp
+  ArrowUpRight, X, Tag, FileText, Wallet, Pencil, Trash2, Plus, Camera, Upload, FileImage, Loader2, TrendingUp
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -114,12 +114,15 @@ export default function IncomePage() {
     },
   });
 
+  const optimisticIdRef = useRef(0);
+
   const createMutation = useMutation({
     mutationFn: (dto: { description: string; amount: number; type: "INCOME"; date: string; categoryId?: string; interval?: string }) =>
       api.post("/transactions", dto),
     onMutate: async (dto) => {
+      optimisticIdRef.current += 1;
       const temp: Transaction = {
-        id: `opt-${Date.now()}`,
+        id: `opt-${optimisticIdRef.current}`,
         description: dto.description,
         amount: dto.amount,
         type: "INCOME",

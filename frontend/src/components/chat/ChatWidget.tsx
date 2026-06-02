@@ -31,7 +31,7 @@ export function ChatWidget() {
   const setIsOpen = useChatWidgetStore((s) => s.setIsOpen);
   const isExpanded = useChatWidgetStore((s) => s.isExpanded);
   const setIsExpanded = useChatWidgetStore((s) => s.setIsExpanded);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);

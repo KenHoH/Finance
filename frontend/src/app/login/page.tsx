@@ -21,11 +21,9 @@ export default function LoginPage(){
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     if(user && !authLoading){
-      setIsRedirecting(true);
       router.push("/dashboard");
     }
   }, [user, authLoading, router]);
@@ -35,7 +33,7 @@ export default function LoginPage(){
     window.location.href = "/api/auth/google?returnTo=/dashboard";
   };
 
-  if(authLoading || isRedirecting){
+  if(authLoading || !!user){
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />

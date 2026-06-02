@@ -59,6 +59,7 @@ export default function InvestmentsPage() {
   const totalValue = investments.reduce((acc, curr) => acc + Number(curr.totalAmount), 0);
   const totalAllocated = allocations.reduce((acc, curr) => acc + Number(curr.amount), 0);
 
+  const optimisticIdRef = useRef(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => { if(timeoutRef.current) clearTimeout(timeoutRef.current); }, []);
 
@@ -66,7 +67,7 @@ export default function InvestmentsPage() {
     mutationFn: (dto: { categoryId: string; totalAmount: number }) => api.post("/investments", dto),
     onMutate: async (dto) => {
       const temp: Investment = {
-        id: `opt-${Date.now()}`,
+        id: `opt-${++optimisticIdRef.current}`,
         totalAmount: dto.totalAmount,
         categoryId: dto.categoryId,
         category: categories.find((c) => c.id === dto.categoryId) || { id: dto.categoryId, name: "Investment" },

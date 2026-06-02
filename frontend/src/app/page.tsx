@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -13,31 +13,11 @@ import {
   PieChart,
   CreditCard,
   LogOut,
-  User,
 } from "lucide-react";
 
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
-
-function AvatarImg({ src }: { src?: string | null }){
-  const [error, setError] = useState(false);
-  if(!src || error){
-    return (
-      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-        <User className="w-5 h-5 text-primary" />
-      </div>
-    );
-  }
-  return (
-    <img
-      src={src}
-      alt=""
-      className="w-9 h-9 rounded-lg object-cover"
-      onError={() => setError(true)}
-    />
-  );
-}
 
 const FEATURES = [
   {
