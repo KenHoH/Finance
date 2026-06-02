@@ -20,6 +20,7 @@ export default function CategoriesPage(){
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateSuccess, setIsCreateSuccess] = useState(false);
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
@@ -44,8 +45,12 @@ export default function CategoriesPage(){
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["categories"] }),
     onSuccess: () => {
-      setIsModalOpen(false);
-      setNewName("");
+      setIsCreateSuccess(true);
+      setTimeout(() => {
+        setIsCreateSuccess(false);
+        setIsModalOpen(false);
+        setNewName("");
+      }, 1500);
       addToast("Category created", "success");
     },
   });
@@ -122,9 +127,11 @@ export default function CategoriesPage(){
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsCreateSuccess(false); setIsModalOpen(false); }}
         title="New Category"
         description="Create a custom category for your transactions."
+        isSuccess={isCreateSuccess}
+        successMessage="Category successfully created!"
       >
         <form
           className="space-y-4"

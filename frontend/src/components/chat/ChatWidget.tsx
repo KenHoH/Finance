@@ -172,8 +172,8 @@ export function ChatWidget() {
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
               {messages.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/10 overflow-hidden">
-                    <Image src="/finbot.png" alt="FinBot" width={48} height={48} className="object-cover" />
+                  <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-sky-950 ring-[3px] ring-sky-300 shadow-[0_0_20px_rgba(56,189,248,0.3)] overflow-hidden">
+                    <Image src="/finbot.png" alt="FinBot" width={64} height={64} className="object-cover" />
                   </div>
                   <div className="text-sm font-medium">Ask me about your finances</div>
                   <div className="max-w-[240px] text-xs text-muted-foreground">

@@ -2,27 +2,22 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Plus, TrendingDown, Edit2, Trash2, Loader2 } from "lucide-react";
+import { AlertTriangle, TrendingDown, Edit2, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, post, api, extractApiError } from "@/lib/api";
 import { useToastStore } from "@/store/useToastStore";
 import { formatCurrency } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { validateString, validateNumber, runValidators } from "@/lib/validation";
 import { Modal } from "@/components/ui/Modal";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Budget, DebtPoint } from "@/lib/types";
-import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
+import { optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
 
 export default function DebtsPage() {
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [budgetId, setBudgetId] = useState("");
-  const [debtAmount, setDebtAmount] = useState("");
   const [editDebt, setEditDebt] = useState<DebtPoint | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -43,44 +38,6 @@ export default function DebtsPage() {
   });
 
   const totalDebt = debts.reduce((acc, curr) => acc + Number(curr.debtAmount), 0);
-
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => { if(timeoutRef.current) clearTimeout(timeoutRef.current); }, []);
-
-  const createMutation = useMutation({
-    mutationFn: (dto: { budgetId: string; debtAmount: number }) => api.post("/debts", dto),
-    onMutate: async (dto) => {
-      const temp: DebtPoint = {
-        id: `opt-${Date.now()}`,
-        budgetId: dto.budgetId,
-        debtAmount: dto.debtAmount,
-        budget: budgets.find((b) => b.id === dto.budgetId)
-          ? {
-              id: dto.budgetId,
-              categoryId: budgets.find((b) => b.id === dto.budgetId)?.categoryId ?? null,
-              category: budgets.find((b) => b.id === dto.budgetId)?.category ?? null,
-              amount: Number(budgets.find((b) => b.id === dto.budgetId)?.amount || 0),
-            }
-          : undefined,
-      };
-      return optimisticCreate(queryClient, ["debts", budgets.map((b) => b.id)], temp);
-    },
-    onError: (err, dto, context) => {
-      rollbackOnError(queryClient, ["debts", budgets.map((b) => b.id)], context);
-      addToast(extractApiError(err, "Failed to record debt point"), "error");
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["debts"] }),
-    onSuccess: () => {
-      setIsSuccess(true);
-      setBudgetId("");
-      setDebtAmount("");
-      timeoutRef.current = setTimeout(() => {
-        setIsSuccess(false);
-        setIsModalOpen(false);
-      }, 1500);
-      addToast("Debt point recorded", "success");
-    },
-  });
 
   const updateMutation = useMutation({
     mutationFn: (dto: { id: string; debtAmount: number }) =>
@@ -114,10 +71,7 @@ export default function DebtsPage() {
   if(isLoading){
     return (
       <div className="space-y-6 max-w-7xl mx-auto pb-24">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-10 w-36" />
-        </div>
+        <Skeleton className="h-10 w-48" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
           {[0,1,2].map((i) => (
             <Skeleton key={i} className="h-32" />
@@ -143,83 +97,9 @@ export default function DebtsPage() {
             </div>
             Debts
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Track overspent budgets and debt points</p>
+          <p className="text-sm text-muted-foreground mt-1">Auto-generated from overspent budgets</p>
         </div>
-
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.98] hover:brightness-110"
-        >
-          <Plus className="w-5 h-5" /> Record Debt
-        </button>
       </header>
-
-      {/* Create Debt Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Record Debt Point"
-        description="Log an overspend against a budget."
-        isSuccess={isSuccess}
-        successMessage="Debt point recorded successfully!"
-      >
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const errors = runValidators(
-              validateString(budgetId, "Budget", { min: 1 }),
-              validateNumber(debtAmount, "Debt Amount", { min: 0.01 })
-            );
-            if(errors.length > 0){
-              addToast(errors[0].message, "error");
-              return;
-            }
-            createMutation.mutate({ budgetId, debtAmount: Number(debtAmount) });
-          }}
-        >
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">Budget</label>
-            <select
-              value={budgetId}
-              onChange={(e) => setBudgetId(e.target.value)}
-              required
-              className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-base font-medium"
-            >
-              <option value="">Select budget</option>
-              {budgets.map((b) => (
-                <option key={b.id} value={b.id}>{b.category?.name || "Uncategorized"}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">Debt Amount</label>
-            <CurrencyInput
-              value={debtAmount}
-              onChange={setDebtAmount}
-              placeholder="0"
-              required
-              className="[&_input]:px-4 [&_input]:py-3 [&_input]:text-base [&_input]:font-medium"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={createMutation.isPending}
-            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] mt-6 shadow-md disabled:opacity-60"
-          >
-            {createMutation.isPending ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Debt Point"
-            )}
-          </button>
-        </form>
-      </Modal>
 
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-7">

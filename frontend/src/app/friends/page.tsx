@@ -26,6 +26,8 @@ export default function FriendsPage(){
   const [activeTab, setActiveTab] = useState<"friends" | "requests">("friends");
   const [friendToRemove, setFriendToRemove] = useState<string | null>(null);
   const [justSentIds, setJustSentIds] = useState<Set<string>>(new Set());
+  const [justAcceptedIds, setJustAcceptedIds] = useState<Set<string>>(new Set());
+  const [justRejectedIds, setJustRejectedIds] = useState<Set<string>>(new Set());
 
   const { data: friends = [], isLoading: friendsLoading } = useQuery<Friend[]>({
     queryKey: ["friends"],
@@ -84,13 +86,14 @@ export default function FriendsPage(){
     mutationFn: ({ requestId, action }: { requestId: string; action: string }) =>
       api.put("/friends/request/respond", { requestId, action }),
     onMutate: async ({ requestId, action }) => {
+      if(action === "ACCEPT") setJustAcceptedIds((prev) => new Set([...prev, requestId]));
+      if(action === "REJECT") setJustRejectedIds((prev) => new Set([...prev, requestId]));
       const previousFriends = queryClient.getQueryData<Friend[]>(["friends"]) || [];
       const previousReceived = queryClient.getQueryData<FriendRequest[]>(["friend-requests", "received"]) || [];
       const previousSent = queryClient.getQueryData<FriendRequest[]>(["friend-requests", "sent"]) || [];
-      if(action === "accept"){
+      if(action === "ACCEPT"){
         const req = previousReceived.find((r) => r.id === requestId);
         if(req){
-          const currentUser = useAuthStore.getState().user;
           const newFriend: Friend = {
             friendshipId: `opt-${Date.now()}`,
             friend: { id: req.sender.id, username: req.sender.username, email: req.sender.email, avatar: req.sender.avatar },
@@ -103,7 +106,9 @@ export default function FriendsPage(){
       queryClient.setQueryData<FriendRequest[]>(["friend-requests", "sent"], (old) => (old || []).filter((r) => r.id !== requestId));
       return { previousFriends, previousReceived, previousSent };
     },
-    onError: (err, _, context) => {
+    onError: (err, { requestId }, context) => {
+      setJustAcceptedIds((prev) => { const next = new Set(prev); next.delete(requestId); return next; });
+      setJustRejectedIds((prev) => { const next = new Set(prev); next.delete(requestId); return next; });
       if(context){
         queryClient.setQueryData(["friends"], context.previousFriends);
         queryClient.setQueryData(["friend-requests", "received"], context.previousReceived);
@@ -115,8 +120,16 @@ export default function FriendsPage(){
       queryClient.invalidateQueries({ queryKey: ["friends"] });
       queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
     },
-    onSuccess: () => {
-      addToast("Request updated", "success");
+    onSuccess: (_, { requestId, action }) => {
+      setTimeout(() => {
+        setJustAcceptedIds((prev) => { const next = new Set(prev); next.delete(requestId); return next; });
+        setJustRejectedIds((prev) => { const next = new Set(prev); next.delete(requestId); return next; });
+      }, 1500);
+      if(action === "ACCEPT"){
+        addToast("Friend request accepted", "success");
+      } else{
+        addToast("Friend request rejected", "success");
+      }
     },
   });
 
@@ -206,8 +219,8 @@ export default function FriendsPage(){
                     </div>
                   </div>
                   {sentIdsSet.has(user.id) ? (
-                    <span className="flex items-center gap-1.5 px-4 py-2 bg-sky-500/10 text-sky-400 rounded-xl text-sm font-bold">
-                      Sent
+                    <span className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500/10 text-emerald-400 rounded-xl text-sm font-bold">
+                      <Check className="w-4 h-4" /> Sent
                     </span>
                   ) : (
                     <button
@@ -328,18 +341,32 @@ export default function FriendsPage(){
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => respondRequest.mutate({ requestId: req.id, action: "ACCEPT" })}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-sky-500 text-white rounded-xl text-sm font-bold hover:bg-sky-400 transition-colors active:scale-95"
-                    >
-                      <Check className="w-5 h-5" /> Accept
-                    </button>
-                    <button
-                      onClick={() => respondRequest.mutate({ requestId: req.id, action: "REJECT" })}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-accent text-foreground rounded-xl text-sm font-bold hover:bg-accent/80 transition-colors active:scale-95"
-                    >
-                      <X className="w-5 h-5" /> Decline
-                    </button>
+                    {justAcceptedIds.has(req.id) ? (
+                      <span className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500/10 text-emerald-400 rounded-xl text-sm font-bold">
+                        <Check className="w-4 h-4" /> Accepted
+                      </span>
+                    ) : justRejectedIds.has(req.id) ? (
+                      <span className="flex items-center gap-1.5 px-4 py-2 bg-rose-500/10 text-rose-400 rounded-xl text-sm font-bold">
+                        <X className="w-4 h-4" /> Declined
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => respondRequest.mutate({ requestId: req.id, action: "ACCEPT" })}
+                          disabled={respondRequest.isPending}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-sky-500 text-white rounded-xl text-sm font-bold hover:bg-sky-400 transition-colors active:scale-95 disabled:opacity-60"
+                        >
+                          <Check className="w-5 h-5" /> Accept
+                        </button>
+                        <button
+                          onClick={() => respondRequest.mutate({ requestId: req.id, action: "REJECT" })}
+                          disabled={respondRequest.isPending}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-accent text-foreground rounded-xl text-sm font-bold hover:bg-accent/80 transition-colors active:scale-95 disabled:opacity-60"
+                        >
+                          <X className="w-5 h-5" /> Decline
+                        </button>
+                      </>
+                    )}
                   </div>
                 </motion.div>
               )) : (

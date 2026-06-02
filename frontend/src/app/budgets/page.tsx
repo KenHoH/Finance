@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { PieChart, Plus, Edit2, Trash2, CheckCircle2, Receipt, Loader2 } from "lucide-react";
+import { PieChart, Plus, Edit2, Trash2, CheckCircle2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
@@ -18,6 +18,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Category, Budget } from "@/lib/types";
 import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
+import { getCategoryIcon } from "@/lib/category-icons";
 
 export default function BudgetsPage() {
   const addToast = useToastStore((s) => s.addToast);
@@ -304,8 +305,12 @@ export default function BudgetsPage() {
             <motion.div key={budget.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }} className="rounded-xl border border-border p-6 flex flex-col justify-between relative group overflow-hidden bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-background rounded-xl flex items-center justify-center text-primary shadow-sm border border-border group-hover:scale-110 transition-transform duration-300">
-                    <Receipt className="w-7 h-7" />
+                  <div className="w-16 h-16 bg-background rounded-xl flex items-center justify-center text-primary shadow-sm border border-border group-hover:scale-110 transition-transform duration-300 overflow-hidden">
+                    {getCategoryIcon(budget.category?.name) ? (
+                      <img src={getCategoryIcon(budget.category?.name)} alt="" className="w-14 h-14 object-contain" />
+                    ) : (
+                      <PieChart className="w-8 h-8" />
+                    )}
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-foreground">{budget.category?.name || "Uncategorized"}</h3>

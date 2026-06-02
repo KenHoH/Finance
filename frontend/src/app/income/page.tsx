@@ -3,7 +3,8 @@
 import React, { useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
 } from "recharts";
 import {
   ChevronLeft, ChevronRight,
@@ -25,6 +26,8 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { getCategoryIcon } from "@/lib/category-icons";
 import type { Category, Transaction, ScannedItem } from "@/lib/types";
+
+const COLORS = ["#60a5fa", "#fbbf24", "#34d399", "#22d3ee", "#f472b6"];
 
 export default function IncomePage() {
   const currentDate = useMemo(() => new Date(), []);
@@ -49,6 +52,8 @@ export default function IncomePage() {
   const [addDate, setAddDate] = useState("");
   const [addCategoryId, setAddCategoryId] = useState("");
   const [addInterval, setAddInterval] = useState<"none" | "daily" | "weekly" | "monthly" | "yearly">("none");
+  const [isAddSuccess, setIsAddSuccess] = useState(false);
+  const addSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showScanSection, setShowScanSection] = useState(false);
   const [scanFile, setScanFile] = useState<File | null>(null);
@@ -136,16 +141,20 @@ export default function IncomePage() {
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["transactions"] }),
     onSuccess: () => {
-      setIsAddOpen(false);
-      setAddDesc("");
-      setAddAmount("");
-      setAddDate("");
-      setAddCategoryId("");
-      setAddInterval("none");
-      setShowScanSection(false);
-      setScanFile(null);
-      setScanPreview("");
-      setScanItems([]);
+      setIsAddSuccess(true);
+      addSuccessTimeoutRef.current = setTimeout(() => {
+        setIsAddSuccess(false);
+        setIsAddOpen(false);
+        setAddDesc("");
+        setAddAmount("");
+        setAddDate("");
+        setAddCategoryId("");
+        setAddInterval("none");
+        setShowScanSection(false);
+        setScanFile(null);
+        setScanPreview("");
+        setScanItems([]);
+      }, 1500);
       addToast("Income added", "success");
     },
   });
@@ -274,6 +283,15 @@ export default function IncomePage() {
     return Object.entries(agg).map(([date, amount]) => ({ date, amount }));
   }, [filteredData, timeFilter]);
 
+  const categoryData = useMemo(() => {
+    const agg: Record<string, number> = {};
+    filteredData.forEach((t) => {
+      const name = t.category?.name || "Uncategorized";
+      agg[name] = (agg[name] || 0) + Number(t.amount);
+    });
+    return Object.entries(agg).map(([name, value]) => ({ name, value }));
+  }, [filteredData]);
+
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -290,9 +308,10 @@ export default function IncomePage() {
           <Skeleton className="h-10 w-48" />
           <Skeleton className="h-10 w-36" />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <Skeleton className="h-40" />
-          <Skeleton className="h-40 lg:col-span-2" />
+        <Skeleton className="h-24" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <Skeleton className="h-[320px]" />
+          <Skeleton className="h-[320px]" />
         </div>
         <Skeleton className="h-80" />
       </div>
@@ -344,69 +363,39 @@ export default function IncomePage() {
           </div>
         </header>
 
-        {/* Overview & Chart Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Total Income Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-1 relative overflow-hidden rounded-xl border border-border bg-card p-6 flex flex-col justify-between group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10"
-          >
-            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-              <ArrowUpRight className="w-24 h-24 text-sky-500" />
+        {/* Summary */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-border bg-card p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground mb-1">Total Income</p>
+            <h2 className="text-3xl font-bold text-foreground tracking-tight">{formatCurrency(totalIncome)}</h2>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm font-medium text-muted-foreground">Transactions</p>
+              <p className="text-xl font-bold text-foreground">{filteredData.length}</p>
             </div>
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 text-sky-500 text-sm font-medium mb-3">
-                <ArrowUpCircle className="w-5 h-5" />
-                <span>Total Income</span>
-              </div>
-              <h2 className="text-3xl font-bold text-foreground tracking-tight">
-                {formatCurrency(totalIncome)}
-              </h2>
-              <p className="text-muted-foreground mt-4 flex items-center gap-2 text-base font-medium">
-                <CalendarRange className="w-5 h-5" />
-                {timeFilter === "thisMonth" && format(currentDate, "MMM yyyy")}
-                {timeFilter === "lastMonth" && format(subMonths(currentDate, 1), "MMM yyyy")}
-                {timeFilter === "thisYear" && format(currentDate, "yyyy")}
-                {timeFilter === "allTime" && "Lifetime Earnings"}
-              </p>
+            <div className="w-px h-10 bg-border" />
+            <div className="text-right">
+              <p className="text-sm font-medium text-muted-foreground">Categories</p>
+              <p className="text-xl font-bold text-foreground">{categoryData.length}</p>
             </div>
+          </div>
+        </motion.div>
 
-            <div className="relative z-10 mt-8 pt-8 border-t border-border flex justify-between items-center">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Transactions</p>
-                <p className="text-xl font-bold text-card-foreground">{filteredData.length}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Top Category</p>
-                <p className="text-lg font-bold text-card-foreground">
-                  {filteredData.length > 0 ? filteredData[0].category?.name || "Uncategorized" : "-"}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Chart Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="lg:col-span-2 rounded-xl border border-border bg-card p-7 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-                Income Trend
-              </h3>
-            </div>
-            <div className="h-[320px] w-full">
-              {chartData.length < 2 ? (
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Trend */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+            <h3 className="text-base font-semibold text-foreground mb-4">Income Trend</h3>
+            <div className="h-[260px] w-full">
+              {chartData.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center gap-3">
-                  <TrendingUp className="w-10 h-10 text-muted-foreground/40" />
-                  <p className="text-sm font-medium text-muted-foreground">Add more income transactions to see your trend over time.</p>
+                  <TrendingUp className="w-10 h-10 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground max-w-[200px]">No data yet. Add income to see your earnings trend over time.</p>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 16, left: 4, bottom: 16 }}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 8, left: 4, bottom: 8 }}>
                     <defs>
                       <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
@@ -414,35 +403,34 @@ export default function IncomePage() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                    <XAxis
-                      dataKey="date"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 500 }}
-                      dy={12}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 500 }}
-                      tickFormatter={(val: number) => `${(val / 1000000).toFixed(1)}M`}
-                      width={50}
-                    />
-                    <RechartsTooltip
-                      contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", borderRadius: "12px", color: "var(--card-foreground)", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
-                      itemStyle={{ color: "var(--primary)", fontWeight: 600 }}
-                      formatter={(value) => formatCurrency(Number(value))}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="amount"
-                      stroke="var(--primary)"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#colorAmount)"
-                      animationDuration={1500}
-                    />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 500 }} dy={8} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 500 }} tickFormatter={(val: number) => `${(val / 1000000).toFixed(1)}M`} width={45} />
+                    <RechartsTooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", borderRadius: "12px", color: "var(--card-foreground)", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} itemStyle={{ color: "var(--primary)", fontWeight: 600 }} formatter={(value) => formatCurrency(Number(value))} />
+                    <Area type="monotone" dataKey="amount" stroke="var(--primary)" strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" animationDuration={1500} />
                   </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Category Breakdown */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+            <h3 className="text-base font-semibold text-foreground mb-4">Category Breakdown</h3>
+            <div className="h-[260px] w-full">
+              {categoryData.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center gap-3">
+                  <PieChart className="w-10 h-10 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground max-w-[200px]">No data yet. Income will be grouped by category here.</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={categoryData} cx="45%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value">
+                      {categoryData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                    </Pie>
+                    <RechartsTooltip formatter={(value) => formatCurrency(Number(value))} />
+                    <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
+                  </PieChart>
                 </ResponsiveContainer>
               )}
             </div>
@@ -454,7 +442,7 @@ export default function IncomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-xl border border-border bg-card overflow-hidden"
+          className="rounded-xl border border-border bg-card overflow-hidden mb-12"
         >
           {/* Table Toolbar */}
           <div className="px-5 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -558,7 +546,7 @@ export default function IncomePage() {
                       <td className="px-6 py-5">
                         <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold bg-primary/10 text-primary border border-primary/20">
                           {getCategoryIcon(t.category?.name) && (
-                            <img src={getCategoryIcon(t.category?.name)} alt="" className="w-9 h-9 object-contain" />
+                            <img src={getCategoryIcon(t.category?.name)} alt="" className="w-10 h-10 object-contain" />
                           )}
                           {t.category?.name || "Uncategorized"}
                         </span>
@@ -799,9 +787,11 @@ export default function IncomePage() {
       {/* Add Income Modal */}
       <Modal
         isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
+        onClose={() => { setIsAddSuccess(false); setIsAddOpen(false); }}
         title="Add Income"
         description="Record a new income transaction."
+        isSuccess={isAddSuccess}
+        successMessage="Income successfully added!"
       >
         <form
           className="space-y-4"

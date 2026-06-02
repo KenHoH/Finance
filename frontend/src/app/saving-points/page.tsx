@@ -22,6 +22,7 @@ export default function SavingPointsPage(){
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateSuccess, setIsCreateSuccess] = useState(false);
   const [budgetId, setBudgetId] = useState("");
   const [savingAmount, setSavingAmount] = useState("");
   const [allocateModal, setAllocateModal] = useState<{ id: string; amount: number } | null>(null);
@@ -66,9 +67,13 @@ export default function SavingPointsPage(){
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["saving-points"] }),
     onSuccess: () => {
-      setIsModalOpen(false);
-      setBudgetId("");
-      setSavingAmount("");
+      setIsCreateSuccess(true);
+      setTimeout(() => {
+        setIsCreateSuccess(false);
+        setIsModalOpen(false);
+        setBudgetId("");
+        setSavingAmount("");
+      }, 1500);
       addToast("Saving point created", "success");
     },
   });
@@ -252,9 +257,11 @@ export default function SavingPointsPage(){
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsCreateSuccess(false); setIsModalOpen(false); }}
         title="Create Saving Point"
         description="Link a budget and set a saving amount."
+        isSuccess={isCreateSuccess}
+        successMessage="Saving point successfully created!"
       >
         <div className="space-y-3">
           <div>

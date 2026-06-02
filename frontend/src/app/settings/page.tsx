@@ -41,6 +41,7 @@ export default function SettingsPage(){
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
+  const [isCreateSuccess, setIsCreateSuccess] = useState(false);
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [profileName, setProfileName] = useState("");
@@ -65,9 +66,13 @@ export default function SettingsPage(){
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["settings"] }),
     onSuccess: () => {
-      setShowAdd(false);
-      setNewKey("");
-      setNewValue("");
+      setIsCreateSuccess(true);
+      setTimeout(() => {
+        setIsCreateSuccess(false);
+        setShowAdd(false);
+        setNewKey("");
+        setNewValue("");
+      }, 1500);
       addToast("Setting created", "success");
     },
   });
@@ -204,9 +209,11 @@ export default function SettingsPage(){
 
         <Modal
           isOpen={showAdd}
-          onClose={() => setShowAdd(false)}
+          onClose={() => { setIsCreateSuccess(false); setShowAdd(false); }}
           title="Add Preference"
           description="Create a new application preference."
+          isSuccess={isCreateSuccess}
+          successMessage="Preference successfully created!"
         >
           <div className="space-y-4">
             <div>

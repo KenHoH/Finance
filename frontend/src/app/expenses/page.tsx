@@ -7,7 +7,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import {
-  CalendarRange, Receipt, ArrowDownCircle, ArrowDownRight, X, Pencil, Trash2, Camera, Plus, Upload, FileImage, Loader2
+  CalendarRange, CreditCard, ArrowDownCircle, ArrowDownRight, X, Pencil, Trash2, Camera, Plus, Upload, FileImage, Loader2, TrendingUp
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -44,6 +44,8 @@ export default function ExpensesPage() {
   const [addDate, setAddDate] = useState("");
   const [addCategoryId, setAddCategoryId] = useState("");
   const [addInterval, setAddInterval] = useState<"none" | "daily" | "weekly" | "monthly" | "yearly">("none");
+  const [isAddSuccess, setIsAddSuccess] = useState(false);
+  const addSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showScanSection, setShowScanSection] = useState(false);
   const [scanFile, setScanFile] = useState<File | null>(null);
@@ -91,16 +93,20 @@ export default function ExpensesPage() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
     onSuccess: () => {
-      setIsAddOpen(false);
-      setAddDesc("");
-      setAddAmount("");
-      setAddDate("");
-      setAddCategoryId("");
-      setAddInterval("none");
-      setShowScanSection(false);
-      setScanFile(null);
-      setScanPreview("");
-      setScanItems([]);
+      setIsAddSuccess(true);
+      addSuccessTimeoutRef.current = setTimeout(() => {
+        setIsAddSuccess(false);
+        setIsAddOpen(false);
+        setAddDesc("");
+        setAddAmount("");
+        setAddDate("");
+        setAddCategoryId("");
+        setAddInterval("none");
+        setShowScanSection(false);
+        setScanFile(null);
+        setScanPreview("");
+        setScanItems([]);
+      }, 1500);
       addToast("Expense added", "success");
     },
   });
@@ -273,9 +279,10 @@ export default function ExpensesPage() {
           <Skeleton className="h-10 w-48" />
           <Skeleton className="h-10 w-36" />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <Skeleton className="h-40" />
-          <Skeleton className="h-40 lg:col-span-2" />
+        <Skeleton className="h-24" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <Skeleton className="h-[320px]" />
+          <Skeleton className="h-[320px]" />
         </div>
         <Skeleton className="h-80" />
       </div>
@@ -289,7 +296,7 @@ export default function ExpensesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-4">
             <div className="p-2 bg-red-500/10 rounded-lg">
-              <Receipt className="w-5 h-5 text-red-400" />
+              <CreditCard className="w-5 h-5 text-red-400" />
             </div>
             Expenses
           </h1>
@@ -323,65 +330,73 @@ export default function ExpensesPage() {
         </div>
       </header>
 
-      {/* Top Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Total Expenses Card */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-1 rounded-xl border border-border bg-card p-6 flex flex-col justify-center relative overflow-hidden group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
-          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-            <ArrowDownRight className="w-24 h-24 text-rose-500" />
+      {/* Summary */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-border bg-card p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-1">Total Expenses</p>
+          <h2 className="text-3xl font-bold text-foreground tracking-tight">{formatCurrency(totalExpenses)}</h2>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-sm font-medium text-muted-foreground">Transactions</p>
+            <p className="text-xl font-bold text-foreground">{filteredData.length}</p>
           </div>
-          <div className="flex items-center gap-2 text-rose-500 text-sm font-medium mb-3">
-            <ArrowDownCircle className="w-5 h-5" /> <span>Total Expenses</span>
+          <div className="w-px h-10 bg-border" />
+          <div className="text-right">
+            <p className="text-sm font-medium text-muted-foreground">Categories</p>
+            <p className="text-xl font-bold text-foreground">{categoryData.length}</p>
           </div>
-          <h2 className="text-3xl font-bold text-foreground tracking-tight mb-3 z-10">
-            {formatCurrency(totalExpenses)}
-          </h2>
-          <p className="text-muted-foreground text-sm font-medium flex items-center gap-2 z-10">
-            <CalendarRange className="w-5 h-5" /> Period Total
-          </p>
+        </div>
+      </motion.div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Trend */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+          <h3 className="text-base font-semibold text-foreground mb-4">Expense Trend</h3>
+          <div className="h-[260px] w-full">
+            {trendData.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center gap-3">
+                <TrendingUp className="w-10 h-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground max-w-[200px]">No data yet. Add expenses to see your spending trend over time.</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData} margin={{ top: 0, right: 8, left: 4, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} dy={8} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(val: number) => `${(val/1000000).toFixed(1)}M`} tick={{ fontSize: 11, fill: "#94a3b8" }} width={45} />
+                  <RechartsTooltip cursor={{ fill: "var(--accent)" }} formatter={(value) => formatCurrency(Number(value))} />
+                  <Bar dataKey="amount" fill="#e11d48" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </motion.div>
 
-        {/* Categories Pie Chart */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-2 rounded-xl border border-border bg-card p-5 flex flex-col md:flex-row gap-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
-          <div className="flex-1">
-            <h3 className="text-lg font-bold mb-4">Category Breakdown</h3>
-            <div className="h-[200px] w-full">
-              <ResponsiveContainer>
+        {/* Category Breakdown */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+          <h3 className="text-base font-semibold text-foreground mb-4">Category Breakdown</h3>
+          <div className="h-[260px] w-full">
+            {categoryData.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center gap-3">
+                <PieChart className="w-10 h-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground max-w-[200px]">No data yet. Expenses will be grouped by category here.</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                  <Pie data={categoryData} cx="45%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value">
                     {categoryData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
                   <RechartsTooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Legend verticalAlign="middle" align="right" layout="vertical" />
+                  <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
+            )}
           </div>
         </motion.div>
       </div>
-
-      {/* Trend Bar Chart */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-7 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
-        <h3 className="text-lg font-bold mb-6">Expense Trend</h3>
-        <div className="h-[300px] w-full">
-          {trendData.length < 2 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center gap-3">
-              <Receipt className="w-10 h-10 text-muted-foreground/40" />
-              <p className="text-sm font-medium text-muted-foreground">Add more expense transactions to see your trend over time.</p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData} margin={{ top: 0, right: 16, left: 4, bottom: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} dy={12} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(val: number) => `${(val/1000000).toFixed(1)}M`} tick={{ fontSize: 12, fill: "#94a3b8" }} width={50} />
-                <RechartsTooltip cursor={{ fill: "var(--accent)" }} formatter={(value) => formatCurrency(Number(value))} />
-                <Bar dataKey="amount" fill="#e11d48" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </motion.div>
 
       {/* Table Section */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="rounded-xl border border-border bg-card overflow-hidden">
@@ -414,7 +429,7 @@ export default function ExpensesPage() {
                   <td className="px-6 py-5">
                     <span className="inline-flex items-center gap-2 px-3 py-1 bg-accent text-foreground rounded-full text-sm font-bold border border-border">
                       {getCategoryIcon(t.category?.name) && (
-                        <img src={getCategoryIcon(t.category?.name)} alt="" className="w-9 h-9 object-contain" />
+                        <img src={getCategoryIcon(t.category?.name)} alt="" className="w-10 h-10 object-contain" />
                       )}
                       {t.category?.name || "Uncategorized"}
                     </span>
@@ -450,9 +465,11 @@ export default function ExpensesPage() {
       {/* Add Expense Modal */}
       <Modal
         isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
+        onClose={() => { setIsAddSuccess(false); setIsAddOpen(false); }}
         title="Add Expense"
         description="Record a new expense transaction."
+        isSuccess={isAddSuccess}
+        successMessage="Expense successfully added!"
       >
         <form
           className="space-y-4"
