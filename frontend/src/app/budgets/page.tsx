@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { PieChart, Plus, Edit2, Trash2, CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
+import { PieChart, Plus, Edit2, Trash2, CheckCircle2, Loader2, AlertTriangle, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
@@ -38,6 +38,17 @@ export default function BudgetsPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [viewCategoryId, setViewCategoryId] = useState<string | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside() {
+      setActiveMenuId(null);
+    }
+    if(activeMenuId) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [activeMenuId]);
 
   interface BudgetDetail {
     id: string;
@@ -331,8 +342,8 @@ export default function BudgetsPage() {
           const displayPct = Math.min(rawPercentage, 999);
 
           return (
-            <motion.div key={item.category?.id ?? 'uncategorized'} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }} onClick={() => setViewCategoryId(item.category?.id ?? 'uncategorized')} className="rounded-xl border border-border p-6 flex flex-col justify-between relative group overflow-hidden bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10 cursor-pointer">
-              <div className="flex justify-between items-start mb-6">
+            <motion.div key={item.category?.name ?? 'uncategorized'} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }} onClick={() => setViewCategoryId(item.category?.name ?? 'uncategorized')} className="rounded-xl border border-border p-6 flex flex-col justify-between relative group overflow-hidden bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10 cursor-pointer">
+              <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-5">
                   <div className="w-16 h-16 bg-background rounded-xl flex items-center justify-center text-primary shadow-sm border border-border group-hover:scale-110 transition-transform duration-300 overflow-hidden">
                     {getCategoryIcon(item.category?.name) ? (
@@ -343,9 +354,6 @@ export default function BudgetsPage() {
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-foreground">{item.category?.name || "Uncategorized"}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {format(new Date(item.startDate), "dd MMM")} - {format(new Date(item.endDate), "dd MMM yyyy")}
-                    </p>
                     <span className={cn(
                       "inline-flex mt-1.5 px-2 py-0.5 rounded-md text-xs font-semibold uppercase",
                       item.status === "WITHIN_BUDGET" ? "bg-sky-500/20 text-sky-300" :
@@ -358,23 +366,32 @@ export default function BudgetsPage() {
                 </div>
               </div>
 
-              <div className="mb-8">
-                <div className="flex justify-between items-end mb-3">
-                  <span className={cn("text-3xl font-bold tracking-tight", isOver ? "text-rose-400" : "text-sky-400")}>{formatCurrency(spent)}</span>
+              {/* Aggregate progress */}
+              <div className="mb-5">
+                <div className="flex justify-between items-end mb-2">
+                  <span className={cn("text-2xl font-bold tracking-tight", isOver ? "text-rose-400" : "text-sky-400")}>{formatCurrency(spent)}</span>
                   <span className="text-sm font-medium text-slate-400">of {formatCurrency(item.totalAmount)}</span>
                 </div>
-                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-3">
+                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-2">
                   <div className={cn("h-full rounded-full transition-all duration-1000 ease-out", isOver ? "bg-rose-500" : "bg-sky-500")} style={{ width: `${Math.min(displayPct, 100)}%` }} />
                 </div>
-                <div className="flex justify-between items-center text-base font-medium">
+                <div className="flex justify-between items-center text-sm font-medium">
                   <span className="flex items-center gap-1.5 text-slate-400">
-                    <CheckCircle2 className={cn("w-5 h-5", isOver ? "text-rose-400" : "text-sky-400")} />
+                    <CheckCircle2 className={cn("w-4 h-4", isOver ? "text-rose-400" : "text-sky-400")} />
                     {isOver ? `>${displayPct.toFixed(0)}% Used` : `${displayPct.toFixed(0)}% Used`}
                   </span>
-                  <span className={cn("px-2 py-0.5 rounded-full border border-border text-sm", isOver ? "text-rose-400 bg-rose-500/10 border-rose-500/20" : "text-slate-400 bg-slate-800/60")}>
+                  <span className={cn("px-2 py-0.5 rounded-full border border-border text-xs", isOver ? "text-rose-400 bg-rose-500/10 border-rose-500/20" : "text-slate-400 bg-slate-800/60")}>
                     {isOver ? `Over by ${formatCurrency(Math.abs(remaining))}` : `${formatCurrency(remaining)} left`}
                   </span>
                 </div>
+              </div>
+
+              {/* Budget count hint */}
+              <div className="border-t border-border pt-4 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {item.budgets.length} budget{item.budgets.length > 1 ? "s" : ""} period
+                </span>
+                <span className="text-xs text-sky-400 font-medium">Click to view details</span>
               </div>
             </motion.div>
           );
@@ -449,13 +466,13 @@ export default function BudgetsPage() {
         isOpen={!!viewCategoryId}
         onClose={() => setViewCategoryId(null)}
         title={(() => {
-          const agg = aggregated.find((a) => (a.category?.id ?? 'uncategorized') === viewCategoryId);
+          const agg = aggregated.find((a) => (a.category?.name ?? 'uncategorized') === viewCategoryId);
           return agg?.category?.name || "Uncategorized";
         })()}
         description="Budget breakdown"
       >
         {(() => {
-          const agg = aggregated.find((a) => (a.category?.id ?? 'uncategorized') === viewCategoryId);
+          const agg = aggregated.find((a) => (a.category?.name ?? 'uncategorized') === viewCategoryId);
           if(!agg) return null;
           const isOver = agg.percentage > 100;
           const displayPct = Math.min(agg.percentage, 999);
@@ -501,21 +518,30 @@ export default function BudgetsPage() {
                           <p className="text-sm font-semibold text-foreground">{formatCurrency(b.amount)}</p>
                           <p className="text-xs text-muted-foreground">{format(new Date(b.startDate), "dd MMM yyyy")} - {format(new Date(b.endDate), "dd MMM yyyy")}</p>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="relative">
                           <button
-                            onClick={(e) => { e.stopPropagation(); const bud = budgets.find((x) => x.id === b.id); if(bud){ setEditBudget(bud); setEditAmount(String(bud.amount)); setEditStart(apiDateToInput(bud.startDate)); setEditEnd(apiDateToInput(bud.endDate)); setViewCategoryId(null); }}}
+                            onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === b.id ? null : b.id); }}
                             className="p-1.5 text-muted-foreground hover:bg-sky-500/[0.05] rounded-lg transition-colors"
-                            aria-label="Edit budget"
+                            aria-label="More options"
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
+                            <MoreVertical className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setBudgetToDelete(b.id); setShowDeleteConfirm(true); }}
-                            className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                            aria-label="Delete budget"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {activeMenuId === b.id && (
+                            <div className="absolute right-0 top-9 z-20 w-40 rounded-xl border border-border bg-card shadow-xl py-1.5" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => { const bud = budgets.find((x) => x.id === b.id); if(bud){ setEditBudget(bud); setEditAmount(String(bud.amount)); setEditStart(apiDateToInput(bud.startDate)); setEditEnd(apiDateToInput(bud.endDate)); setViewCategoryId(null); } setActiveMenuId(null); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-sky-500/[0.05] transition-colors"
+                              >
+                                <Edit2 className="w-4 h-4 text-sky-400" /> Edit
+                              </button>
+                              <button
+                                onClick={() => { setBudgetToDelete(b.id); setShowDeleteConfirm(true); setActiveMenuId(null); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" /> Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">

@@ -109,7 +109,7 @@ export function Sidebar(){
         {!collapsed && (
           <button
             onClick={toggleCollapsed}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sky-500/[0.04] transition-colors"
+            className="hidden lg:block p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sky-500/[0.04] transition-colors"
             aria-label="Collapse sidebar"
           >
             <PanelLeft className="w-4 h-4" />
@@ -187,7 +187,7 @@ export function Sidebar(){
                 className="absolute top-4 right-4 p-2 hover:bg-sky-500/[0.05] rounded-lg transition-colors"
                 aria-label="Close menu"
               >
-                <X className="w-5 h-5 text-muted-foreground" />
+                <PanelLeft className="w-5 h-5 text-muted-foreground" />
               </button>
               {sidebarContent}
             </motion.aside>

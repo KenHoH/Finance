@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Receipt, Plus, Edit2, CheckCircle2, AlertTriangle, Calendar, Loader2, Bell } from "lucide-react";
+import { FileText, Plus, Edit2, CheckCircle2, AlertTriangle, Calendar, Loader2, Bell } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
@@ -163,7 +163,7 @@ export default function BillsPage(){
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-4">
             <div className="p-2 bg-primary/10 rounded-lg">
-              <Receipt className="w-5 h-5 text-primary" />
+              <FileText className="w-5 h-5 text-primary" />
             </div>
             Bills
           </h1>

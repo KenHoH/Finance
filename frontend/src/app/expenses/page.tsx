@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import {
-  CreditCard, ArrowDownRight, X, Pencil, Trash2, Camera, Plus, Upload, FileImage, Loader2, TrendingUp
+  CreditCard, ArrowDownRight, X, Pencil, Trash2, Camera, Plus, Upload, FileImage, Loader2, TrendingUp, MoreVertical
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -689,6 +689,17 @@ function TransactionDetailModal({
   const [editDate, setEditDate] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside() {
+      setMenuOpen(false);
+    }
+    if(menuOpen) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [menuOpen]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => del(`/transactions/${id}`),
@@ -732,6 +743,7 @@ function TransactionDetailModal({
       setIsEditing(false);
     },
     onSuccess: () => {
+      onClose();
       addToast("Transaction updated", "success");
     },
   });
@@ -746,14 +758,32 @@ function TransactionDetailModal({
           <div className="p-3 bg-red-500/10 rounded-xl text-red-400"><ArrowDownRight className="w-6 h-6" /></div>
           <div className="flex items-center gap-1">
             {!isEditing && (
-              <>
-                <button onClick={() => { setIsEditing(true); setEditDesc(selectedTx.description || ""); setEditAmount(String(selectedTx.amount)); setEditDate(apiDateToInput(selectedTx.date)); setEditCategoryId(selectedTx.categoryId || ""); }} className="p-2 hover:bg-sky-500/[0.05] rounded-lg transition-colors" aria-label="Edit">
-                  <Pencil className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
+                  className="p-2 hover:bg-sky-500/[0.05] rounded-lg transition-colors"
+                  aria-label="More options"
+                >
+                  <MoreVertical className="w-5 h-5 text-muted-foreground" />
                 </button>
-                <button onClick={() => setShowDeleteConfirm(true)} disabled={deleteMutation.isPending} className="p-2 hover:bg-red-500/10 rounded-lg transition-colors" aria-label="Delete">
-                  <Trash2 className="w-4 h-4 text-muted-foreground hover:text-red-400" />
-                </button>
-              </>
+                {menuOpen && (
+                  <div className="absolute right-0 top-10 z-20 w-40 rounded-xl border border-border bg-card shadow-xl py-1.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => { setIsEditing(true); setEditDesc(selectedTx.description || ""); setEditAmount(String(selectedTx.amount)); setEditDate(apiDateToInput(selectedTx.date)); setEditCategoryId(selectedTx.categoryId || ""); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-sky-500/[0.05] transition-colors"
+                    >
+                      <Pencil className="w-4 h-4 text-sky-400" /> Edit
+                    </button>
+                    <button
+                      onClick={() => { setShowDeleteConfirm(true); setMenuOpen(false); }}
+                      disabled={deleteMutation.isPending}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" /> Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
             <button onClick={onClose} className="p-2 hover:bg-sky-500/[0.05] rounded-lg transition-colors" aria-label="Close"><X className="w-5 h-5" /></button>
           </div>

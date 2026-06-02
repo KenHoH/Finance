@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   ChevronLeft, ChevronRight,
-  ArrowUpRight, X, Tag, FileText, Wallet, Pencil, Trash2, Plus, Camera, Upload, FileImage, Loader2, TrendingUp
+  ArrowUpRight, X, Tag, FileText, Wallet, Pencil, Trash2, Plus, Camera, Upload, FileImage, Loader2, TrendingUp, MoreVertical
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -46,7 +46,18 @@ export default function IncomePage() {
   const [editDate, setEditDate] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside() {
+      setActiveMenuId(null);
+    }
+    if(activeMenuId) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [activeMenuId]);
   const [addDesc, setAddDesc] = useState("");
   const [addAmount, setAddAmount] = useState("");
   const [addDate, setAddDate] = useState("");
@@ -91,6 +102,7 @@ export default function IncomePage() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["transactions"] }),
     onSuccess: () => {
       setIsEditing(false);
+      setSelectedTx(null);
       addToast("Transaction updated", "success");
     },
   });
@@ -642,13 +654,43 @@ export default function IncomePage() {
                 <div className="p-3 bg-primary/10 rounded-xl border border-primary/20 text-primary">
                   <ArrowUpRight className="w-6 h-6" />
                 </div>
-                <button
-                  onClick={() => setSelectedTx(null)}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {!isEditing && (
+                    <div className="relative">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === "income-detail" ? null : "income-detail"); }}
+                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors"
+                        aria-label="More options"
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                      {activeMenuId === "income-detail" && (
+                        <div className="absolute right-0 top-10 z-20 w-40 rounded-xl border border-border bg-card shadow-xl py-1.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => { setIsEditing(true); setEditDesc(selectedTx.description || ""); setEditAmount(String(selectedTx.amount)); setEditDate(apiDateToInput(selectedTx.date)); setEditCategoryId(selectedTx.categoryId || ""); setActiveMenuId(null); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-sky-500/[0.05] transition-colors"
+                          >
+                            <Pencil className="w-4 h-4 text-sky-400" /> Edit
+                          </button>
+                          <button
+                            onClick={() => { setShowDeleteConfirm(true); setActiveMenuId(null); }}
+                            disabled={deleteMutation.isPending}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setSelectedTx(null)}
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
 
               {/* Modal Content */}
@@ -694,21 +736,6 @@ export default function IncomePage() {
                       </div>
                     </div>
 
-                    <div className="flex justify-center gap-3 mt-8">
-                      <button
-                        onClick={() => { setIsEditing(true); setEditDesc(selectedTx.description || ""); setEditAmount(String(selectedTx.amount)); setEditDate(apiDateToInput(selectedTx.date)); setEditCategoryId(selectedTx.categoryId || ""); }}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                      >
-                        <Pencil className="w-5 h-5" /> Edit
-                      </button>
-                      <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        disabled={deleteMutation.isPending}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-colors disabled:opacity-50"
-                      >
-                        <Trash2 className="w-5 h-5" /> Delete
-                      </button>
-                    </div>
                   </>
                 ) : (
                   <div className="space-y-4">

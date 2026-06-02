@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Target, Plus, Edit2, Trash2, TrendingUp, Trophy, XCircle, Coins, Loader2 } from "lucide-react";
+import { Target, Plus, Edit2, Trash2, TrendingUp, Trophy, XCircle, Coins, Loader2, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
@@ -36,6 +36,17 @@ export default function GoalsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside() {
+      setActiveMenuId(null);
+    }
+    if(activeMenuId) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [activeMenuId]);
 
   const { data: goals = [], isLoading } = useQuery<Goal[]>({
     queryKey: ["goals"],
@@ -281,79 +292,161 @@ export default function GoalsPage() {
         </motion.div>
       </div>
 
-      {/* Goals Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {goals.map((goal, idx) => {
-          const percentage = goal.targetAmount > 0 ? Math.min((Number(goal.currentAmount) / Number(goal.targetAmount)) * 100, 100) : 0;
-          const statusIcon = goal.status === "ACHIEVED" ? <Trophy className="w-4 h-4 text-sky-300" /> : goal.status === "CANCELLED" ? <XCircle className="w-4 h-4 text-rose-300" /> : <TrendingUp className="w-4 h-4 text-sky-300" />;
-          const statusText = goal.status === "ACHIEVED" ? "Achieved" : goal.status === "CANCELLED" ? "Cancelled" : "In Progress";
-          const statusColor = goal.status === "ACHIEVED" ? "text-sky-300 bg-sky-500/20 border-sky-500/30" : goal.status === "CANCELLED" ? "text-rose-300 bg-rose-500/20 border-rose-500/30" : "text-sky-300 bg-sky-500/20 border-sky-500/30";
+      {/* Active Goals */}
+      {goals.filter((g) => g.status !== "ACHIEVED").length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Active Goals</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {goals
+              .filter((g) => g.status !== "ACHIEVED")
+              .map((goal, idx) => {
+                const percentage = goal.targetAmount > 0 ? Math.min((Number(goal.currentAmount) / Number(goal.targetAmount)) * 100, 100) : 0;
+                const statusIcon = goal.status === "CANCELLED" ? <XCircle className="w-4 h-4 text-rose-300" /> : <TrendingUp className="w-4 h-4 text-sky-300" />;
+                const statusText = goal.status === "CANCELLED" ? "Cancelled" : "In Progress";
+                const statusColor = goal.status === "CANCELLED" ? "text-rose-300 bg-rose-500/20 border-rose-500/30" : "text-sky-300 bg-sky-500/20 border-sky-500/30";
 
-          return (
-            <motion.div key={goal.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * idx }} className="rounded-xl border border-border p-5 flex flex-col justify-between relative group overflow-hidden bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-5">
-                  <div className="w-10 h-10 bg-sky-500/10 rounded-lg flex items-center justify-center">
-                    <Target className="w-5 h-5 text-sky-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground">{goal.name}</h3>
-                    <p className="text-sm text-muted-foreground mt-0.5">{goal.deadline ? format(new Date(goal.deadline), "dd MMM yyyy") : "No deadline"}</p>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setContributeModal({ id: goal.id, name: goal.name })}
-                    className="p-1.5 text-muted-foreground hover:bg-sky-500/10 hover:text-sky-400 rounded-lg transition-colors"
-                    aria-label="Contribute"
-                  >
-                    <Coins className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => { setEditGoal(goal); setEditName(goal.name); setEditTarget(String(goal.targetAmount)); setEditDeadline(apiDateToInput(goal.deadline || "")); }}
-                    className="p-1.5 text-muted-foreground hover:bg-sky-500/[0.05] rounded-lg transition-colors"
-                    aria-label="Edit goal"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => { setGoalToDelete(goal.id); setShowDeleteConfirm(true); }}
-                    disabled={deleteMutation.isPending}
-                    className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                    aria-label="Delete goal"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+                return (
+                  <motion.div key={goal.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * idx }} className="rounded-xl border border-border p-5 flex flex-col justify-between relative group overflow-hidden bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex items-center gap-5">
+                        <div className="w-10 h-10 bg-sky-500/10 rounded-lg flex items-center justify-center">
+                          <Target className="w-5 h-5 text-sky-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-foreground">{goal.name}</h3>
+                          <p className="text-sm text-muted-foreground mt-0.5">{goal.deadline ? format(new Date(goal.deadline), "dd MMM yyyy") : "No deadline"}</p>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === goal.id ? null : goal.id); }}
+                          className="p-1.5 text-muted-foreground hover:bg-sky-500/[0.05] rounded-lg transition-colors"
+                          aria-label="More options"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {activeMenuId === goal.id && (
+                          <div className="absolute right-0 top-9 z-20 w-40 rounded-xl border border-border bg-card shadow-xl py-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => { setContributeModal({ id: goal.id, name: goal.name }); setActiveMenuId(null); }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-sky-500/[0.05] transition-colors"
+                            >
+                              <Coins className="w-4 h-4 text-sky-400" /> Contribute
+                            </button>
+                            <button
+                              onClick={() => { setEditGoal(goal); setEditName(goal.name); setEditTarget(String(goal.targetAmount)); setEditDeadline(apiDateToInput(goal.deadline || "")); setActiveMenuId(null); }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-sky-500/[0.05] transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4 text-sky-400" /> Edit
+                            </button>
+                            <button
+                              onClick={() => { setGoalToDelete(goal.id); setShowDeleteConfirm(true); setActiveMenuId(null); }}
+                              disabled={deleteMutation.isPending}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-              <div className="mb-8">
-                <div className="flex justify-between items-end mb-3">
-                  <span className="text-lg font-bold tracking-tight text-sky-400">{formatCurrency(Number(goal.currentAmount))}</span>
-                  <span className="text-sm font-medium text-slate-400">of {formatCurrency(Number(goal.targetAmount))}</span>
-                </div>
-                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-3">
-                  <div className="h-full rounded-full transition-all duration-1000 ease-out shadow-sm bg-sky-500" style={{ width: `${percentage}%` }} />
-                </div>
-                <div className="flex justify-between items-center text-base font-medium">
-                  <span className="flex items-center gap-1.5 text-slate-400">
-                    <TrendingUp className="w-4 h-4 text-sky-400" /> {percentage.toFixed(1)}%
-                  </span>
-                  <span className={cn("px-3 py-1 rounded-full border shadow-sm flex items-center gap-1.5 text-sm", statusColor)}>
-                    {statusIcon} {statusText}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-        {goals.length === 0 && (
-          <EmptyState
-            title="No goals created yet"
-            description="Create savings goals and track your progress visually."
-          />
-        )}
-      </div>
+                    <div className="mb-8">
+                      <div className="flex justify-between items-end mb-3">
+                        <span className="text-lg font-bold tracking-tight text-sky-400">{formatCurrency(Number(goal.currentAmount))}</span>
+                        <span className="text-sm font-medium text-slate-400">of {formatCurrency(Number(goal.targetAmount))}</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-3">
+                        <div className="h-full rounded-full transition-all duration-1000 ease-out shadow-sm bg-sky-500" style={{ width: `${percentage}%` }} />
+                      </div>
+                      <div className="flex justify-between items-center text-base font-medium">
+                        <span className="flex items-center gap-1.5 text-slate-400">
+                          <TrendingUp className="w-4 h-4 text-sky-400" /> {percentage.toFixed(1)}%
+                        </span>
+                        <span className={cn("px-3 py-1 rounded-full border shadow-sm flex items-center gap-1.5 text-sm", statusColor)}>
+                          {statusIcon} {statusText}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {/* Achieved Goals */}
+      {goals.filter((g) => g.status === "ACHIEVED").length > 0 && (
+        <div className="space-y-4 mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Completed</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {goals
+              .filter((g) => g.status === "ACHIEVED")
+              .map((goal, idx) => {
+                const percentage = goal.targetAmount > 0 ? Math.min((Number(goal.currentAmount) / Number(goal.targetAmount)) * 100, 100) : 0;
+                return (
+                  <motion.div key={goal.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * idx }} className="rounded-xl border border-border p-5 flex flex-col justify-between relative group overflow-hidden bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10 opacity-80">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex items-center gap-5">
+                        <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                          <Trophy className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-foreground">{goal.name}</h3>
+                          <p className="text-sm text-muted-foreground mt-0.5">{goal.deadline ? format(new Date(goal.deadline), "dd MMM yyyy") : "No deadline"}</p>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === goal.id ? null : goal.id); }}
+                          className="p-1.5 text-muted-foreground hover:bg-sky-500/[0.05] rounded-lg transition-colors"
+                          aria-label="More options"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {activeMenuId === goal.id && (
+                          <div className="absolute right-0 top-9 z-20 w-40 rounded-xl border border-border bg-card shadow-xl py-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => { setGoalToDelete(goal.id); setShowDeleteConfirm(true); setActiveMenuId(null); }}
+                              disabled={deleteMutation.isPending}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mb-8">
+                      <div className="flex justify-between items-end mb-3">
+                        <span className="text-lg font-bold tracking-tight text-emerald-400">{formatCurrency(Number(goal.currentAmount))}</span>
+                        <span className="text-sm font-medium text-slate-400">of {formatCurrency(Number(goal.targetAmount))}</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-3">
+                        <div className="h-full rounded-full transition-all duration-1000 ease-out shadow-sm bg-emerald-500" style={{ width: `${percentage}%` }} />
+                      </div>
+                      <div className="flex justify-between items-center text-base font-medium">
+                        <span className="flex items-center gap-1.5 text-slate-400">
+                          <Trophy className="w-4 h-4 text-emerald-400" /> {percentage.toFixed(1)}%
+                        </span>
+                        <span className="px-3 py-1 rounded-full border shadow-sm flex items-center gap-1.5 text-sm text-emerald-300 bg-emerald-500/20 border-emerald-500/30">
+                          <Trophy className="w-4 h-4 text-emerald-300" /> Achieved
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+      {goals.length === 0 && (
+        <EmptyState
+          title="No goals created yet"
+          description="Create savings goals and track your progress visually."
+        />
+      )}
 
       <Modal
         isOpen={!!contributeModal}

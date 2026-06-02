@@ -284,7 +284,7 @@ export class BudgetService {
 
     const grouped = new Map<string, {budgets: typeof budgets; category: typeof budgets[0]['category']}>();
     for(const budget of budgets){
-      const key = budget.categoryId ?? 'uncategorized';
+      const key = (budget.category?.name ?? 'uncategorized').toLowerCase();
       if(!grouped.has(key)){
         grouped.set(key, {budgets: [], category: budget.category});
       }
