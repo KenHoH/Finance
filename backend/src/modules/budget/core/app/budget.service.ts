@@ -178,6 +178,69 @@ export class BudgetService {
   }
 
   // aggregate function 
+  private getBudgetDurationDays(startDate: Date, endDate: Date): number{
+    return Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  private budgetsOverlap(a: any, b: any): boolean{
+    return a.startDate <= b.endDate && a.endDate >= b.startDate;
+  }
+
+  private async calculateSpentForBudget(userId: string, budget: any, allBudgets: any[]): Promise<number>{
+    const budgetDuration = this.getBudgetDurationDays(budget.startDate, budget.endDate);
+
+    const shorterOverlaps = allBudgets.filter((b) => {
+      if(b.id === budget.id) return false;
+      if(!this.budgetsOverlap(budget, b)) return false;
+      const bDuration = this.getBudgetDurationDays(b.startDate, b.endDate);
+      if(bDuration >= budgetDuration) return false;
+      // Shorter budget can steal if its category matches the transaction scope
+      return b.categoryId === budget.categoryId || b.categoryId === null || budget.categoryId === null;
+    });
+
+    if(shorterOverlaps.length === 0){
+      const agg = await this.prisma.transaction.aggregate({
+        where: {
+          userId,
+          type: 'EXPENSE',
+          date: {gte: budget.startDate, lte: budget.endDate},
+          ...(budget.categoryId ? {categoryId: budget.categoryId} : {}),
+        },
+        _sum: {amount: true},
+      });
+      return Number(agg._sum.amount || 0);
+    }
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        type: 'EXPENSE',
+        date: {gte: budget.startDate, lte: budget.endDate},
+        ...(budget.categoryId ? {categoryId: budget.categoryId} : {}),
+      },
+      select: {id: true, amount: true, date: true, categoryId: true},
+    });
+
+    const excludedIds = new Set<string>();
+    for(const t of transactions){
+      const tDate = new Date(t.date);
+      for(const sb of shorterOverlaps){
+        if(tDate >= sb.startDate && tDate <= sb.endDate){
+          const matchesShorter = !sb.categoryId || sb.categoryId === t.categoryId;
+          if(matchesShorter){
+            excludedIds.add(t.id);
+            break;
+          }
+        }
+      }
+    }
+
+    return transactions.reduce((sum, t) => {
+      if(excludedIds.has(t.id)) return sum;
+      return sum + Number(t.amount);
+    }, 0);
+  }
+
   async getStatus(userId: string, id: string){
     const budget = await this.prisma.budget.findFirst({
       where: {id, userId},
@@ -186,17 +249,12 @@ export class BudgetService {
 
     if(!budget) return null;
 
-    const spentAgg = await this.prisma.transaction.aggregate({
-      where: {
-        userId,
-        type: 'EXPENSE',
-        date: {gte: budget.startDate, lte: budget.endDate},
-        ...(budget.categoryId ? {categoryId: budget.categoryId} : {}),
-      },
-      _sum: {amount: true},
+    const allBudgets = await this.prisma.budget.findMany({
+      where: {userId},
+      include: {category: true},
     });
 
-    const spent = Number(spentAgg._sum.amount || 0);
+    const spent = await this.calculateSpentForBudget(userId, budget, allBudgets);
     const budgetAmount = Number(budget.amount);
     const remaining = budgetAmount - spent;
     const percentage = budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0;
@@ -233,6 +291,8 @@ export class BudgetService {
       grouped.get(key)!.budgets.push(budget);
     }
 
+    const allBudgets = budgets;
+
     const results: Array<{
       category: typeof budgets[0]['category'];
       totalAmount: number;
@@ -260,32 +320,9 @@ export class BudgetService {
       const earliestStart = items[0].startDate;
       const latestEnd = items.reduce((max, b) => b.endDate > max ? b.endDate : max, items[0].endDate);
 
-      const spentAgg = await this.prisma.transaction.aggregate({
-        where: {
-          userId,
-          type: 'EXPENSE',
-          date: {gte: earliestStart, lte: latestEnd},
-          ...(group.category ? {categoryId: group.category.id} : {}),
-        },
-        _sum: {amount: true},
-      });
-
-      const categorySpent = Number(spentAgg._sum.amount || 0);
-      const remaining = totalAmount - categorySpent;
-      const percentage = totalAmount > 0 ? Math.round((categorySpent / totalAmount) * 100) : 0;
-
       const budgetDetails = await Promise.all(
         items.map(async(b) => {
-          const bSpentAgg = await this.prisma.transaction.aggregate({
-            where: {
-              userId,
-              type: 'EXPENSE',
-              date: {gte: b.startDate, lte: b.endDate},
-              ...(group.category ? {categoryId: group.category.id} : {}),
-            },
-            _sum: {amount: true},
-          });
-          const bSpent = Number(bSpentAgg._sum.amount || 0);
+          const bSpent = await this.calculateSpentForBudget(userId, b, allBudgets);
           const bAmount = Number(b.amount);
           return {
             id: b.id,
@@ -299,6 +336,10 @@ export class BudgetService {
           };
         })
       );
+
+      const categorySpent = budgetDetails.reduce((sum, b) => sum + b.spent, 0);
+      const remaining = totalAmount - categorySpent;
+      const percentage = totalAmount > 0 ? Math.round((categorySpent / totalAmount) * 100) : 0;
 
       results.push({
         category: group.category,
@@ -344,6 +385,11 @@ export class BudgetService {
       return !!existing;
     };
 
+    const allBudgets = await this.prisma.budget.findMany({
+      where: {userId},
+      include: {category: true},
+    });
+
     for(const budget of budgets){
       const budgetAmount = Number(budget.amount);
       const categoryName = budget.category?.name ?? 'Overall';
@@ -352,24 +398,17 @@ export class BudgetService {
       const totalDays = Math.round((budget.endDate.getTime() - budget.startDate.getTime()) / millisecondsPerDay) + 1;
       const dailyAllowance = budgetAmount / totalDays;
 
-      const todaySpentAgg = await this.prisma.transaction.aggregate({
-        where: {
-          userId,
-          type: 'EXPENSE',
-          date: { gte: startOfToday, lte: endOfToday },
-          ...(budget.categoryId ? { categoryId: budget.categoryId } : {}),
-        },
-        _sum: { amount: true },
-      });
-
       const userSettings = await this.settingsService.findOneByKey(userId, 'BUDGET_TIME_PREFERENCE');
       const timePreference = userSettings?.value ?? 'DAILY';
 
       if(timePreference === 'DAILY'){
-        const spentToday = Number(todaySpentAgg._sum.amount || 0);
+        const todaySpent = await this.calculateSpentForBudget(userId, {...budget, startDate: startOfToday, endDate: endOfToday}, allBudgets);
 
-        if(spentToday > dailyAllowance){
-          const totalDebt = spentToday - dailyAllowance;
+        if(todaySpent > dailyAllowance){
+          const existingDebt = await this.debtService.findOneByBudgetId(budget.id);
+          const existingAmount = existingDebt ? Number(existingDebt.debtAmount) : 0;
+          const dailyOverspend = todaySpent - dailyAllowance;
+          const totalDebt = existingAmount + dailyOverspend;
           await this.debtService.create({
             budgetId: budget.id,
             debtAmount: totalDebt,
@@ -381,24 +420,14 @@ export class BudgetService {
               userId,
               'BUDGET_ALERT',
               'Daily Budget Exceeded',
-              `You spent Rp ${spentToday.toLocaleString('id-ID')} today, which is over your daily ${categoryName} allowance of Rp ${Math.round(dailyAllowance).toLocaleString('id-ID')}.`,
+              `You spent Rp ${todaySpent.toLocaleString('id-ID')} today, which is over your daily ${categoryName} allowance of Rp ${Math.round(dailyAllowance).toLocaleString('id-ID')}.`,
             );
           }
         }
         continue;
       }
 
-      const totalSpentAgg = await this.prisma.transaction.aggregate({
-        where: {
-          userId,
-          type: 'EXPENSE',
-          date: { gte: budget.startDate, lte: budget.endDate },
-          ...(budget.categoryId ? { categoryId: budget.categoryId } : {}),
-        },
-        _sum: { amount: true },
-      });
-
-      const totalSpent = Number(totalSpentAgg._sum.amount || 0);
+      const totalSpent = await this.calculateSpentForBudget(userId, budget, allBudgets);
       const percentage = budgetAmount > 0 ? Math.round((totalSpent / budgetAmount) * 100) : 0;
 
       if(totalSpent > budgetAmount){
