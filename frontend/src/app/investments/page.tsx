@@ -88,7 +88,6 @@ export default function InvestmentsPage() {
         setIsSuccess(false);
         setIsModalOpen(false);
       }, 1500);
-      addToast("Investment added", "success");
     },
   });
 

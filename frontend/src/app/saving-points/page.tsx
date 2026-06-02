@@ -2,20 +2,20 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { PiggyBank, Plus, Edit2, Trash2, Target, Wallet, ArrowLeft } from "lucide-react";
+import { PiggyBank, Plus, Edit2, Trash2, Target, Wallet, ArrowLeft, TrendingUp, Landmark, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { get, del, api, extractApiError } from "@/lib/api";
+import { get, del, post, api, extractApiError } from "@/lib/api";
 import { useToastStore } from "@/store/useToastStore";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { validateString, validateNumber, runValidators } from "@/lib/validation";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import type { SavingPoint, Goal } from "@/lib/types";
+import type { SavingPoint, Goal, Category, DebtPoint, Budget } from "@/lib/types";
 import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
 
 export default function SavingPointsPage(){
@@ -29,6 +29,9 @@ export default function SavingPointsPage(){
   const [goalId, setGoalId] = useState("");
   const [allocateAmount, setAllocateAmount] = useState("");
   const [note, setNote] = useState("");
+  const [allocateTab, setAllocateTab] = useState<"goal" | "investment" | "debt">("goal");
+  const [investCategoryId, setInvestCategoryId] = useState("");
+  const [debtPointId, setDebtPointId] = useState("");
   const [editPoint, setEditPoint] = useState<SavingPoint | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -48,6 +51,32 @@ export default function SavingPointsPage(){
       const res = await get<unknown>("/goals");
       return Array.isArray(res) ? res : [];
     },
+  });
+
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["categories"],
+    queryFn: async() => {
+      const res = await get<unknown>("/categories");
+      return Array.isArray(res) ? res.filter((c: Category) => c.type === "INVESTMENT") : [];
+    },
+  });
+
+  const { data: budgets = [] } = useQuery<Budget[]>({
+    queryKey: ["budgets"],
+    queryFn: async() => {
+      const res = await get<unknown>("/budgets");
+      return Array.isArray(res) ? res : [];
+    },
+  });
+
+  const { data: debtPoints = [] } = useQuery<DebtPoint[]>({
+    queryKey: ["debt-points", budgets.map((b) => b.id)],
+    queryFn: async() => {
+      if(budgets.length === 0) return [];
+      const res = await post<unknown>("/debt/budget-ids", budgets.map((b) => b.id));
+      return Array.isArray(res) ? res : [];
+    },
+    enabled: budgets.length > 0,
   });
 
   const createMutation = useMutation({
@@ -74,7 +103,6 @@ export default function SavingPointsPage(){
         setBudgetId("");
         setSavingAmount("");
       }, 1500);
-      addToast("Saving point created", "success");
     },
   });
 
@@ -91,7 +119,7 @@ export default function SavingPointsPage(){
     },
   });
 
-  const allocateMutation = useMutation({
+  const allocateGoalMutation = useMutation({
     mutationFn: (dto: { id: string; goalId: string; amount: number; note?: string }) =>
       api.post(`/saving-points/${dto.id}/allocate-to-goal`, { goalId: dto.goalId, amount: dto.amount, note: dto.note }),
     onMutate: async (dto) => {
@@ -117,7 +145,49 @@ export default function SavingPointsPage(){
       setGoalId("");
       setAllocateAmount("");
       setNote("");
+      setAllocateTab("goal");
       addToast("Allocated to goal", "success");
+    },
+  });
+
+  const allocateInvestmentMutation = useMutation({
+    mutationFn: (dto: { id: string; categoryId: string; amount: number; note?: string }) =>
+      api.post(`/saving-points/${dto.id}/allocate-to-investment`, { categoryId: dto.categoryId, amount: dto.amount, note: dto.note }),
+    onError: (err) => {
+      addToast(extractApiError(err, "Failed to allocate to investment"), "error");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["saving-points"] });
+      queryClient.invalidateQueries({ queryKey: ["investments"] });
+    },
+    onSuccess: () => {
+      setAllocateModal(null);
+      setInvestCategoryId("");
+      setAllocateAmount("");
+      setNote("");
+      setAllocateTab("goal");
+      addToast("Allocated to investment", "success");
+    },
+  });
+
+  const payDebtMutation = useMutation({
+    mutationFn: (dto: { id: string; debtPointId: string; amount: number; note?: string }) =>
+      api.post(`/saving-points/${dto.id}/pay-debt`, { debtPointId: dto.debtPointId, amount: dto.amount, note: dto.note }),
+    onError: (err) => {
+      addToast(extractApiError(err, "Failed to pay debt"), "error");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["saving-points"] });
+      queryClient.invalidateQueries({ queryKey: ["debt-points"] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+    },
+    onSuccess: () => {
+      setAllocateModal(null);
+      setDebtPointId("");
+      setAllocateAmount("");
+      setNote("");
+      setAllocateTab("goal");
+      addToast("Debt paid", "success");
     },
   });
 
@@ -292,33 +362,83 @@ export default function SavingPointsPage(){
       <Modal
         isOpen={!!allocateModal}
         onClose={() => setAllocateModal(null)}
-        title="Allocate to Goal"
+        title="Allocate Surplus"
         description={allocateModal ? `Available: ${formatCurrency(allocateModal.amount)}` : ""}
       >
+        {/* Tabs */}
+        <div className="flex gap-1 rounded-lg bg-muted p-1 mb-4">
+          {(["goal", "investment", "debt"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setAllocateTab(tab)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+                allocateTab === tab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tab === "goal" && <Target className="w-3.5 h-3.5" />}
+              {tab === "investment" && <TrendingUp className="w-3.5 h-3.5" />}
+              {tab === "debt" && <Landmark className="w-3.5 h-3.5" />}
+              {tab === "goal" ? "Goal" : tab === "investment" ? "Investment" : "Pay Debt"}
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-3">
+          {allocateTab === "goal" && (
+            <div>
+              <label htmlFor="goal-select" className="text-sm font-medium text-foreground mb-1 block">Goal</label>
+              <select id="goal-select" value={goalId} onChange={(e) => setGoalId(e.target.value)} className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                <option value="">Select goal</option>
+                {goals.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name} ({formatCurrency(Number(g.currentAmount))} / {formatCurrency(Number(g.targetAmount))})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {allocateTab === "investment" && (
+            <div>
+              <label htmlFor="invest-select" className="text-sm font-medium text-foreground mb-1 block">Investment Category</label>
+              <select id="invest-select" value={investCategoryId} onChange={(e) => setInvestCategoryId(e.target.value)} className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                <option value="">Select category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {allocateTab === "debt" && (
+            <div>
+              <label htmlFor="debt-select" className="text-sm font-medium text-foreground mb-1 block">Debt to Pay</label>
+              <select id="debt-select" value={debtPointId} onChange={(e) => setDebtPointId(e.target.value)} className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                <option value="">Select debt</option>
+                {debtPoints.map((d) => (
+                  <option key={d.id} value={d.id}>{d.budget?.category?.name || "Budget"} — {formatCurrency(Number(d.debtAmount))}</option>
+                ))}
+              </select>
+              {debtPoints.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> No debts available
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">Goal</label>
-            <select value={goalId} onChange={(e) => setGoalId(e.target.value)} className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary">
-              <option value="">Select goal</option>
-              {goals.map((g) => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
+            <label htmlFor="allocate-amount" className="text-sm font-medium text-foreground mb-1 block">Amount</label>
+            <CurrencyInput id="allocate-amount" value={allocateAmount} onChange={setAllocateAmount} placeholder="0" />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">Amount</label>
-            <CurrencyInput value={allocateAmount} onChange={setAllocateAmount} placeholder="0" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">Note (optional)</label>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Monthly allocation" className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+            <label htmlFor="allocate-note" className="text-sm font-medium text-foreground mb-1 block">Note (optional)</label>
+            <input id="allocate-note" type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Budget surplus allocation" className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button onClick={() => setAllocateModal(null)} className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sky-500/[0.03] transition-colors">Cancel</button>
           <button onClick={() => {
             const errors = runValidators(
-              validateString(goalId, "Goal", { min: 1 }),
               validateNumber(allocateAmount, "Amount", { min: 0.01 })
             );
             if(errors.length > 0){
@@ -329,8 +449,19 @@ export default function SavingPointsPage(){
               addToast("Allocation cannot exceed available amount", "error");
               return;
             }
-            if(allocateModal) allocateMutation.mutate({ id: allocateModal.id, goalId, amount: Number(allocateAmount), note: note || undefined });
-          }} disabled={allocateMutation.isPending} className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50">Allocate</button>
+            if(!allocateModal) return;
+            const dto = { id: allocateModal.id, amount: Number(allocateAmount), note: note || undefined };
+            if(allocateTab === "goal"){
+              if(!goalId){ addToast("Select a goal", "error"); return; }
+              allocateGoalMutation.mutate({ ...dto, goalId });
+            } else if(allocateTab === "investment"){
+              if(!investCategoryId){ addToast("Select an investment category", "error"); return; }
+              allocateInvestmentMutation.mutate({ ...dto, categoryId: investCategoryId });
+            } else if(allocateTab === "debt"){
+              if(!debtPointId){ addToast("Select a debt", "error"); return; }
+              payDebtMutation.mutate({ ...dto, debtPointId });
+            }
+          }} disabled={allocateGoalMutation.isPending || allocateInvestmentMutation.isPending || payDebtMutation.isPending} className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50">Allocate</button>
         </div>
       </Modal>
 

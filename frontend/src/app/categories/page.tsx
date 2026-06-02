@@ -51,7 +51,6 @@ export default function CategoriesPage(){
         setIsModalOpen(false);
         setNewName("");
       }, 1500);
-      addToast("Category created", "success");
     },
   });
 

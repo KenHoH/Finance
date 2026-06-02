@@ -79,7 +79,6 @@ export default function GoalsPage() {
         setIsSuccess(false);
         setIsModalOpen(false);
       }, 1500);
-      addToast("Goal created", "success");
     },
   });
 

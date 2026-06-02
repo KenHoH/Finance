@@ -110,7 +110,6 @@ export default function ExpensesPage() {
         setScanPreview("");
         setScanItems([]);
       }, 1500);
-      addToast("Expense added", "success");
     },
   });
 

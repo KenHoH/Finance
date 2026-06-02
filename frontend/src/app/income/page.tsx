@@ -158,7 +158,6 @@ export default function IncomePage() {
         setScanPreview("");
         setScanItems([]);
       }, 1500);
-      addToast("Income added", "success");
     },
   });
 

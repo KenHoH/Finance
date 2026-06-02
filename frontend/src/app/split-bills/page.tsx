@@ -108,7 +108,6 @@ export default function SplitBillsPage(){
         setIsSuccess(false);
         setIsModalOpen(false);
       }, 1500);
-      addToast("Split bill created", "success");
     },
   });
 

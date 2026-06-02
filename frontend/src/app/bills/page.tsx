@@ -88,7 +88,6 @@ export default function BillsPage(){
         setIsSuccess(false);
         setIsModalOpen(false);
       }, 1500);
-      addToast("Bill created", "success");
     },
   });
 
