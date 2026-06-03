@@ -281,7 +281,7 @@ export default function FriendsPage(){
 
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden mb-4 ring-2 ring-primary/20">
                   {otherUser?.avatar ? (
-                    <img src={otherUser.avatar} alt="" className="w-full h-full object-cover" />
+                    <img src={otherUser.avatar} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-primary font-bold text-lg">{getInitials(displayName)}</span>
                   )}
@@ -317,7 +317,7 @@ export default function FriendsPage(){
                 >
                   <div className="w-20 h-20 rounded-full bg-sky-500/10 flex items-center justify-center overflow-hidden mb-4 ring-2 ring-sky-500/20">
                     {req.sender?.avatar ? (
-                      <img src={req.sender.avatar} alt="" className="w-full h-full object-cover" />
+                      <img src={req.sender.avatar} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                     ) : req.sender?.username ? (
                       <span className="text-sky-500 font-bold text-lg">{getInitials(req.sender.username)}</span>
                     ) : (
@@ -380,7 +380,7 @@ export default function FriendsPage(){
                 >
                   <div className="w-14 h-14 rounded-full bg-sky-500/10 flex items-center justify-center overflow-hidden shrink-0">
                     {req.receiver?.avatar ? (
-                      <img src={req.receiver.avatar} alt="" className="w-full h-full object-cover" />
+                      <img src={req.receiver.avatar} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                     ) : req.receiver?.username ? (
                       <span className="text-sky-400 font-bold text-sm">{getInitials(req.receiver.username)}</span>
                     ) : (
@@ -478,7 +478,7 @@ export default function FriendsPage(){
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
                               {user.avatar ? (
-                                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                                <img src={user.avatar} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                               ) : (
                                 <span className="text-primary font-bold text-xs">{getInitials(user.username)}</span>
                               )}

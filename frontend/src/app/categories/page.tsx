@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Tag, Plus, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Loader2, ArrowLeft } from "lucide-react";
+import { Tag, Plus, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Loader2, ArrowLeft, Search } from "lucide-react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Category } from "@/lib/types";
 import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { CATEGORY_LUCIDE_ICONS, getLucideIcon } from "@/lib/category-lucide-icons";
 
 export default function CategoriesPage(){
   const addToast = useToastStore((s) => s.addToast);
@@ -24,8 +25,11 @@ export default function CategoriesPage(){
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
+  const [newIcon, setNewIcon] = useState<string>("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "default" | "custom">("all");
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: ["categories"],
@@ -33,10 +37,10 @@ export default function CategoriesPage(){
   });
 
   const createMutation = useMutation({
-    mutationFn: (dto: { name: string; type: "INCOME" | "EXPENSE" }) =>
+    mutationFn: (dto: { name: string; type: "INCOME" | "EXPENSE"; icon?: string }) =>
       api.post("/categories", dto),
     onMutate: async (dto) => {
-      const temp: Category = { id: `opt-${Date.now()}`, name: dto.name, type: dto.type };
+      const temp: Category = { id: `opt-${Date.now()}`, name: dto.name, type: dto.type, icon: dto.icon ?? null };
       return optimisticCreate(queryClient, ["categories"], temp);
     },
     onError: (err, dto, context) => {
@@ -50,6 +54,7 @@ export default function CategoriesPage(){
         setIsCreateSuccess(false);
         setIsModalOpen(false);
         setNewName("");
+        setNewIcon("");
       }, 1500);
     },
   });
@@ -68,9 +73,9 @@ export default function CategoriesPage(){
   });
 
   const updateMutation = useMutation({
-    mutationFn: (dto: { id: string; name: string }) =>
-      api.put(`/categories/${dto.id}`, { name: dto.name }),
-    onMutate: async (dto) => optimisticUpdate(queryClient, ["categories"], dto.id, { name: dto.name }),
+    mutationFn: (dto: { id: string; name: string; icon?: string | null }) =>
+      api.put(`/categories/${dto.id}`, { name: dto.name, icon: dto.icon }),
+    onMutate: async (dto) => optimisticUpdate(queryClient, ["categories"], dto.id, { name: dto.name, icon: dto.icon }),
     onError: (err, dto, context) => {
       rollbackOnError(queryClient, ["categories"], context);
       addToast(extractApiError(err, "Failed to update category"), "error");
@@ -82,8 +87,17 @@ export default function CategoriesPage(){
     },
   });
 
-  const incomeCats = categories.filter((c) => c.type === "INCOME");
-  const expenseCats = categories.filter((c) => c.type === "EXPENSE");
+  const filtered = categories.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTab =
+      activeTab === "all" ? true :
+      activeTab === "default" ? !c.userId :
+      activeTab === "custom" ? !!c.userId : true;
+    return matchesSearch && matchesTab;
+  });
+
+  const incomeCats = filtered.filter((c) => c.type === "INCOME");
+  const expenseCats = filtered.filter((c) => c.type === "EXPENSE");
 
   if(isLoading){
     return (
@@ -121,6 +135,36 @@ export default function CategoriesPage(){
         </button>
       </header>
 
+      {/* Search + Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search categories..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
+          />
+        </div>
+        <div className="flex gap-1 bg-card border border-border rounded-xl p-1">
+          {(["all", "default", "custom"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                activeTab === tab
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              {tab === "all" ? "All" : tab === "default" ? "Default" : "My Categories"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Expense Categories */}
       <section className="space-y-4">
         <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
@@ -137,6 +181,14 @@ export default function CategoriesPage(){
             >
               <div className="flex items-center gap-4">
                 {(() => {
+                  const LucideIcon = getLucideIcon(cat.icon);
+                  if(LucideIcon){
+                    return (
+                      <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-primary">
+                        <LucideIcon className="w-7 h-7" />
+                      </div>
+                    );
+                  }
                   const icon = getCategoryIcon(cat.name);
                   if(icon){
                     return (
@@ -156,28 +208,32 @@ export default function CategoriesPage(){
                   <p className="text-sm text-muted-foreground font-medium">Expense</p>
                 </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => setEditCategory(cat)}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                  aria-label="Edit category"
-                >
-                  <Edit2 className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => { setCategoryToDelete(cat.id); setShowDeleteConfirm(true); }}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                  aria-label="Delete category"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
+              {cat.userId && (
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => setEditCategory(cat)}
+                    className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    aria-label="Edit category"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => { setCategoryToDelete(cat.id); setShowDeleteConfirm(true); }}
+                    className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                    aria-label="Delete category"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
             </motion.div>
           ))}
           {expenseCats.length === 0 && (
             <div className="col-span-full flex flex-col items-center p-8 border-2 border-dashed border-border rounded-xl text-center text-muted-foreground">
               <img src="/empty-transactions.png" alt="" className="w-40 h-40 mb-3 opacity-70" />
-              <p className="font-medium">No expense categories yet.</p>
+              <p className="font-medium">
+                {searchQuery || activeTab !== "all" ? "No matching expense categories." : "No expense categories yet."}
+              </p>
             </div>
           )}
         </div>
@@ -199,6 +255,14 @@ export default function CategoriesPage(){
             >
               <div className="flex items-center gap-4">
                 {(() => {
+                  const LucideIcon = getLucideIcon(cat.icon);
+                  if(LucideIcon){
+                    return (
+                      <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-primary">
+                        <LucideIcon className="w-7 h-7" />
+                      </div>
+                    );
+                  }
                   const icon = getCategoryIcon(cat.name);
                   if(icon){
                     return (
@@ -218,28 +282,32 @@ export default function CategoriesPage(){
                   <p className="text-sm text-muted-foreground font-medium">Income</p>
                 </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => setEditCategory(cat)}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                  aria-label="Edit category"
-                >
-                  <Edit2 className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => { setCategoryToDelete(cat.id); setShowDeleteConfirm(true); }}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                  aria-label="Delete category"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
+              {cat.userId && (
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => setEditCategory(cat)}
+                    className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    aria-label="Edit category"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => { setCategoryToDelete(cat.id); setShowDeleteConfirm(true); }}
+                    className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                    aria-label="Delete category"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
             </motion.div>
           ))}
           {incomeCats.length === 0 && (
             <div className="col-span-full flex flex-col items-center p-8 border-2 border-dashed border-border rounded-xl text-center text-muted-foreground">
               <img src="/empty-transactions.png" alt="" className="w-40 h-40 mb-3 opacity-70" />
-              <p className="font-medium">No income categories yet.</p>
+              <p className="font-medium">
+                {searchQuery || activeTab !== "all" ? "No matching income categories." : "No income categories yet."}
+              </p>
             </div>
           )}
         </div>
@@ -264,7 +332,7 @@ export default function CategoriesPage(){
               addToast(errors[0].message, "error");
               return;
             }
-            createMutation.mutate({ name: newName.trim(), type: newType });
+            createMutation.mutate({ name: newName.trim(), type: newType, icon: newIcon || undefined });
           }}
         >
           <div className="space-y-2">
@@ -302,6 +370,31 @@ export default function CategoriesPage(){
               ))}
             </div>
           </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-foreground">Icon</label>
+            <div className="grid grid-cols-8 gap-2 max-h-40 overflow-y-auto p-1">
+              {CATEGORY_LUCIDE_ICONS.map((icon) => {
+                const IconComp = icon.component;
+                const isSelected = newIcon === icon.name;
+                return (
+                  <button
+                    key={icon.name}
+                    type="button"
+                    onClick={() => setNewIcon(icon.name)}
+                    title={icon.label}
+                    className={cn(
+                      "flex items-center justify-center w-10 h-10 rounded-lg border-2 transition-all",
+                      isSelected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/30 hover:bg-accent/50"
+                    )}
+                  >
+                    <IconComp className="w-5 h-5" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <button
             type="submit"
             disabled={createMutation.isPending}
@@ -316,21 +409,48 @@ export default function CategoriesPage(){
         isOpen={!!editCategory}
         onClose={() => setEditCategory(null)}
         title="Edit Category"
-        description="Update the category name."
+        description="Update the category name and icon."
       >
-        <div>
-          <label className="text-sm font-medium text-foreground mb-1 block">Name</label>
-          <input
-            type="text"
-            defaultValue={editCategory?.name}
-            onChange={(e) => setEditCategory((prev) => prev ? { ...prev, name: e.target.value } : prev)}
-            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
-          />
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1 block">Name</label>
+            <input
+              type="text"
+              defaultValue={editCategory?.name}
+              onChange={(e) => setEditCategory((prev) => prev ? { ...prev, name: e.target.value } : prev)}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Icon</label>
+            <div className="grid grid-cols-8 gap-2 max-h-40 overflow-y-auto p-1">
+              {CATEGORY_LUCIDE_ICONS.map((icon) => {
+                const IconComp = icon.component;
+                const isSelected = editCategory?.icon === icon.name;
+                return (
+                  <button
+                    key={icon.name}
+                    type="button"
+                    onClick={() => setEditCategory((prev) => prev ? { ...prev, icon: icon.name } : prev)}
+                    title={icon.label}
+                    className={cn(
+                      "flex items-center justify-center w-10 h-10 rounded-lg border-2 transition-all",
+                      isSelected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/30 hover:bg-accent/50"
+                    )}
+                  >
+                    <IconComp className="w-5 h-5" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button onClick={() => setEditCategory(null)} className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sky-500/[0.03] transition-colors">Cancel</button>
           <button
-            onClick={() => { if(editCategory) updateMutation.mutate({ id: editCategory.id, name: editCategory.name }); }}
+            onClick={() => { if(editCategory) updateMutation.mutate({ id: editCategory.id, name: editCategory.name, icon: editCategory.icon }); }}
             disabled={updateMutation.isPending}
             className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50"
           >

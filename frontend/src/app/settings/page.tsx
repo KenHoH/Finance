@@ -60,13 +60,7 @@ export default function SettingsPage(){
         className="rounded-2xl border border-border bg-card p-6"
       >
         <div className="flex items-center gap-4">
-          {user.avatar ? (
-            <Avatar src={user.avatar} name={user.username || user.email} size="xl" />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="w-7 h-7 text-primary" />
-            </div>
-          )}
+          <Avatar src={user.avatar} name={user.username || user.email} size="xl" />
           <div>
             <h2 className="text-lg font-bold text-foreground">{user.username || "User"}</h2>
             <p className="text-sm text-muted-foreground flex items-center gap-1.5">

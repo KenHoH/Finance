@@ -46,7 +46,7 @@ export function SimpleTopBar(){
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/5 border border-primary/10">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 {user.avatar ? (
-                  <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  <img src={user.avatar} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full object-cover" />
                 ) : (
                   <User className="w-4 h-4 text-primary" />
                 )}

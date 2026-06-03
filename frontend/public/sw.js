@@ -1,4 +1,4 @@
-const CACHE_NAME = "finpro-v1";
+const CACHE_NAME = "finpro-v2";
 const STATIC_ASSETS = [
   "/",
   "/dashboard",

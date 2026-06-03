@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Category, Budget } from "@/lib/types";
 import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { getLucideIcon } from "@/lib/category-lucide-icons";
 
 export default function BudgetsPage() {
   const addToast = useToastStore((s) => s.addToast);
@@ -346,11 +347,13 @@ export default function BudgetsPage() {
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-5">
                   <div className="w-16 h-16 bg-background rounded-xl flex items-center justify-center text-primary shadow-sm border border-border group-hover:scale-110 transition-transform duration-300 overflow-hidden">
-                    {getCategoryIcon(item.category?.name) ? (
-                      <img src={getCategoryIcon(item.category?.name)} alt="" className="w-14 h-14 object-contain" />
-                    ) : (
-                      <PieChart className="w-8 h-8" />
-                    )}
+                    {(() => {
+                      const LucideIcon = getLucideIcon(item.category?.icon);
+                      if(LucideIcon) return <LucideIcon className="w-8 h-8" />;
+                      const icon = getCategoryIcon(item.category?.name);
+                      if(icon) return <img src={icon} alt="" className="w-14 h-14 object-contain" />;
+                      return <PieChart className="w-8 h-8" />;
+                    })()}
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-foreground">{item.category?.name || "Uncategorized"}</h3>

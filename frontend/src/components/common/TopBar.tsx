@@ -24,6 +24,7 @@ function AvatarImg({ src, className }: { src?: string | null; className?: string
     <img
       src={src}
       alt=""
+      referrerPolicy="no-referrer"
       className={cn("w-9 h-9 rounded-full object-cover border border-white/10", className)}
       onError={() => setError(true)}
     />

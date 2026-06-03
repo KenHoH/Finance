@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { getInitials, getColorFromString } from "@/lib/helpers";
 
@@ -22,12 +22,15 @@ const SIZE_MAP = {
  * Avatar with image fallback to colored initials.
  */
 export function Avatar({ src, name, size = "md", className }: AvatarProps){
-  if(src) {
+  const [error, setError] = useState(false);
+  if(src && !error){
     return (
       <img
         src={src}
         alt={name}
+        referrerPolicy="no-referrer"
         className={cn("rounded-full object-cover", SIZE_MAP[size], className)}
+        onError={() => setError(true)}
       />
     );
   }

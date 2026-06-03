@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { getLucideIcon } from "@/lib/category-lucide-icons";
 import type { Category, Transaction, ScannedItem } from "@/lib/types";
 
 const COLORS = ["#60a5fa", "#fbbf24", "#34d399", "#22d3ee", "#f472b6"];
@@ -559,9 +560,13 @@ export default function IncomePage() {
                       <td className="px-7 py-5 font-semibold text-foreground text-base">{t.description || "-"}</td>
                       <td className="px-6 py-5">
                         <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold bg-primary/10 text-primary border border-primary/20">
-                          {getCategoryIcon(t.category?.name) && (
-                            <img src={getCategoryIcon(t.category?.name)} alt="" className="w-10 h-10 object-contain" />
-                          )}
+                          {(() => {
+                            const LucideIcon = getLucideIcon(t.category?.icon);
+                            if(LucideIcon) return <LucideIcon className="w-5 h-5" />;
+                            const icon = getCategoryIcon(t.category?.name);
+                            if(icon) return <img src={icon} alt="" className="w-5 h-5 object-contain" />;
+                            return null;
+                          })()}
                           {t.category?.name || "Uncategorized"}
                         </span>
                       </td>

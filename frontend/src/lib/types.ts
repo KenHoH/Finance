@@ -5,6 +5,7 @@ export interface Category {
   name: string;
   icon?: string | null;
   type?: "INCOME" | "EXPENSE" | "INVESTMENT";
+  userId?: string | null;
 }
 
 export interface Transaction {

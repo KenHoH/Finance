@@ -42,6 +42,7 @@ function AvatarImg({ src, size = "md" }: { src?: string | null; size?: "sm" | "m
     <img
       src={src}
       alt=""
+      referrerPolicy="no-referrer"
       className={cn("rounded-full object-cover", isSm ? "w-9 h-9 ring-1 ring-sky-500/10" : "w-10 h-10")}
       onError={() => setError(true)}
     />
