@@ -1,52 +1,13 @@
-const CACHE_NAME = "finpro-v2";
-const STATIC_ASSETS = [
-  "/",
-  "/dashboard",
-  "/offline.html",
-];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    }).catch(() => {
-      // Silent fail for missing offline.html
-    })
-  );
+// Service worker disabled — self-unregister to clean up existing installations
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      )
-    )
+      Promise.all(keys.map((key) => caches.delete(key)))
+    ).then(() => self.registration.unregister())
   );
   self.clients.claim();
-});
-
-self.addEventListener("fetch", (event) => {
-  if(event.request.method !== "GET") return;
-  if(event.request.url.includes("/api/")) return; // Don't cache API calls
-
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if(cached) return cached;
-      return fetch(event.request).then((response) => {
-        if(!response || response.status !== 200 || response.type !== "basic") {
-          return response;
-        }
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
-      }).catch(() => {
-        if(event.request.mode === "navigate") {
-          return caches.match("/offline.html");
-        }
-        return new Response("Offline", { status: 503 });
-      });
-    })
-  );
 });
