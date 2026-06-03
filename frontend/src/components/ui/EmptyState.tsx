@@ -18,7 +18,9 @@ export const EmptyState = React.memo(function EmptyState({
       className="col-span-full flex flex-col items-center justify-center p-10 border border-dashed border-border rounded-xl text-center"
     >
       {image ? (
-        <img src={image} alt="" className="w-80 h-80 mb-6 object-contain" />
+        <div className="w-80 h-80 mb-6 rounded-2xl overflow-hidden flex items-center justify-center">
+          <img src={image} alt="" className="w-full h-full object-contain" />
+        </div>
       ) : (
         <EmptyStateIllustration className="w-80 h-80 mb-6 text-foreground" />
       )}

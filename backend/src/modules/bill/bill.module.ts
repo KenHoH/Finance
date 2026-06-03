@@ -5,6 +5,7 @@ import { BillService } from './core/app/bill.service.js';
 import { BillController } from './framework/bill.controller.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { ActivityLogModule } from '../activity-log/activity-log.module.js';
+import { NotificationModule } from '../notification/notification.module.js';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ActivityLogModule } from '../activity-log/activity-log.module.js';
       inject: [ConfigService],
     }),
     ActivityLogModule,
+    NotificationModule,
   ],
   controllers: [BillController],
   providers: [BillService],

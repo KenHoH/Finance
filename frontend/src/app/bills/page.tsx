@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Plus, Edit2, CheckCircle2, AlertTriangle, Calendar, Loader2, Bell } from "lucide-react";
+import { FileText, Plus, Edit2, CheckCircle2, AlertTriangle, Calendar, Loader2, Bell, MoreVertical, Trash2 } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
@@ -32,6 +32,20 @@ export default function BillsPage(){
   const [editDueDate, setEditDueDate] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [billToDelete, setBillToDelete] = useState<string | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [showPayConfirm, setShowPayConfirm] = useState(false);
+  const [billToPay, setBillToPay] = useState<string | null>(null);
+  const [celebratingId, setCelebratingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside() {
+      setActiveMenuId(null);
+    }
+    if(activeMenuId) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [activeMenuId]);
 
   const { data: bills = [], isLoading } = useQuery<Bill[]>({
     queryKey: ["bills"],
@@ -93,12 +107,19 @@ export default function BillsPage(){
 
   const payMutation = useMutation({
     mutationFn: (id: string) => api.post(`/bills/${id}/pay`),
-    onMutate: async (id) => optimisticUpdate(queryClient, ["bills"], id, { status: "PAID" }),
+    onMutate: async (id) => {
+      setCelebratingId(id);
+      return optimisticUpdate(queryClient, ["bills"], id, { status: "PAID" });
+    },
     onError: (err, id, context) => {
+      setCelebratingId(null);
       rollbackOnError(queryClient, ["bills"], context);
       addToast(extractApiError(err, "Failed to pay bill"), "error");
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["bills"] }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+      setTimeout(() => setCelebratingId(null), 1200);
+    },
     onSuccess: () => {
       addToast("Bill marked as paid", "success");
     },
@@ -223,12 +244,12 @@ export default function BillsPage(){
               onChange={setAmount}
               placeholder="0"
               required
-              className="[&_input]:px-4 [&_input]:py-3 [&_input]:text-base [&_input]:font-medium"
+              className="[&_input]:pr-4 [&_input]:py-3 [&_input]:text-base [&_input]:font-medium"
             />
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-foreground">Due Date</label>
-            <DatePicker value={dueDate} onChange={setDueDate} required className="[&_input]:px-4 [&_input]:py-3 [&_input]:text-base [&_input]:font-medium" />
+            <DatePicker value={dueDate} onChange={setDueDate} required className="[&_input]:pr-4 [&_input]:py-3 [&_input]:text-base [&_input]:font-medium" />
           </div>
           <button
             type="submit"
@@ -286,68 +307,91 @@ export default function BillsPage(){
         </div>
       )}
 
-      <div className="space-y-3">
+      {/* Bills List */}
+      <div className="grid grid-cols-1 gap-4">
         {bills.map((bill, i) => {
           const due = new Date(bill.dueDate);
           const isOverdue = bill.status === "OVERDUE" || (bill.status === "PENDING" && isPast(due) && !isToday(due));
+          const isPaid = bill.status === "PAID";
           return (
             <motion.div
               key={bill.id}
               initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="rounded-xl border border-border p-5 bg-card flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10"
+              animate={celebratingId === bill.id ? { scale: [1, 1.03, 1], opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+              transition={celebratingId === bill.id ? { duration: 0.6, ease: "easeInOut" } : { delay: i * 0.05 }}
+              className={cn(
+                "rounded-xl border p-5 bg-card flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
+                isPaid ? "border-border opacity-75" :
+                isOverdue ? "border-rose-500/30 hover:border-rose-500/50" :
+                "border-border hover:border-white/10"
+              )}
             >
               <div className="flex items-center gap-5">
                 <div className={cn(
                   "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                  bill.status === "PAID" ? "bg-sky-500/20 text-sky-400" :
+                  isPaid ? "bg-emerald-500/20 text-emerald-400" :
                   isOverdue ? "bg-rose-500/20 text-rose-400" :
                   "bg-sky-500/20 text-sky-400"
                 )}>
-                  {bill.status === "PAID" ? <CheckCircle2 className="w-6 h-6" /> :
+                  {isPaid ? <CheckCircle2 className="w-6 h-6" /> :
                    isOverdue ? <AlertTriangle className="w-6 h-6" /> :
                    <Calendar className="w-6 h-6" />}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-foreground">{bill.title}</p>
+                    <p className={cn("font-bold", isPaid ? "text-muted-foreground" : "text-foreground")}>{bill.title}</p>
                     {bill.category && (
-                      <span className="px-2 py-0.5 bg-accent text-muted-foreground text-sm font-bold rounded-full">{bill.category.name}</span>
+                      <span className="px-2 py-0.5 bg-background border border-border text-muted-foreground text-xs font-bold rounded-full">{bill.category.name}</span>
+                    )}
+                    {isPaid && (
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full">Paid</span>
+                    )}
+                    {isOverdue && (
+                      <span className="px-2 py-0.5 bg-rose-500/20 text-rose-300 text-xs font-bold rounded-full">Overdue</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium mt-0.5">
                     <span>Due {format(due, "dd MMM yyyy")}</span>
-                    {isOverdue && <span className="text-rose-500 font-bold">Overdue</span>}
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-5">
-                <p className="text-xl font-extrabold text-foreground">{formatCurrency(Number(bill.amount))}</p>
-                <div className="flex items-center gap-1">
-                  {bill.status !== "PAID" && (
-                    <button
-                      onClick={() => payMutation.mutate(bill.id)}
-                      disabled={payMutation.isPending}
-                      className="px-4 py-2 bg-sky-500 text-white rounded-xl text-sm font-bold hover:bg-sky-400 transition-colors active:scale-95 disabled:opacity-60"
-                    >
-                      Pay
-                    </button>
+              <div className="flex items-center gap-3">
+                <p className={cn("text-2xl font-bold", isPaid ? "text-emerald-400 line-through decoration-2" : isOverdue ? "text-rose-400" : "text-foreground")}>
+                  {formatCurrency(Number(bill.amount))}
+                </p>
+                {!isPaid && (
+                  <button
+                    onClick={() => { setBillToPay(bill.id); setShowPayConfirm(true); }}
+                    disabled={payMutation.isPending}
+                    className="px-4 py-2 bg-sky-500 text-white rounded-xl text-sm font-bold hover:bg-sky-400 transition-colors active:scale-95 disabled:opacity-60"
+                  >
+                    Mark as Paid
+                  </button>
+                )}
+                <div className="relative">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === bill.id ? null : bill.id); }}
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-sky-500/[0.05] rounded-lg transition-colors"
+                    aria-label="More options"
+                  >
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                  {activeMenuId === bill.id && (
+                    <div className="absolute right-0 top-10 z-20 w-40 rounded-xl border border-border bg-card shadow-xl py-1.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => { setEditBill(bill); setEditTitle(bill.title); setEditAmount(String(bill.amount)); setEditDueDate(apiDateToInput(bill.dueDate)); setActiveMenuId(null); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-sky-500/[0.05] transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4 text-sky-400" /> Edit
+                      </button>
+                      <button
+                        onClick={() => { setBillToDelete(bill.id); setShowDeleteConfirm(true); setActiveMenuId(null); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" /> Delete
+                      </button>
+                    </div>
                   )}
-                  <button
-                    onClick={() => { setEditBill(bill); setEditTitle(bill.title); setEditAmount(String(bill.amount)); setEditDueDate(apiDateToInput(bill.dueDate)); }}
-                    className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                    aria-label="Edit bill"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => { setBillToDelete(bill.id); setShowDeleteConfirm(true); }}
-                    className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                    aria-label="Delete bill"
-                  >
-                    <Plus className="w-4 h-4 rotate-45" />
-                  </button>
                 </div>
               </div>
             </motion.div>
@@ -406,6 +450,16 @@ export default function BillsPage(){
           </button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={showPayConfirm}
+        onConfirm={() => { if(billToPay) payMutation.mutate(billToPay); setShowPayConfirm(false); }}
+        onCancel={() => setShowPayConfirm(false)}
+        title="Mark as paid?"
+        description="Are you sure you want to mark this bill as paid?"
+        confirmLabel={payMutation.isPending ? "Processing..." : "Yes, Mark as Paid"}
+        variant="primary"
+      />
 
       <ConfirmDialog
         isOpen={showDeleteConfirm}

@@ -2,7 +2,8 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface ConfirmDialogProps {
   description?: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  variant?: "danger" | "warning";
+  variant?: "danger" | "warning" | "primary";
 }
 
 /**
@@ -50,7 +51,11 @@ export function ConfirmDialog({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center gap-3 text-foreground">
-              <AlertTriangle className="h-5 w-5 text-amber-400" />
+              {variant === "primary" ? (
+                <CheckCircle2 className="h-5 w-5 text-sky-400" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-amber-400" />
+              )}
               <span className="text-base font-semibold">{title}</span>
             </div>
             <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
@@ -68,11 +73,11 @@ export function ConfirmDialog({
                   onConfirm();
                   onCancel();
                 }}
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
-                  variant === "danger"
-                    ? "bg-rose-500 hover:bg-rose-600"
-                    : "bg-amber-500 hover:bg-amber-600"
-                }`}
+                className={cn("rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors",
+                  variant === "danger" && "bg-rose-500 hover:bg-rose-600",
+                  variant === "warning" && "bg-amber-500 hover:bg-amber-600",
+                  variant === "primary" && "bg-sky-500 hover:bg-sky-600"
+                )}
               >
                 {confirmLabel}
               </button>

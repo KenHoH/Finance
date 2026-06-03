@@ -24,8 +24,8 @@ import {
 } from "lucide-react";
 import { cn, unwrapArray } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useQuery } from "@tanstack/react-query";
-import { get } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { get, api } from "@/lib/api";
 import type { NavItem, Notification } from "@/lib/types";
 
 function AvatarImg({ src, size = "md" }: { src?: string | null; size?: "sm" | "md" }){
@@ -73,6 +73,7 @@ export function Navbar() {
   const moreRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuthStore();
+  const queryClient = useQueryClient();
 
   const { data: raw = [] } = useQuery<unknown>({
     queryKey: ["notifications"],
@@ -81,8 +82,13 @@ export function Navbar() {
     refetchInterval: 30000,
     refetchIntervalInBackground: false,
   });
-  const notifications = unwrapArray<Notification>(raw);
+  const notifications = unwrapArray<Notification>(raw).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const markRead = useMutation({
+    mutationFn: (id: string) => api.put(`/notifications/${id}/read`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -217,7 +223,9 @@ export function Navbar() {
           >
             <Bell className="w-[1.1rem] h-[1.1rem]" />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-2 w-1.5 h-1.5 bg-rose-500 rounded-full" />
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
             )}
           </button>
           <AnimatePresence>
@@ -249,7 +257,7 @@ export function Navbar() {
                       <Link
                         key={n.id}
                         href="/notifications"
-                        onClick={() => setIsNotifOpen(false)}
+                        onClick={() => { if(!n.isRead) markRead.mutate(n.id); setIsNotifOpen(false); }}
                         className={cn(
                           "flex items-start gap-3 px-4 py-3 border-b border-border hover:bg-muted/50 transition-colors",
                           !n.isRead && "bg-primary/5"

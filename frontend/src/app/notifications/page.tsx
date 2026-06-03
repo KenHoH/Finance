@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
   Check,
@@ -16,6 +16,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
 import { useToastStore } from "@/store/useToastStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { cn, unwrapArray } from "@/lib/utils";
 import { format } from "date-fns";
 import { Modal } from "@/components/ui/Modal";
@@ -25,6 +26,17 @@ import type { Notification } from "@/lib/types";
 import { optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
 
 type FilterTab = "all" | "unread";
+
+function safeFormatDate(dateValue: string | Date | null | undefined, fmt: string): string {
+  if(!dateValue) return "";
+  const d = typeof dateValue === "string" ? new Date(dateValue) : dateValue;
+  if(isNaN(d.getTime())) return "";
+  try {
+    return format(d, fmt);
+  } catch {
+    return "";
+  }
+}
 
 function getTypeMeta(type: string){
   switch(type){
@@ -55,6 +67,7 @@ function SkeletonCard(){
 export default function NotificationsPage(){
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
   const [filter, setFilter] = useState<FilterTab>("all");
   const [selected, setSelected] = useState<Notification | null>(null);
   const [notificationToDelete, setNotificationToDelete] = useState<string | null>(null);
@@ -62,6 +75,7 @@ export default function NotificationsPage(){
   const { data: raw = [], isLoading, isError, error } = useQuery<unknown>({
     queryKey: ["notifications"],
     queryFn: () => get<unknown>("/notifications"),
+    enabled: !!user,
   });
   const notifications = useMemo(() => unwrapArray<Notification>(raw), [raw]);
 
@@ -131,13 +145,8 @@ export default function NotificationsPage(){
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-7">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-4">
-            <div className="p-2 bg-primary/10 rounded-lg relative">
+            <div className="p-2 bg-primary/10 rounded-lg">
               <Bell className="w-5 h-5 text-primary" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-sky-400 text-xs font-bold rounded-full flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
             </div>
             Notifications
           </h1>
@@ -190,62 +199,66 @@ export default function NotificationsPage(){
           </div>
         )}
 
-        {!isLoading && !isError && filtered.map((n, i) => {
-          const meta = getTypeMeta(n.type);
-          const TypeIcon = meta.icon;
-          return (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ delay: i * 0.05 }}
-              className={cn(
-                "rounded-xl border p-4 flex items-start gap-3 cursor-pointer group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
-                n.isRead ? "border-border bg-card hover:border-white/10" : "border-primary/20 bg-primary/5 hover:bg-primary/[0.08] hover:border-primary/30"
-              )}
-              onClick={() => handleOpen(n)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if(e.key === "Enter" || e.key === " ") handleOpen(n); }}
-            >
-              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", meta.bg, meta.color)}>
-                <TypeIcon className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-bold text-foreground">{n.title}</p>
-                  {!n.isRead && <span className="w-2 h-2 bg-primary rounded-full shrink-0" />}
-                  <span className={cn("hidden sm:inline-flex px-2 py-0.5 rounded-full text-sm font-bold uppercase tracking-wider", meta.bg, meta.color)}>
-                    {meta.label}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground font-medium line-clamp-2">{n.message}</p>
-                <p className="text-sm text-muted-foreground mt-2">{format(new Date(n.createdAt), "dd MMM yyyy HH:mm")}</p>
-              </div>
-              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                {!n.isRead && (
-                  <button
-                    onClick={() => markRead.mutate(n.id)}
-                    disabled={markRead.isPending}
-                    className="p-2 rounded-xl text-muted-foreground hover:text-sky-400 hover:bg-sky-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    aria-label="Mark as read"
-                  >
-                    {markRead.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-5 h-5" />}
-                  </button>
-                )}
-                <button
-                  onClick={() => deleteNotification.mutate(n.id)}
-                  disabled={deleteNotification.isPending}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  aria-label="Delete notification"
+        {!isLoading && !isError && (
+          <AnimatePresence>
+            {filtered.map((n, i) => {
+              const meta = getTypeMeta(n.type);
+              const TypeIcon = meta.icon;
+              return (
+                <motion.div
+                  key={n.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ delay: i * 0.05 }}
+                  className={cn(
+                    "rounded-xl border p-4 flex items-start gap-3 cursor-pointer group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
+                    n.isRead ? "border-border bg-card hover:border-white/10" : "border-primary/20 bg-primary/5 hover:bg-primary/[0.08] hover:border-primary/30"
+                  )}
+                  onClick={() => handleOpen(n)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if(e.key === "Enter" || e.key === " ") handleOpen(n); }}
                 >
-                  {deleteNotification.isPending && deleteNotification.variables === n.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-5 h-5" />}
-                </button>
-              </div>
-            </motion.div>
-          );
-        })}
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", meta.bg, meta.color)}>
+                    <TypeIcon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-bold text-foreground">{n.title}</p>
+                      {!n.isRead && <span className="w-2 h-2 bg-primary rounded-full shrink-0" />}
+                      <span className={cn("hidden sm:inline-flex px-2 py-0.5 rounded-full text-sm font-bold uppercase tracking-wider", meta.bg, meta.color)}>
+                        {meta.label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground font-medium line-clamp-2">{n.message}</p>
+                    <p className="text-sm text-muted-foreground mt-2">{safeFormatDate(n.createdAt, "dd MMM yyyy HH:mm")}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {!n.isRead && (
+                      <button
+                        onClick={() => markRead.mutate(n.id)}
+                        disabled={markRead.isPending}
+                        className="p-2 rounded-xl text-muted-foreground hover:text-sky-400 hover:bg-sky-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        aria-label="Mark as read"
+                      >
+                        {markRead.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-5 h-5" />}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteNotification.mutate(n.id)}
+                      disabled={deleteNotification.isPending}
+                      className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      aria-label="Delete notification"
+                    >
+                      {deleteNotification.isPending && deleteNotification.variables === n.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        )}
 
         {!isLoading && filtered.length === 0 && (
           <EmptyState
@@ -258,64 +271,44 @@ export default function NotificationsPage(){
 
       <Modal isOpen={!!selected} onClose={handleClose} title={selected?.title || "Notification"}>
         {selected && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
               {(() => {
                 const meta = getTypeMeta(selected.type);
                 const Icon = meta.icon;
                 return (
-                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", meta.bg, meta.color)}>
-                    <Icon className="w-6 h-6" />
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", meta.bg, meta.color)}>
+                    <Icon className="w-5 h-5" />
                   </div>
                 );
               })()}
               <div>
                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{getTypeMeta(selected.type).label}</p>
-                <p className="text-sm text-muted-foreground">{format(new Date(selected.createdAt), "dd MMMM yyyy 'at' HH:mm")}</p>
+                <p className="text-sm text-muted-foreground">{safeFormatDate(selected.createdAt, "dd MMMM yyyy 'at' HH:mm")}</p>
               </div>
             </div>
 
-            <div className="bg-accent/50 rounded-xl p-7">
+            <div className="bg-accent/50 rounded-xl p-6">
               <p className="text-base font-medium text-foreground leading-relaxed">{selected.message}</p>
             </div>
 
-            <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
-              <span className={cn("px-2.5 py-1 rounded-full text-base font-bold", selected.isRead ? "bg-sky-500/10 text-sky-400" : "bg-sky-500/10 text-sky-500")}>
-                {selected.isRead ? "Read" : "Unread"}
-              </span>
-              {selected.readAt && (
-                <span>Read at {format(new Date(selected.readAt), "dd MMM yyyy HH:mm")}</span>
-              )}
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              {!selected.isRead && (
+            {!selected.isRead && (
+              <>
+                <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
+                  <span className="px-2.5 py-1 rounded-full text-sm font-bold bg-amber-500/10 text-amber-400">
+                    Unread
+                  </span>
+                </div>
                 <button
                   onClick={() => { markRead.mutate(selected.id); handleClose(); }}
                   disabled={markRead.isPending}
-                  className="flex-1 flex items-center justify-center gap-2 bg-sky-500 text-sky-400 py-3 rounded-xl font-bold hover:bg-white/80 transition-colors active:scale-[0.98] disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors active:scale-[0.98] disabled:opacity-60"
                 >
                   {markRead.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
                   Mark as read
                 </button>
-              )}
-              <button
-                onClick={() => setNotificationToDelete(selected.id)}
-                disabled={deleteNotification.isPending}
-                className="flex-1 flex items-center justify-center gap-2 bg-rose-500 text-sky-400 py-3 rounded-xl font-bold hover:bg-rose-600 transition-colors active:scale-[0.98] disabled:opacity-60"
-              >
-                {deleteNotification.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
-                Delete
-              </button>
-              {selected.isRead && (
-                <button
-                  onClick={handleClose}
-                  className="flex-1 flex items-center justify-center gap-2 bg-accent text-foreground py-3 rounded-xl font-bold hover:bg-accent/80 transition-colors active:scale-[0.98]"
-                >
-                  <X className="w-5 h-5" /> Close
-                </button>
-              )}
-            </div>
+              </>
+            )}
           </div>
         )}
       </Modal>
