@@ -67,6 +67,20 @@ export class CategoryService {
 
     if(!category) return null;
 
+    if(dto.name && dto.name.toLowerCase() !== category.name.toLowerCase()){
+      const existing = await this.prisma.category.findFirst({
+        where: {
+          userId,
+          id: { not: id },
+          name: { equals: dto.name, mode: 'insensitive' },
+        },
+      });
+
+      if(existing){
+        throw new ConflictException('A category with this name already exists.');
+      }
+    }
+
     const updated = await this.prisma.category.update({
       where: { id },
       data: {
