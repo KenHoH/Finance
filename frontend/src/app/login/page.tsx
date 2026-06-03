@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2, TrendingUp, Shield, Wallet, BarChart3 } from "lucide-react";
@@ -21,10 +21,12 @@ export default function LoginPage(){
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
-    if(user && !authLoading){
-      router.push("/dashboard");
+    if(user && !authLoading && !hasRedirected.current){
+      hasRedirected.current = true;
+      router.replace("/dashboard");
     }
   }, [user, authLoading, router]);
 

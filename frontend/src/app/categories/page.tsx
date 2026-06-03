@@ -112,9 +112,6 @@ export default function CategoriesPage(){
             Categories
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Organize your transactions</p>
-          <Link href="/settings" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-2">
-            <ArrowLeft className="w-3 h-3" /> Back to Settings
-          </Link>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -123,73 +120,6 @@ export default function CategoriesPage(){
           <Plus className="w-5 h-5" /> New Category
         </button>
       </header>
-
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => { setIsCreateSuccess(false); setIsModalOpen(false); }}
-        title="New Category"
-        description="Create a custom category for your transactions."
-        isSuccess={isCreateSuccess}
-        successMessage="Category successfully created!"
-      >
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const errors = runValidators(
-              validateString(newName, "Category Name", { min: 1, max: 50 })
-            );
-            if(errors.length > 0){
-              addToast(errors[0].message, "error");
-              return;
-            }
-            createMutation.mutate({ name: newName.trim(), type: newType });
-          }}
-        >
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">Name</label>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. Groceries"
-              required
-              className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-base font-medium"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">Type</label>
-            <div className="flex gap-2">
-              {(["INCOME", "EXPENSE"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setNewType(t)}
-                  className={cn(
-                    "flex-1 py-3 rounded-xl text-sm font-bold border transition-all",
-                    newType === t
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-muted-foreground border-border hover:bg-accent/50"
-                  )}
-                >
-                  {t === "INCOME" ? (
-                    <span className="flex items-center justify-center gap-2"><ArrowUpRight className="w-5 h-5" /> Income</span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2"><ArrowDownRight className="w-5 h-5" /> Expense</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={createMutation.isPending}
-            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] mt-6 shadow-md disabled:opacity-60"
-          >
-            {createMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Create Category"}
-          </button>
-        </form>
-      </Modal>
 
       {/* Expense Categories */}
       <section className="space-y-4">
@@ -210,13 +140,13 @@ export default function CategoriesPage(){
                   const icon = getCategoryIcon(cat.name);
                   if(icon){
                     return (
-                      <div className="w-14 h-14 rounded-xl bg-rose-500/10 flex items-center justify-center overflow-hidden">
+                      <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center overflow-hidden">
                         <img src={icon} alt="" className="w-11 h-11 object-contain" />
                       </div>
                     );
                   }
                   return (
-                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 font-bold text-sm">
+                    <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-muted-foreground font-bold text-sm">
                       {cat.name.slice(0, 2).toUpperCase()}
                     </div>
                   );
@@ -272,13 +202,13 @@ export default function CategoriesPage(){
                   const icon = getCategoryIcon(cat.name);
                   if(icon){
                     return (
-                      <div className="w-14 h-14 rounded-xl bg-sky-500/10 flex items-center justify-center overflow-hidden">
+                      <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center overflow-hidden">
                         <img src={icon} alt="" className="w-11 h-11 object-contain" />
                       </div>
                     );
                   }
                   return (
-                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-400 font-bold text-sm">
+                    <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-muted-foreground font-bold text-sm">
                       {cat.name.slice(0, 2).toUpperCase()}
                     </div>
                   );
@@ -314,6 +244,73 @@ export default function CategoriesPage(){
           )}
         </div>
       </section>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => { setIsCreateSuccess(false); setIsModalOpen(false); }}
+        title="New Category"
+        description="Create a custom category for your transactions."
+        isSuccess={isCreateSuccess}
+        successMessage="Category successfully created!"
+      >
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const errors = runValidators(
+              validateString(newName, "Category Name", { min: 1, max: 50 })
+            );
+            if(errors.length > 0){
+              addToast(errors[0].message, "error");
+              return;
+            }
+            createMutation.mutate({ name: newName.trim(), type: newType });
+          }}
+        >
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-foreground">Name</label>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="e.g. Groceries"
+              required
+              className="w-full px-5 py-4 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-lg font-medium placeholder:text-muted-foreground/50"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-foreground">Type</label>
+            <div className="flex gap-2">
+              {(["INCOME", "EXPENSE"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setNewType(t)}
+                  className={cn(
+                    "flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all",
+                    newType === t
+                      ? "border-primary text-primary bg-primary/5"
+                      : "border-border text-muted-foreground hover:border-primary/30 hover:bg-accent/50"
+                  )}
+                >
+                  {t === "INCOME" ? (
+                    <span className="flex items-center justify-center gap-2"><ArrowUpRight className="w-5 h-5" /> Income</span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2"><ArrowDownRight className="w-5 h-5" /> Expense</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={createMutation.isPending}
+            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-60"
+          >
+            {createMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Create Category"}
+          </button>
+        </form>
+      </Modal>
 
       <Modal
         isOpen={!!editCategory}
@@ -354,3 +351,4 @@ export default function CategoriesPage(){
     </div>
   );
 }
+

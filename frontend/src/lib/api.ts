@@ -43,7 +43,7 @@ api.interceptors.response.use(
   (response) => response,
   async(error: AxiosError) => {
     const status = error.response?.status;
-    const originalConfig = error.config as InternalAxiosRequestConfig & { _csrfRetry?: boolean };
+    const originalConfig = error.config as InternalAxiosRequestConfig & { _csrfRetry?: boolean; _logoutFired?: boolean };
 
     if((status === 401 || status === 403) && !originalConfig._csrfRetry){
       csrfToken = "";
@@ -69,8 +69,9 @@ api.interceptors.response.use(
 
     if(status === 401 || status === 403){
       csrfToken = "";
-      if(status === 401 && originalConfig.url !== "/auth/csrf" && originalConfig.url !== "/email"){
+      if(status === 401 && originalConfig.url !== "/auth/csrf" && originalConfig.url !== "/email" && !originalConfig._logoutFired){
         if(typeof window !== "undefined"){
+          originalConfig._logoutFired = true;
           import("@/store/useAuthStore").then(({ useAuthStore }) => {
             useAuthStore.getState().logout();
           });

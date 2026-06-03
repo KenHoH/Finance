@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -90,10 +90,12 @@ export default function LandingPage() {
   const router = useRouter();
 
   const { user, isLoading } = useAuthStore();
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
-    if (user && !isLoading) {
-      router.push("/dashboard");
+    if(user && !isLoading && !hasRedirected.current){
+      hasRedirected.current = true;
+      router.replace("/dashboard");
     }
   }, [user, isLoading, router]);
 
