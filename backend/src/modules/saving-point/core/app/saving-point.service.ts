@@ -44,7 +44,7 @@ export class SavingPointService{
 
       if(!settings) continue;
 
-      if(settings.value === 'daily') {
+      if(settings.value === 'DAILY') {
         await this.savingDaily(budget.userId, budget, yesterday);
       }
     }

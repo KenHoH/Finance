@@ -20,6 +20,8 @@ export class BudgetService {
     @InjectQueue('saving') private readonly savingQueue: Queue,
   ) {}
 
+  private logger = new Logger(BudgetService.name);
+
   async create(userId: string, dto: CreateBudgetDto){
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
@@ -39,9 +41,9 @@ export class BudgetService {
 
     const settings = await this.settingsService.findOneByKey(userId, 'BUDGET_TIME_PREFERENCE');
 
-    const userPreference = settings?.value ?? 'daily';
+    const userPreference = settings?.value ?? 'DAILY';
 
-    if(userPreference !== 'daily'){
+    if(userPreference !== 'DAILY'){
       const delay = endDate.getTime() - Date.now();
 
       await this.savingQueue.add('calculate', { budgetId: budget.id, userId: userId, startDate: dto.startDate, endDate: dto.endDate }, {
@@ -401,8 +403,12 @@ export class BudgetService {
       const userSettings = await this.settingsService.findOneByKey(userId, 'BUDGET_TIME_PREFERENCE');
       const timePreference = userSettings?.value ?? 'DAILY';
 
+      this.logger.debug(`Checking budget for user ${userId} - Budget ${budget.id}: Amount ${budgetAmount}, Daily Allowance ${dailyAllowance}, Time Preference ${timePreference}`);
+
       if(timePreference === 'DAILY'){
         const todaySpent = await this.calculateSpentForBudget(userId, {...budget, startDate: startOfToday, endDate: endOfToday}, allBudgets);
+        
+        this.logger.debug(`Checking daily budget for user ${userId} - Budget ${budget.id}: Spent today ${todaySpent}, Daily Allowance ${dailyAllowance}`);
 
         if(todaySpent > dailyAllowance){
           const existingDebt = await this.debtService.findOneByBudgetId(budget.id);
@@ -413,6 +419,8 @@ export class BudgetService {
             budgetId: budget.id,
             debtAmount: totalDebt,
           });
+
+          this.logger.debug(`User ${userId} exceeded daily budget for Budget ${budget.id}. Today's Spent: ${todaySpent}, Daily Allowance: ${dailyAllowance}, Existing Debt: ${existingAmount}, New Debt: ${dailyOverspend}, Total Debt: ${totalDebt}`);
 
           const notified = await hasNotificationToday('Daily Budget Exceeded');
           if(!notified){
@@ -428,6 +436,7 @@ export class BudgetService {
       }
 
       const totalSpent = await this.calculateSpentForBudget(userId, budget, allBudgets);
+      this.logger.debug(`Checking overall budget for user ${userId} - Budget ${budget.id}: Total Spent ${totalSpent}, Budget Amount ${budgetAmount}`);
       const percentage = budgetAmount > 0 ? Math.round((totalSpent / budgetAmount) * 100) : 0;
 
       if(totalSpent > budgetAmount){

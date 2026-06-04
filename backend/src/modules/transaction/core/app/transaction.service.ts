@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { NotificationService } from '../../../notification/core/app/notification.service.js';
 import { CreateTransactionDto } from '../../framework/dtos/create-transaction.dto.js';
@@ -17,6 +17,8 @@ export class TransactionService {
     private readonly activityLogService: ActivityLogService,
   ) {}
 
+  private logger = new Logger(TransactionService.name);
+
   async create(userId: string, dto: CreateTransactionDto){
     const transaction = await this.prisma.transaction.create({
       data: {
@@ -32,6 +34,7 @@ export class TransactionService {
       },
     });
 
+    this.logger.debug(`Created transaction for user ${userId} - Amount: ${transaction.amount}, Type: ${transaction.type}, Category: ${transaction.categoryId}, Date: ${transaction.date.toISOString()}`);
     if(transaction.type === 'EXPENSE'){
       await this.budgetService.checkBudgetOverall(userId, transaction);
     }

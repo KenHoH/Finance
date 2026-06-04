@@ -4,7 +4,7 @@ import { IsNumber, IsEnum, IsOptional, IsString, IsDateString } from 'class-vali
 export class UpdateSettingsDto {
   @ApiProperty({
     description: 'The value for the specified key',
-    example: "daily",
+    example: "DAILY",
   })
   @IsString()
   value: string;
