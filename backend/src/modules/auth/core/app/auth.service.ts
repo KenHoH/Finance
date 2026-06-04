@@ -47,6 +47,16 @@ export class AuthService {
           avatar: avatarUrl,
         }
       });
+
+      // create default settings for new user 
+      await this.prisma.settings.create({
+        data: {
+          userId: user.id,
+          key: 'BUDGET_TIME_PREFERENCE',
+          value: 'MONTHLY',
+        }
+      })
+      
       this.logger.log(`User created: ${user.id}`)
     }else{
       if(avatarUrl && !user.avatar){
