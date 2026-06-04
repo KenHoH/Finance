@@ -7,7 +7,8 @@ import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 @Controller('goals')
 @UseGuards(JwtAuthGuard)
 export class GoalController {
-  constructor(private readonly goalService: GoalService) {}
+  constructor(
+    private readonly goalService: GoalService,  ) {}
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateGoalDto){

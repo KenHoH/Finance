@@ -29,12 +29,20 @@ export class AuthController {
       httpOnly:true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      path: '/',
     });
 
     const csrfToken = generateCsrfToken();
     setCsrfCookie(response, csrfToken);
 
     response.redirect(redirectUrl);
+  }
+
+  @Get('/csrf')
+  getCsrf(@Res({passthrough: true}) response: Response){
+    const csrfToken = generateCsrfToken();
+    setCsrfCookie(response, csrfToken);
+    return {csrfToken};
   }
 
   @Get('/me')
@@ -58,10 +66,6 @@ export class AuthController {
 
   @Post('/logout')
   logOut(@Req() req:Request, @Res({passthrough: true}) response: Response) {
-    const token = req.cookies?.['token'];
-    if(!token){
-      return {message: 'no activate session bro'};
-    }
     response.clearCookie('token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

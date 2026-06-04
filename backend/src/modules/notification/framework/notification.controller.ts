@@ -7,7 +7,8 @@ import { CreateNotificationDto } from './dtos/create-notification.js';
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,  ) {}
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateNotificationDto ) {
@@ -55,3 +56,4 @@ export class NotificationController {
     return {message: 'Notification deleted'};
   }
 }
+

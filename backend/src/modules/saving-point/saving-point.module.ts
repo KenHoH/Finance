@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { SavingPointService } from './core/app/saving-point.service.js';
 import { SavingPointController } from './framework/saving-point.controller.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
@@ -7,7 +8,17 @@ import { ActivityLogModule } from '../activity-log/activity-log.module.js';
 import { TransactionModule } from '../transaction/transaction.module.js';
 
 @Module({
-  imports: [PrismaModule, JwtModule.register({}), ActivityLogModule, TransactionModule],
+  imports: [
+    JwtModule.registerAsync({
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get('JWT_SECRET'),
+      }),
+      inject: [ConfigService],
+    }),
+    PrismaModule,
+    ActivityLogModule,
+    TransactionModule,
+  ],
   controllers: [SavingPointController],
   providers: [SavingPointService],
   exports: [SavingPointService],

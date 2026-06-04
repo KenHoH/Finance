@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateCategoryDto } from '../../framework/dtos/create-category.dto.js';
 import { UpdateCategoryDto } from '../../framework/dtos/update-category.dto.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
+import { CategoryType } from '../../../../../generated/prisma/client.js';
 
 @Injectable()
 export class CategoryService {
@@ -12,6 +13,17 @@ export class CategoryService {
   ) {}
 
   async create(userId: string, dto: CreateCategoryDto){
+    const existing = await this.prisma.category.findFirst({
+      where: {
+        userId,
+        name: { equals: dto.name, mode: 'insensitive' },
+      },
+    });
+
+    if(existing){
+      throw new ConflictException('A category with this name already exists.');
+    }
+
     const category = await this.prisma.category.create({
       data: {
         userId,
@@ -26,13 +38,14 @@ export class CategoryService {
     return category;
   }
 
-  async findAll(userId: string){
+  async findAll(userId: string, type?: string){
     return this.prisma.category.findMany({
       where: {
         OR: [
           { userId },
           { userId: null },
         ],
+        ...(type ? { type: type as CategoryType } : {}),
       },
       orderBy: { name: 'asc' },
     });
@@ -53,6 +66,20 @@ export class CategoryService {
     });
 
     if(!category) return null;
+
+    if(dto.name && dto.name.toLowerCase() !== category.name.toLowerCase()){
+      const existing = await this.prisma.category.findFirst({
+        where: {
+          userId,
+          id: { not: id },
+          name: { equals: dto.name, mode: 'insensitive' },
+        },
+      });
+
+      if(existing){
+        throw new ConflictException('A category with this name already exists.');
+      }
+    }
 
     const updated = await this.prisma.category.update({
       where: { id },

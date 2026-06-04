@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { NotificationController } from './framework/notification.controller.js';
 import { NotificationService } from './core/app/notification.service.js';
+import { NotificationCronService } from './core/app/notification-cron.service.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 
 @Module({
@@ -16,7 +17,7 @@ import { PrismaModule } from '../prisma/prisma.module.js';
     }),
   ],
   controllers: [NotificationController],
-  providers: [NotificationService],
+  providers: [NotificationService, NotificationCronService],
   exports: [NotificationService],
 })
 export class NotificationModule {}

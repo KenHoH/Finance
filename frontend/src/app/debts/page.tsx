@@ -1,0 +1,207 @@
+"use client";
+
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { AlertTriangle, TrendingDown, Edit2, Trash2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { get, post, api, extractApiError } from "@/lib/api";
+import { useToastStore } from "@/store/useToastStore";
+import { formatCurrency } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
+import { CurrencyInput } from "@/components/ui/CurrencyInput";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import type { Budget, DebtPoint } from "@/lib/types";
+import { optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
+
+export default function DebtsPage() {
+  const addToast = useToastStore((s) => s.addToast);
+  const queryClient = useQueryClient();
+  const [editDebt, setEditDebt] = useState<DebtPoint | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [debtToDelete, setDebtToDelete] = useState<string | null>(null);
+
+  const { data: budgets = [] } = useQuery<Budget[]>({
+    queryKey: ["budgets"],
+    queryFn: () => get<Budget[]>("/budgets"),
+  });
+
+  const { data: debts = [], isLoading } = useQuery<DebtPoint[]>({
+    queryKey: ["debts", budgets.map((b) => b.id)],
+    queryFn: async () => {
+      if(budgets.length === 0) return [];
+      return post<DebtPoint[]>("/debt/budget-ids", budgets.map((b) => b.id));
+    },
+    enabled: budgets.length > 0,
+  });
+
+  const totalDebt = debts.reduce((acc, curr) => acc + Number(curr.debtAmount), 0);
+
+  const updateMutation = useMutation({
+    mutationFn: (dto: { id: string; debtAmount: number }) =>
+      api.put(`/debt/update/${dto.id}`, { debtAmount: dto.debtAmount }),
+    onMutate: async (dto) => optimisticUpdate(queryClient, ["debts", budgets.map((b) => b.id)], dto.id, { debtAmount: dto.debtAmount }),
+    onError: (err, dto, context) => {
+      rollbackOnError(queryClient, ["debts", budgets.map((b) => b.id)], context);
+      addToast(extractApiError(err, "Failed to update debt"), "error");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["debts"] }),
+    onSuccess: () => {
+      setEditDebt(null);
+      setEditAmount("");
+      addToast("Debt updated", "success");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/debt/delete/${id}`),
+    onMutate: async (id) => optimisticDelete(queryClient, ["debts", budgets.map((b) => b.id)], id),
+    onError: (err, id, context) => {
+      rollbackOnError(queryClient, ["debts", budgets.map((b) => b.id)], context);
+      addToast(extractApiError(err, "Failed to delete debt"), "error");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["debts"] }),
+    onSuccess: () => {
+      addToast("Debt deleted", "success");
+    },
+  });
+
+  if(isLoading){
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto pb-24">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+          {[0,1,2].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+        <div className="space-y-4">
+          {[0,1,2,3].map((i) => (
+            <Skeleton key={i} className="h-20" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto pb-24">
+      {/* Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-7">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-4">
+            <div className="p-2 bg-red-500/10 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+            </div>
+            Debts
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Auto-generated from overspent budgets</p>
+        </div>
+      </header>
+
+      {/* Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-border bg-card p-9">
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Total Overbudget</p>
+          <p className="text-3xl font-bold text-rose-400">{formatCurrency(totalDebt)}</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-9">
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Overspent Budgets</p>
+          <p className="text-3xl font-bold text-foreground">{debts.length}</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-9">
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Active Budgets</p>
+          <p className="text-3xl font-bold text-foreground">{budgets.length}</p>
+        </motion.div>
+      </div>
+
+      {/* Debt Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+        {debts.map((debt, idx) => (
+          <motion.div key={debt.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }} className="rounded-xl border border-border p-6 flex flex-col justify-between relative group overflow-hidden bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10">
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-400 shadow-sm border border-border group-hover:scale-110 transition-transform duration-300">
+                  <TrendingDown className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-foreground">{debt.budget?.category?.name || "Uncategorized"}</h3>
+                  <p className="text-sm text-muted-foreground font-bold uppercase tracking-wider mt-1">Overbudget</p>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => { setEditDebt(debt); setEditAmount(String(debt.debtAmount)); }}
+                  className="p-1.5 text-muted-foreground hover:bg-sky-500/[0.05] rounded-lg transition-colors"
+                  aria-label="Edit debt"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => { setDebtToDelete(debt.id); setShowDeleteConfirm(true); }}
+                  disabled={deleteMutation.isPending}
+                  className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                  aria-label="Delete debt"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <p className="text-3xl font-black tracking-tight text-rose-500">{formatCurrency(Number(debt.debtAmount))}</p>
+              <div className="flex items-center gap-1 text-sm font-extrabold text-rose-500 mt-2">
+                <AlertTriangle className="w-5 h-5" /> Overspent
+              </div>
+            </div>
+          </motion.div>
+        ))}
+        {debts.length === 0 && (
+          <EmptyState
+            image="/empty-debts.png"
+            title="No overspent budgets"
+            description="You are on track! Debt points will appear here when budgets are exceeded."
+          />
+        )}
+      </div>
+
+      <Modal
+        isOpen={!!editDebt}
+        onClose={() => setEditDebt(null)}
+        title="Edit Debt"
+        description={editDebt?.budget?.category?.name || "Uncategorized"}
+      >
+        <div>
+          <label className="text-sm font-medium text-foreground mb-1 block">Debt Amount</label>
+          <CurrencyInput
+            value={editAmount}
+            onChange={setEditAmount}
+            placeholder="0"
+          />
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <button onClick={() => setEditDebt(null)} className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sky-500/[0.03] transition-colors">Cancel</button>
+          <button
+            onClick={() => { if(editAmount && editDebt) updateMutation.mutate({ id: editDebt.id, debtAmount: Number(editAmount) }); }}
+            disabled={updateMutation.isPending}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50"
+          >
+            {updateMutation.isPending ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onConfirm={() => { if(debtToDelete) deleteMutation.mutate(debtToDelete); }}
+        onCancel={() => setShowDeleteConfirm(false)}
+        title="Delete debt?"
+        description="Are you sure you want to delete this debt? This action cannot be undone."
+        confirmLabel={deleteMutation.isPending ? "Deleting..." : "Delete"}
+        variant="danger"
+      />
+    </div>
+  );
+}

@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateBillDto, UpdateBillDto, PayBillDto } from '../../framework/dto/index.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
+import { NotificationService } from '../../../notification/core/app/notification.service.js';
 
 @Injectable()
 export class BillService{
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogService: ActivityLogService,
+    private readonly notificationService: NotificationService,
   ){}
 
   async create(userId: string, dto: CreateBillDto){
@@ -25,6 +27,11 @@ export class BillService{
     });
 
     await this.activityLogService.logActivity(userId, 'CREATE', 'Bill', bill.id, {title: bill.title, amount: Number(bill.amount)});
+
+    if(bill.isReminderEnabled && !bill.paidAt){
+      const cat = bill.categoryId ? await this.prisma.category.findFirst({where: {id: bill.categoryId}}) : null;
+      await this.notificationService.notifyBillReminder(bill, cat);
+    }
 
     return bill;
   }
@@ -61,6 +68,11 @@ export class BillService{
     });
 
     await this.activityLogService.logActivity(userId, 'UPDATE', 'Bill', id, {title: updated.title, amount: Number(updated.amount)});
+
+    if(updated.isReminderEnabled && (updated.status === 'PENDING' || updated.status === 'OVERDUE')){
+      const cat = updated.categoryId ? await this.prisma.category.findFirst({where: {id: updated.categoryId}}) : null;
+      await this.notificationService.notifyBillReminder(updated, cat);
+    }
 
     return updated;
   }

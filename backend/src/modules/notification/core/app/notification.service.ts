@@ -16,6 +16,43 @@ export class NotificationService {
     });
   }
 
+  async notifyBillReminder(bill: any, category?: any) {
+    const now = new Date();
+    const daysUntil = Math.ceil((bill.dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const prefix = daysUntil < 0 ? 'Bill Overdue' : daysUntil === 0 ? 'Bill Due Today' : 'Bill Due Soon';
+
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const alreadyNotified = await this.prisma.notification.findFirst({
+      where: {
+        userId: bill.userId,
+        type: 'BILL_REMINDER',
+        title: { startsWith: prefix },
+        createdAt: { gte: todayStart },
+      },
+    });
+
+    if(alreadyNotified) return;
+
+    const categoryName = category?.name ? ` (${category.name})` : '';
+    const amount = Number(bill.amount).toLocaleString('id-ID');
+
+    let title: string;
+    let message: string;
+
+    if(daysUntil < 0){
+      title = `${prefix}: ${bill.title}`;
+      message = `Your bill "${bill.title}"${categoryName} for Rp ${amount} is overdue by ${Math.abs(daysUntil)} day${Math.abs(daysUntil) !== 1 ? 's' : ''}.`;
+    } else if(daysUntil === 0){
+      title = `${prefix}: ${bill.title}`;
+      message = `Your bill "${bill.title}"${categoryName} for Rp ${amount} is due today.`;
+    } else{
+      title = `${prefix}: ${bill.title}`;
+      message = `Your bill "${bill.title}"${categoryName} for Rp ${amount} is due in ${daysUntil} day${daysUntil !== 1 ? 's' : ''}.`;
+    }
+
+    await this.create(bill.userId, 'BILL_REMINDER', title, message);
+  }
+
   async findAll(userId: string){
     return this.prisma.notification.findMany({
       where: {userId},

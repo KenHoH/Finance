@@ -7,14 +7,12 @@ import helmet from 'helmet';
 import express from 'express';
 import { GlobalExceptionFilter } from './infrastructure/filters/http-exception.filter.js';
 import { SanitizeInterceptor } from './infrastructure/interceptors/sanitize.interceptor.js';
-import { CsrfGuard } from './infrastructure/guards/csrf.guard.js';
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet());
-  app.use(express.json({ limit: '10kb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
   const allowedOrigins = new Set<string>();
   const frontendUrl = process.env.FRONTEND_URL;
@@ -40,7 +38,7 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   });
-  
+
   app.use(cookieParser());
 
   app.useGlobalFilters(new GlobalExceptionFilter());
@@ -51,8 +49,6 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
     transform: true,
   }));
-
-  app.useGlobalGuards(new CsrfGuard());
 
   const config = new DocumentBuilder()
     .setTitle('Finance App API')

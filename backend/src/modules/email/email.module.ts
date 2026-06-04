@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { ActivityLogModule } from '../activity-log/activity-log.module.js';
 import { EmailController } from './framework/email.controller.js';

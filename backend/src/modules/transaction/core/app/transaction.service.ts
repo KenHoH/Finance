@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { NotificationService } from '../../../notification/core/app/notification.service.js';
 import { CreateTransactionDto } from '../../framework/dtos/create-transaction.dto.js';
@@ -17,6 +17,8 @@ export class TransactionService {
     private readonly activityLogService: ActivityLogService,
   ) {}
 
+  private logger = new Logger(TransactionService.name);
+
   async create(userId: string, dto: CreateTransactionDto){
     const transaction = await this.prisma.transaction.create({
       data: {
@@ -32,6 +34,7 @@ export class TransactionService {
       },
     });
 
+    this.logger.debug(`Created transaction for user ${userId} - Amount: ${transaction.amount}, Type: ${transaction.type}, Category: ${transaction.categoryId}, Date: ${transaction.date.toISOString()}`);
     if(transaction.type === 'EXPENSE'){
       await this.budgetService.checkBudgetOverall(userId, transaction);
     }
@@ -185,30 +188,25 @@ export class TransactionService {
       if(filters.endDate) where.date.lte = new Date(filters.endDate);
     }
 
-    const cursorId = filters?.categoryId;
-    const limit = Number(filters?.limit);
+    const cursorId = filters?.cursorId;
+    const limit = filters?.limit ? Number(filters.limit) : undefined;
 
-    if (limit == undefined || cursorId == undefined) {
-      const allData = await this.prisma.transaction.findMany( {
-        where: {
-          userId: userId
-        }
-      })
-      return {
-        allData,
-        cursor: undefined
-      }
+    if(!limit){
+      const allData = await this.prisma.transaction.findMany({
+        where,
+        include: { category: true },
+        orderBy: { date: 'desc' },
+      });
+      return { allData, cursor: undefined };
     }
 
     const data = await this.prisma.transaction.findMany({
-    where: { userId },
-    take: limit,
-    ...(cursorId && {
-      skip: 1, 
-      cursor: { id: cursorId },
-    }),
-    orderBy: { date: 'desc' },
-  });
+      where,
+      take: limit,
+      include: { category: true },
+      ...(cursorId && { skip: 1, cursor: { id: cursorId } }),
+      orderBy: { date: 'desc' },
+    });
 
     const nextCursor = data.length === limit ? data[data.length - 1].id : null;
     return {

@@ -36,6 +36,20 @@ yarn-error.log*
 # vercel
 .vercel
 
+# windsurf
+.windsurf/*
+
+# design system
+design-system/
+
+# public assets
+oauth-debug.log
+public/oauth-debug.log
+public/ASSET_PROMPTS.md
+public/DESIGN_CONTEXT.md
+public/EMPTY_STATE_PROMPTS.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+

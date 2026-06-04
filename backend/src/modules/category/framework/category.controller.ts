@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Req, Query, UseGuards, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import { CategoryService } from '../core/app/category.service.js';
 import { CreateCategoryDto } from './dtos/create-category.dto.js';
@@ -8,7 +8,8 @@ import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 @Controller('categories')
 @UseGuards(JwtAuthGuard)
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
+  constructor(
+    private readonly categoryService: CategoryService,  ) {}
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateCategoryDto){
@@ -17,9 +18,9 @@ export class CategoryController {
   }
 
   @Get()
-  async findAll(@Req() req: Request){
+  async findAll(@Req() req: Request, @Query('type') type?: string){
     const userId = (req as any).user.sub;
-    return this.categoryService.findAll(userId);
+    return this.categoryService.findAll(userId, type);
   }
 
   @Get(':id')
@@ -46,3 +47,4 @@ export class CategoryController {
     return { message: 'Category deleted' };
   }
 }
+

@@ -71,3 +71,4 @@ export class InvestmentController{
     return this.investmentService.getAllocationsByCategory(req.user.sub, categoryId);
   }
 }
+

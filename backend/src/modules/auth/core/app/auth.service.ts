@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { GoogleOauthService } from './google-oauth.service.js';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../prisma/prisma.service.js';
@@ -13,6 +15,7 @@ export class AuthService {
     private readonly googleOauthService: GoogleOauthService,
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
     private readonly emailService: EmailService,
   ) {}
 
@@ -34,15 +37,34 @@ export class AuthService {
       where: {email: profile.email},
     });
 
+    const avatarUrl = (profile as unknown as Record<string, string | undefined>).picture || null;
+
     if(!user){
       user = await this.prisma.user.create({
         data: {
           email: profile.email,
           username: profile.name || profile.email.split('@')[0],
+          avatar: avatarUrl,
         }
       });
+
+      // create default settings for new user 
+      await this.prisma.settings.create({
+        data: {
+          userId: user.id,
+          key: 'BUDGET_TIME_PREFERENCE',
+          value: 'MONTHLY',
+        }
+      })
+      
       this.logger.log(`User created: ${user.id}`)
     }else{
+      if(avatarUrl && !user.avatar){
+        user = await this.prisma.user.update({
+          where: {id: user.id},
+          data: {avatar: avatarUrl},
+        });
+      }
       this.logger.log(`User already exists: ${user.id}`)
     }
 
@@ -101,7 +123,7 @@ export class AuthService {
     }
   }
 
-  async getMe(token: string): Promise<{user: {id: string; email: string; username: string; createdAt: Date} | null; isInvalid: boolean}>{
+  async getMe(token: string): Promise<{user: {id: string; email: string; username: string; avatar: string | null; createdAt: Date} | null; isInvalid: boolean}>{
     try{
       const payload = this.jwtService.verify(token);
       const user = await this.prisma.user.findUnique({
@@ -110,7 +132,7 @@ export class AuthService {
       if(!user){
         return {user: null, isInvalid: false};
       }
-      return {user: {id: user.id, email: user.email, username: user.username, createdAt: user.createdAt}, isInvalid: false};
+      return {user: {id: user.id, email: user.email, username: user.username, avatar: user.avatar, createdAt: user.createdAt}, isInvalid: false};
     } catch{
       return {user: null, isInvalid: true};
     }
@@ -125,6 +147,20 @@ export class AuthService {
       where: {id: userId},
       data: {username: data.username.trim()},
     });
+  }
+
+  private getHmacSecret(): string{
+    return this.configService.get<string>('JWT_SECRET') || 'fallback-hmac-secret';
+  }
+
+  private signPayload(payload: string): string{
+    return createHmac('sha256', this.getHmacSecret()).update(payload).digest('hex');
+  }
+
+  private verifySignature(payload: string, signature: string): boolean{
+    const expected = this.signPayload(payload);
+    if(expected.length !== signature.length) return false;
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
   }
 
   async getRefreshTokenByEmail(email: string){
@@ -145,7 +181,8 @@ export class AuthService {
     }
 
     if(returnTo.startsWith('/')){
-      return Buffer.from(JSON.stringify({returnTo}), 'utf8').toString('base64url');
+      const p1 = Buffer.from(JSON.stringify({returnTo}), 'utf8').toString('base64url');
+      return `${p1}.${this.signPayload(p1)}`;
     }
 
     try{
@@ -153,7 +190,8 @@ export class AuthService {
       if(!this.isAllowedFrontendOrigin(url.origin)){
         return undefined;
       }
-      return Buffer.from(JSON.stringify({returnTo: url.toString()}), 'utf8').toString('base64url');
+      const p2 = Buffer.from(JSON.stringify({returnTo: url.toString()}), 'utf8').toString('base64url');
+      return `${p2}.${this.signPayload(p2)}`;
     }catch{
       return undefined;
     }
@@ -165,7 +203,15 @@ export class AuthService {
     }
 
     try{
-      const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8')) as {returnTo?: string};
+      const dotIndex = state.lastIndexOf('.');
+      if(dotIndex === -1) return null;
+      const payload = state.substring(0, dotIndex);
+      const sig = state.substring(dotIndex + 1);
+      if(!this.verifySignature(payload, sig)){
+        this.logger.warn('OAuth state signature verification failed');
+        return null;
+      }
+      const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {returnTo?: string};
       if(!decoded.returnTo){
         return null;
       }

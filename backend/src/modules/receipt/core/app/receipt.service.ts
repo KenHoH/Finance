@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TransactionService } from '../../../transaction/core/app/transaction.service.js';
 import { ConfirmReceiptDto } from './scan-receipt.dto.js';
@@ -27,20 +27,24 @@ export class ReceiptService {
   }
 
   async scanReceipt(file: Express.Multer.File): Promise<OcrResponse> {
-    const blob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
-    const form = new FormData();
-    form.append('image', blob, file.originalname);
+    try{
+      const blob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
+      const form = new FormData();
+      form.append('image', blob, file.originalname);
 
-    const response = await fetch(this.ocrUrl, {
-      method: 'POST',
-      body: form,
-    });
+      const response = await fetch(this.ocrUrl, {
+        method: 'POST',
+        body: form,
+      });
 
-    if(!response.ok){
-      throw new Error(`OCR service error: ${response.status}`);
+      if(!response.ok){
+        throw new Error(`OCR service error: ${response.status}`);
+      }
+
+      return response.json() as Promise<OcrResponse>;
+    } catch(err: any){
+      throw new BadRequestException(`Receipt scanning failed: ${err.message || 'OCR service unreachable'}`);
     }
-
-    return response.json() as Promise<OcrResponse>;
   }
 
   async confirmReceipt(userId: string, dto: ConfirmReceiptDto) {

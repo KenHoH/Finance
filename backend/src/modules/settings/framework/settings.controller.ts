@@ -9,8 +9,7 @@ import { UpdateSettingsDto } from './dtos/update-settings.dto.js';
 export class SettingsController {
 
     constructor(
-        private readonly settingsService: SettingsService,
-    ){}
+    private readonly settingsService: SettingsService,  ) {}
 
     @Post()
     async create(
@@ -45,7 +44,7 @@ export class SettingsController {
         @Body() dto: UpdateSettingsDto
     ) {
         const userId = (req as any).user.sub;
-        return this.settingsService.update(userId, key, dto.value);
+        const setting = await this.settingsService.update(userId, key, dto.value);        return setting;
     }
 
     @Delete(':key')
@@ -54,6 +53,7 @@ export class SettingsController {
         @Param('key') key: string,
     ) {
         const userId = (req as any).user.sub;
-        return this.settingsService.delete(userId, key);
+        await this.settingsService.delete(userId, key);        return { message: 'Setting deleted' };
     }
 }
+

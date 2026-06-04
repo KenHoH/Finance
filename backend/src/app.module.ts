@@ -25,6 +25,7 @@ import { CategoryModule } from './modules/category/category.module.js';
 import { EmailModule } from './modules/email/email.module.js';
 import { ReceiptModule } from './modules/receipt/receipt.module.js';
 import { PubsubModule } from './modules/pubsub/pubsub.module.js';
+import { ChatModule } from './modules/chat/chat.module.js';
 
 @Module({
   imports: [
@@ -48,7 +49,8 @@ import { PubsubModule } from './modules/pubsub/pubsub.module.js';
     CategoryModule,
     EmailModule,
     ReceiptModule,
-    PubsubModule
+    PubsubModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
-import { CreateSavingPointDto, UpdateSavingPointDto, AllocateToGoalDto } from '../../framework/dto/index.js';
+import { CreateSavingPointDto, UpdateSavingPointDto, AllocateToGoalDto, AllocateToInvestmentDto, PayDebtDto } from '../../framework/dto/index.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 import { Cron } from '@nestjs/schedule';
 import { TransactionService } from '../../../transaction/core/app/transaction.service.js';
@@ -16,17 +16,23 @@ export class SavingPointService{
   // CRON JOB daily
   @Cron('0 0 1 * * *')   // Runs once at 1:00:00 AM every day
   async handleCron() {
-    // find all budget that is stil valid till today 
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const today = new Date();
 
-    // Budgets still active (endDate >= today)
+    // Budgets that ended yesterday (endDate between yesterday start and end)
+    const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+    const yesterdayEnd = new Date(yesterdayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+
     const budgets = await this.prisma.budget.findMany({
-      where: { endDate: { gte: today } }, // gte not lt — active budgets
+      where: {
+        endDate: {
+          gte: yesterdayStart,
+          lte: yesterdayEnd,
+        },
+      },
     });
 
     for(const budget of budgets){
-      // get user preference settings
       const settings = await this.prisma.settings.findUnique({
         where: {
           userId_key: {
@@ -36,12 +42,11 @@ export class SavingPointService{
         },
       });
 
-      // if user settings doesn't exist we skip the user 
       if(!settings) continue;
 
-      if(settings.value === 'daily') {
+      if(settings.value === 'DAILY') {
         await this.savingDaily(budget.userId, budget, yesterday);
-      } 
+      }
     }
   }
 
@@ -56,10 +61,12 @@ export class SavingPointService{
       ? await this.transactionService.getTotalSpentByDayByCategory(userId, budget.categoryId, date) 
       : await this.transactionService.getTotalSpentByDay(userId, date);
 
-    // TODO: implement upsert
-    if (totalSpent < dailyLimit) {
-      await this.prisma.savingPoint.create({
-        data: { budgetId: budget.id, savingAmount: dailyLimit - totalSpent },
+    if(totalSpent < dailyLimit) {
+      const surplus = dailyLimit - totalSpent;
+      await this.prisma.savingPoint.upsert({
+        where: { budgetId: budget.id },
+        create: { budgetId: budget.id, savingAmount: surplus },
+        update: { savingAmount: { increment: surplus } },
       });
     }
   }
@@ -79,10 +86,12 @@ export class SavingPointService{
 
     const monthLimit = Number(budget.amount)
 
-    // TODO: implement upsert
     if(totalSpent < monthLimit) {
-      await this.prisma.savingPoint.create({
-        data: { budgetId: budget.id, savingAmount: monthLimit - totalSpent },
+      const surplus = monthLimit - totalSpent;
+      await this.prisma.savingPoint.upsert({
+        where: { budgetId: budget.id },
+        create: { budgetId: budget.id, savingAmount: surplus },
+        update: { savingAmount: { increment: surplus } },
       });
     }
   }
@@ -153,6 +162,102 @@ export class SavingPointService{
 
     return this.prisma.savingPoint.delete({
       where: {id},
+    });
+  }
+
+  // Allocate saving to an investment
+  async allocateToInvestment(userId: string, savingPointId: string, dto: AllocateToInvestmentDto){
+    const savingPoint = await this.prisma.savingPoint.findFirst({
+      where: {id: savingPointId, budget: {userId}},
+    });
+    if(!savingPoint) throw new Error('SavingPoint not found');
+
+    if(Number(savingPoint.savingAmount) < dto.amount){
+      throw new Error('Insufficient balance');
+    }
+
+    const category = await this.prisma.category.findFirst({
+      where: {id: dto.categoryId, userId, type: 'INVESTMENT'},
+    });
+    if(!category) throw new Error('Investment category not found');
+
+    await this.prisma.$transaction(async(tx) => {
+      await tx.savingPoint.update({
+        where: {id: savingPointId},
+        data: {savingAmount: {decrement: dto.amount}},
+      });
+
+      await tx.investment.upsert({
+        where: {userId_categoryId: {userId, categoryId: dto.categoryId}},
+        update: {totalAmount: {increment: dto.amount}},
+        create: {
+          userId,
+          categoryId: dto.categoryId,
+          totalAmount: dto.amount,
+        },
+      });
+
+      await tx.investmentAllocation.create({
+        data: {
+          userId,
+          categoryId: dto.categoryId,
+          amount: dto.amount,
+          allocationDate: new Date(),
+          note: dto.note ?? null,
+        },
+      });
+    });
+
+    await this.activityLogService.logActivity(userId, 'ALLOCATE', 'SavingPoint', savingPointId, {categoryId: dto.categoryId, amount: dto.amount});
+
+    return this.prisma.savingPoint.findUnique({
+      where: {id: savingPointId},
+    });
+  }
+
+  // Pay debt from saving point
+  async payDebt(userId: string, savingPointId: string, dto: PayDebtDto){
+    const savingPoint = await this.prisma.savingPoint.findFirst({
+      where: {id: savingPointId, budget: {userId}},
+    });
+    if(!savingPoint) throw new Error('SavingPoint not found');
+
+    if(Number(savingPoint.savingAmount) < dto.amount){
+      throw new Error('Insufficient balance');
+    }
+
+    const debtPoint = await this.prisma.debtPoint.findFirst({
+      where: {id: dto.debtPointId, budget: {userId}},
+    });
+    if(!debtPoint) throw new Error('DebtPoint not found');
+
+    if(Number(debtPoint.debtAmount) < dto.amount){
+      throw new Error('Payment amount exceeds debt');
+    }
+
+    await this.prisma.$transaction(async(tx) => {
+      await tx.savingPoint.update({
+        where: {id: savingPointId},
+        data: {savingAmount: {decrement: dto.amount}},
+      });
+
+      const remainingDebt = Number(debtPoint.debtAmount) - dto.amount;
+      if(remainingDebt <= 0){
+        await tx.debtPoint.delete({
+          where: {id: dto.debtPointId},
+        });
+      } else {
+        await tx.debtPoint.update({
+          where: {id: dto.debtPointId},
+          data: {debtAmount: remainingDebt},
+        });
+      }
+    });
+
+    await this.activityLogService.logActivity(userId, 'ALLOCATE', 'SavingPoint', savingPointId, {debtPointId: dto.debtPointId, amount: dto.amount});
+
+    return this.prisma.savingPoint.findUnique({
+      where: {id: savingPointId},
     });
   }
 

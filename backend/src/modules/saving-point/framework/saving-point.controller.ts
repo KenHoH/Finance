@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException, BadRequestException } from '@nestjs/common';
 import type { Request } from 'express';
 import { SavingPointService } from '../core/app/saving-point.service.js';
-import { CreateSavingPointDto, UpdateSavingPointDto, AllocateToGoalDto } from './dto/index.js';
+import { CreateSavingPointDto, UpdateSavingPointDto, AllocateToGoalDto, AllocateToInvestmentDto, PayDebtDto } from './dto/index.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('saving-points')
@@ -58,4 +58,25 @@ export class SavingPointController{
       throw new BadRequestException(e.message);
     }
   }
+
+  @Post(':id/allocate-to-investment')
+  async allocateToInvestment(@Req() req: Request, @Param('id') id: string, @Body() dto: AllocateToInvestmentDto){
+    if(!req.user) throw new NotFoundException('not authenticated');
+    try{
+      return await this.savingPointService.allocateToInvestment(req.user.sub, id, dto);
+    } catch(e: any){
+      throw new BadRequestException(e.message);
+    }
+  }
+
+  @Post(':id/pay-debt')
+  async payDebt(@Req() req: Request, @Param('id') id: string, @Body() dto: PayDebtDto){
+    if(!req.user) throw new NotFoundException('not authenticated');
+    try{
+      return await this.savingPointService.payDebt(req.user.sub, id, dto);
+    } catch(e: any){
+      throw new BadRequestException(e.message);
+    }
+  }
 }
+

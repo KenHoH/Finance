@@ -20,14 +20,19 @@ export class BudgetService {
     @InjectQueue('saving') private readonly savingQueue: Queue,
   ) {}
 
+  private logger = new Logger(BudgetService.name);
+
   async create(userId: string, dto: CreateBudgetDto){
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+
     const budget = await this.prisma.budget.create({
       data: {
         userId,
         categoryId: dto.categoryId ?? undefined,
         amount: dto.amount,
-        startDate: new Date(dto.startDate),
-        endDate: new Date(dto.endDate),
+        startDate,
+        endDate,
       },
       include: {category: true},
     });
@@ -36,16 +41,14 @@ export class BudgetService {
 
     const settings = await this.settingsService.findOneByKey(userId, 'BUDGET_TIME_PREFERENCE');
 
-    const userPreference = settings?.value ?? 'daily'; // default to daily
+    const userPreference = settings?.value ?? 'DAILY';
 
-    // monthly preference
-    if(userPreference !== 'daily') {
-      const endDate = new Date(dto.endDate);
+    if(userPreference !== 'DAILY'){
       const delay = endDate.getTime() - Date.now();
 
       await this.savingQueue.add('calculate', { budgetId: budget.id, userId: userId, startDate: dto.startDate, endDate: dto.endDate }, {
         delay: delay,
-        jobId: `saving-${budget.id}`, 
+        jobId: `saving-${budget.id}`,
       });
     }
     return budget;
@@ -75,6 +78,9 @@ export class BudgetService {
     });
 
     if(!budget) return null;
+
+    const startDate = dto.startDate ? new Date(dto.startDate) : budget.startDate;
+    const endDate = dto.endDate ? new Date(dto.endDate) : budget.endDate;
 
     const updated = await this.prisma.budget.update({
       where: {id},
@@ -174,6 +180,69 @@ export class BudgetService {
   }
 
   // aggregate function 
+  private getBudgetDurationDays(startDate: Date, endDate: Date): number{
+    return Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  private budgetsOverlap(a: any, b: any): boolean{
+    return a.startDate <= b.endDate && a.endDate >= b.startDate;
+  }
+
+  private async calculateSpentForBudget(userId: string, budget: any, allBudgets: any[]): Promise<number>{
+    const budgetDuration = this.getBudgetDurationDays(budget.startDate, budget.endDate);
+
+    const shorterOverlaps = allBudgets.filter((b) => {
+      if(b.id === budget.id) return false;
+      if(!this.budgetsOverlap(budget, b)) return false;
+      const bDuration = this.getBudgetDurationDays(b.startDate, b.endDate);
+      if(bDuration >= budgetDuration) return false;
+      // Shorter budget can steal if its category matches the transaction scope
+      return b.categoryId === budget.categoryId || b.categoryId === null || budget.categoryId === null;
+    });
+
+    if(shorterOverlaps.length === 0){
+      const agg = await this.prisma.transaction.aggregate({
+        where: {
+          userId,
+          type: 'EXPENSE',
+          date: {gte: budget.startDate, lte: budget.endDate},
+          ...(budget.categoryId ? {categoryId: budget.categoryId} : {}),
+        },
+        _sum: {amount: true},
+      });
+      return Number(agg._sum.amount || 0);
+    }
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        type: 'EXPENSE',
+        date: {gte: budget.startDate, lte: budget.endDate},
+        ...(budget.categoryId ? {categoryId: budget.categoryId} : {}),
+      },
+      select: {id: true, amount: true, date: true, categoryId: true},
+    });
+
+    const excludedIds = new Set<string>();
+    for(const t of transactions){
+      const tDate = new Date(t.date);
+      for(const sb of shorterOverlaps){
+        if(tDate >= sb.startDate && tDate <= sb.endDate){
+          const matchesShorter = !sb.categoryId || sb.categoryId === t.categoryId;
+          if(matchesShorter){
+            excludedIds.add(t.id);
+            break;
+          }
+        }
+      }
+    }
+
+    return transactions.reduce((sum, t) => {
+      if(excludedIds.has(t.id)) return sum;
+      return sum + Number(t.amount);
+    }, 0);
+  }
+
   async getStatus(userId: string, id: string){
     const budget = await this.prisma.budget.findFirst({
       where: {id, userId},
@@ -182,17 +251,12 @@ export class BudgetService {
 
     if(!budget) return null;
 
-    const spentAgg = await this.prisma.transaction.aggregate({
-      where: {
-        userId,
-        type: 'EXPENSE',
-        date: {gte: budget.startDate, lte: budget.endDate},
-        ...(budget.categoryId ? {categoryId: budget.categoryId} : {}),
-      },
-      _sum: {amount: true},
+    const allBudgets = await this.prisma.budget.findMany({
+      where: {userId},
+      include: {category: true},
     });
 
-    const spent = Number(spentAgg._sum.amount || 0);
+    const spent = await this.calculateSpentForBudget(userId, budget, allBudgets);
     const budgetAmount = Number(budget.amount);
     const remaining = budgetAmount - spent;
     const percentage = budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0;
@@ -209,7 +273,91 @@ export class BudgetService {
       remaining,
       percentage,
       isOverBudget: spent > budgetAmount,
+      status: spent > budgetAmount ? "OVER_BUDGET" : "WITHIN_BUDGET",
     };
+  }
+
+  async getAggregatedByCategory(userId: string){
+    const budgets = await this.prisma.budget.findMany({
+      where: {userId},
+      include: {category: true},
+      orderBy: {startDate: 'asc'},
+    });
+
+    const grouped = new Map<string, {budgets: typeof budgets; category: typeof budgets[0]['category']}>();
+    for(const budget of budgets){
+      const key = (budget.category?.name ?? 'uncategorized').toLowerCase();
+      if(!grouped.has(key)){
+        grouped.set(key, {budgets: [], category: budget.category});
+      }
+      grouped.get(key)!.budgets.push(budget);
+    }
+
+    const allBudgets = budgets;
+
+    const results: Array<{
+      category: typeof budgets[0]['category'];
+      totalAmount: number;
+      startDate: Date;
+      endDate: Date;
+      spent: number;
+      remaining: number;
+      percentage: number;
+      isOverBudget: boolean;
+      status: string;
+      budgets: Array<{
+        id: string;
+        amount: number;
+        startDate: Date;
+        endDate: Date;
+        spent: number;
+        remaining: number;
+        percentage: number;
+        status: string;
+      }>;
+    }> = [];
+    for(const [, group] of grouped){
+      const items = group.budgets;
+      const totalAmount = items.reduce((sum, b) => sum + Number(b.amount), 0);
+      const earliestStart = items[0].startDate;
+      const latestEnd = items.reduce((max, b) => b.endDate > max ? b.endDate : max, items[0].endDate);
+
+      const budgetDetails = await Promise.all(
+        items.map(async(b) => {
+          const bSpent = await this.calculateSpentForBudget(userId, b, allBudgets);
+          const bAmount = Number(b.amount);
+          return {
+            id: b.id,
+            amount: bAmount,
+            startDate: b.startDate,
+            endDate: b.endDate,
+            spent: bSpent,
+            remaining: bAmount - bSpent,
+            percentage: bAmount > 0 ? Math.round((bSpent / bAmount) * 100) : 0,
+            status: bSpent > bAmount ? "OVER_BUDGET" : "WITHIN_BUDGET",
+          };
+        })
+      );
+
+      const categorySpent = budgetDetails.reduce((sum, b) => sum + b.spent, 0);
+      const remaining = totalAmount - categorySpent;
+      const percentage = totalAmount > 0 ? Math.round((categorySpent / totalAmount) * 100) : 0;
+
+      results.push({
+        category: group.category,
+        totalAmount,
+        startDate: earliestStart,
+        endDate: latestEnd,
+        spent: categorySpent,
+        remaining,
+        percentage,
+        isOverBudget: categorySpent > totalAmount,
+        status: categorySpent > totalAmount ? "OVER_BUDGET" : "WITHIN_BUDGET",
+        budgets: budgetDetails,
+      });
+    }
+
+    return results;
   }
 
   public async checkBudgetOverall(userId: string, transaction: any) {
@@ -227,103 +375,96 @@ export class BudgetService {
       include: { category: true },
     });
 
-    for (const budget of budgets) {
+    const hasNotificationToday = async (titlePrefix: string) => {
+      const existing = await this.prisma.notification.findFirst({
+        where: {
+          userId,
+          type: 'BUDGET_ALERT',
+          title: { startsWith: titlePrefix },
+          createdAt: { gte: startOfToday },
+        },
+      });
+      return !!existing;
+    };
+
+    const allBudgets = await this.prisma.budget.findMany({
+      where: {userId},
+      include: {category: true},
+    });
+
+    for(const budget of budgets){
       const budgetAmount = Number(budget.amount);
       const categoryName = budget.category?.name ?? 'Overall';
 
-      // total days between start and end date
       const millisecondsPerDay = 1000 * 60 * 60 * 24;
       const totalDays = Math.round((budget.endDate.getTime() - budget.startDate.getTime()) / millisecondsPerDay) + 1;
-      
       const dailyAllowance = budgetAmount / totalDays;
 
-      // today's expenses for this budget
-      const todaySpentAgg = await this.prisma.transaction.aggregate({
-        where: {
-          userId,
-          type: 'EXPENSE',
-          date: { gte: startOfToday, lte: endOfToday },
-          ...(budget.categoryId ? { categoryId: budget.categoryId } : {}),
-        },
-        _sum: { amount: true },
-      });
+      const userSettings = await this.settingsService.findOneByKey(userId, 'BUDGET_TIME_PREFERENCE');
+      const timePreference = userSettings?.value ?? 'DAILY';
 
-      // FIND the user settings preference 
-      let userSettings = await this.settingsService.findOneByKey(userId, 'BUDGET_TIME_PREFERENCE');
+      this.logger.debug(`Checking budget for user ${userId} - Budget ${budget.id}: Amount ${budgetAmount}, Daily Allowance ${dailyAllowance}, Time Preference ${timePreference}`);
 
-      let timePreference = userSettings?.value ?? 'DAILY'; // default to daily
-      
-      // DAILY budget system tracker if the user choose daily
       if(timePreference === 'DAILY'){
-        const spentToday = Number(todaySpentAgg._sum.amount || 0);
+        const todaySpent = await this.calculateSpentForBudget(userId, {...budget, startDate: startOfToday, endDate: endOfToday}, allBudgets);
+        
+        this.logger.debug(`Checking daily budget for user ${userId} - Budget ${budget.id}: Spent today ${todaySpent}, Daily Allowance ${dailyAllowance}`);
 
-        if (spentToday > dailyAllowance) {
-          const totalDebt = spentToday - dailyAllowance;
-          
-          // add to debt point
+        if(todaySpent > dailyAllowance){
+          const existingDebt = await this.debtService.findOneByBudgetId(budget.id);
+          const existingAmount = existingDebt ? Number(existingDebt.debtAmount) : 0;
+          const dailyOverspend = todaySpent - dailyAllowance;
+          const totalDebt = existingAmount + dailyOverspend;
           await this.debtService.create({
             budgetId: budget.id,
             debtAmount: totalDebt,
-          })
+          });
 
-          // notify the user
-          await this.notificationService.create(
-            userId,
-            'BUDGET_ALERT',
-            'Daily Budget Exceeded',
-            `You spent Rp ${spentToday.toLocaleString('id-ID')} today, which is over your daily ${categoryName} allowance of Rp ${Math.round(dailyAllowance).toLocaleString('id-ID')}.`,
-          );
+          this.logger.debug(`User ${userId} exceeded daily budget for Budget ${budget.id}. Today's Spent: ${todaySpent}, Daily Allowance: ${dailyAllowance}, Existing Debt: ${existingAmount}, New Debt: ${dailyOverspend}, Total Debt: ${totalDebt}`);
+
+          const notified = await hasNotificationToday('Daily Budget Exceeded');
+          if(!notified){
+            await this.notificationService.create(
+              userId,
+              'BUDGET_ALERT',
+              'Daily Budget Exceeded',
+              `You spent Rp ${todaySpent.toLocaleString('id-ID')} today, which is over your daily ${categoryName} allowance of Rp ${Math.round(dailyAllowance).toLocaleString('id-ID')}.`,
+            );
+          }
         }
-        return;
+        continue;
       }
 
-      const totalSpentAgg = await this.prisma.transaction.aggregate({
-        where: {
-          userId,
-          type: 'EXPENSE',
-          date: { gte: budget.startDate, lte: budget.endDate },
-          ...(budget.categoryId ? { categoryId: budget.categoryId } : {}),
-        },
-        _sum: { amount: true },
-      });
-
-
-      const totalSpent = Number(totalSpentAgg._sum.amount || 0);
+      const totalSpent = await this.calculateSpentForBudget(userId, budget, allBudgets);
+      this.logger.debug(`Checking overall budget for user ${userId} - Budget ${budget.id}: Total Spent ${totalSpent}, Budget Amount ${budgetAmount}`);
       const percentage = budgetAmount > 0 ? Math.round((totalSpent / budgetAmount) * 100) : 0;
 
       if(totalSpent > budgetAmount){
         const totalDebt = totalSpent - budgetAmount;
-          
-          // add to debt point
-          await this.debtService.create({
-            budgetId: budget.id,
-            debtAmount: totalDebt,
-          })
+        await this.debtService.create({
+          budgetId: budget.id,
+          debtAmount: totalDebt,
+        });
 
-          // notify the user
+        const notified = await hasNotificationToday('Budget Exceeded');
+        if(!notified){
           await this.notificationService.create(
             userId,
             'BUDGET_ALERT',
-            'MONTHLY Budget Exceeded',
-            `You spent Rp ${totalSpent.toLocaleString('id-ID')} today, which is over your monthly ${categoryName} allowance of Rp ${Math.round(budgetAmount).toLocaleString('id-ID')}.`,
+            'Budget Exceeded',
+            `You have exceeded your ${categoryName} budget. Current spending: Rp ${totalSpent.toLocaleString('id-ID')}`,
           );
-      }
-
-      // notification for the user 
-      if (percentage >= 100) {
-        await this.notificationService.create(
-          userId,
-          'BUDGET_ALERT',
-          'Budget Exceeded',
-          `You have exceeded your overall ${categoryName} budget. Current spending: Rp ${totalSpent.toLocaleString('id-ID')}`,
-        );
-      } else if (percentage >= 80) {
-        await this.notificationService.create(
-          userId,
-          'BUDGET_ALERT',
-          'Budget Warning',
-          `You have used ${percentage}% of your overall ${categoryName} budget.`,
-        );
+        }
+      } else if(percentage >= 80){
+        const notified = await hasNotificationToday('Budget Warning');
+        if(!notified){
+          await this.notificationService.create(
+            userId,
+            'BUDGET_ALERT',
+            'Budget Warning',
+            `You have used ${percentage}% of your ${categoryName} budget.`,
+          );
+        }
       }
     }
   }

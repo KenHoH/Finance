@@ -6,6 +6,7 @@ import { GoogleOauthService } from '../../../auth/core/app/google-oauth.service.
 import { google } from 'googleapis';
 import { Cron } from '@nestjs/schedule';
 import { extractInfo } from '../../../../infrastructure/imap/helper/extractInfo.js';
+import { isEmailAllowedForProcessing } from '../../../../infrastructure/imap/helper/email-validator.helper.js';
 import { TransactionService } from '../../../transaction/core/app/transaction.service.js';
 
 @Injectable()
@@ -89,6 +90,7 @@ export class EmailService {
    * @returns nothing
    */
   async watchGmail(emailAddress: string) {
+    this.logger.log(`Setting up Gmail watch for ${emailAddress}`);
     const oauthClient = await this.connectOauthClient(emailAddress);
     if (oauthClient === null) {
       this.logger.log("This email doesn't have a refresh token, skipping watch setup.");
@@ -196,6 +198,24 @@ export class EmailService {
 
       for (const messageId of newMessages) {
         try {
+          const metadataResponse = await gmail.users.messages.get({
+            userId: 'me',
+            id: messageId,
+            format: 'metadata',
+            metadataHeaders: ['From', 'Subject'],
+          });
+
+          const metaHeaders = metadataResponse.data.payload?.headers || [];
+          const getMetaHeader = (name: string) => metaHeaders.find(h => h.name?.toLowerCase() === name.toLowerCase())?.value || '';
+          
+          const metaFrom = getMetaHeader('from');
+          const metaSubject = getMetaHeader('subject');
+
+          if (!isEmailAllowedForProcessing(metaFrom, metaSubject)) {
+            this.logger.log(`Skipping unrelated email. From: ${metaFrom} | Subject: ${metaSubject}`);
+            continue;
+          }
+
           const emailResponse = await gmail.users.messages.get({
             userId: 'me',
             id: messageId,
@@ -211,23 +231,23 @@ export class EmailService {
 
           const subject = getHeader('subject');
           const from = getHeader('from');
-          // Prioritize HTML for parsing, fallback to plain text if needed
           const html = this.extractPart(payload, 'text/html') || this.extractPart(payload, 'text/plain') || '';
 
-          this.logger.log(`Successfully fetched email (${messageId}): ${emailResponse.data.snippet}`);
+          this.logger.log(`Successfully fetched email (${messageId}): ${subject} from ${from}`);
           this.logger.log(`Email Body: ${emailBody}`);
 
-          // INTEGRATION: Extract transaction info
           const extracted = extractInfo(subject, from, html, messageId);
+
 
           if (extracted.status) {
             this.logger.log(`Extracted transaction info: ${JSON.stringify(extracted)}`);
-            let amount = Number(extracted.amount);
-            let date = new Date();
-            let receipient = extracted.recipient || 'Recipient not found';
-            let source = extracted.source || 'UNKNOWN';
+            const amount = Number(extracted.amount);
+            const date = new Date();
+            const receipient = extracted.recipient || 'Recipient not found';
+            const source = extracted.source || 'UNKNOWN';
+            const transactionType = extracted.expenses === false ? 'INCOME' : 'EXPENSE';
 
-            this.logger.log(`Creating transaction for user ${userId} from email ${messageId} with amount ${amount}, date ${date}, recipient ${receipient}`);
+            this.logger.log(`Creating ${transactionType} transaction for user ${userId} from email ${messageId} with amount ${amount}, date ${date}, recipient ${receipient}`);
             const description = `${extracted.date} - ${receipient} - ${subject} - ${amount}`;
 
             const existing = await this.prisma.transaction.findFirst({
@@ -241,7 +261,7 @@ export class EmailService {
 
             const transaction = await this.transactionService.create(userId, {
               amount,
-              type: 'EXPENSE',
+              type: transactionType,
               description,
               date: date.toISOString(),
               source: source,
@@ -254,7 +274,7 @@ export class EmailService {
               'CREATE',
               'Transaction',
               transaction.id,
-              { amount: extracted.amount, source: source, description: extracted.recipient }
+              { amount: extracted.amount, source: source, description: extracted.recipient, type: transactionType }
             );
 
           } else {
