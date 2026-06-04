@@ -35,6 +35,7 @@ export function extractInfoFromHTMLFLIP(html: string): ExtractedInfo {
     const totalAmount = parseIDRCurrency(amountRaw);
 
     return {
+        expenses: true,
         status: merchantName || totalAmount > 0 || dateRaw ? true : false,
         amount: totalAmount,
         date: dateRaw,

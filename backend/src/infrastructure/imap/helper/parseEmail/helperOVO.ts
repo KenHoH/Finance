@@ -31,6 +31,7 @@ export function extractInfoFromHTMLOVO(html: string): ExtractedInfo {
     console.log(`Total:      ${totalAmount.toFixed(2)}`);
 
     return {
+        expenses: true,
         status: recipient || totalAmount > 0 || dateRaw ? true : false,
         amount: totalAmount,
         date: dateRaw,
