@@ -1,33 +1,47 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+﻿import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Req,
+  UseGuards,
+  NotFoundException,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import { SplitBillService } from '../core/app/split-bill.service.js';
 import { CreateSplitBillDto } from '../core/app/create-split-bill.dto.js';
-import { UpdateSplitBillDto, UpdateParticipantDto } from '../core/app/update-split-bill.dto.js';
+import {
+  UpdateSplitBillDto,
+  UpdateParticipantDto,
+} from '../core/app/update-split-bill.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 
 @Controller('split-bills')
 @UseGuards(JwtAuthGuard)
 export class SplitBillController {
-  constructor(
-    private readonly splitBillService: SplitBillService,
-  ) {}
+  constructor(private readonly splitBillService: SplitBillService) {}
 
   @Post()
-  async create(@Req() req: Request, @Body() dto: CreateSplitBillDto){
+  async create(@Req() req: Request, @Body() dto: CreateSplitBillDto) {
     const userId = (req as any).user.sub;
     return this.splitBillService.create(userId, dto);
   }
 
   @Get()
-  async findAll(@Req() req: Request){
+  async findAll(@Req() req: Request) {
     const userId = (req as any).user.sub;
     return this.splitBillService.findAll(userId);
   }
 
   @Get(':id')
-  async findOne(@Req() req: Request, @Param('id') id: string){
+  async findOne(@Req() req: Request, @Param('id') id: string) {
     const userId = (req as any).user.sub;
     const bill = await this.splitBillService.findOne(userId, id);
     if (!bill) throw new NotFoundException('Split bill not found');
@@ -35,7 +49,11 @@ export class SplitBillController {
   }
 
   @Put(':id')
-  async update(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateSplitBillDto){
+  async update(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() dto: UpdateSplitBillDto,
+  ) {
     const userId = (req as any).user.sub;
     const bill = await this.splitBillService.update(userId, id, dto);
     if (!bill) throw new NotFoundException('Split bill not found');
@@ -50,8 +68,14 @@ export class SplitBillController {
     @Body() dto: UpdateParticipantDto,
   ) {
     const userId = (req as any).user.sub;
-    const participant = await this.splitBillService.updateParticipant(userId, id, participantId, dto);
-    if (!participant) throw new NotFoundException('Split bill or participant not found');
+    const participant = await this.splitBillService.updateParticipant(
+      userId,
+      id,
+      participantId,
+      dto,
+    );
+    if (!participant)
+      throw new NotFoundException('Split bill or participant not found');
     return participant;
   }
 
@@ -76,41 +100,137 @@ export class SplitBillController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     const userId = (req as any).user.sub;
-    const result = await this.splitBillService.uploadProof(userId, id, participantId, file);
-    if (!result) throw new NotFoundException('Split bill or participant not found');
+    const result = await this.splitBillService.uploadProof(
+      userId,
+      id,
+      participantId,
+      file,
+    );
+    if (!result)
+      throw new NotFoundException('Split bill or participant not found');
     return result;
   }
 
-  @Post(':id/receipt-proofs')
-  @UseInterceptors(FilesInterceptor('files'))
+  @Post(':id/participants/:participantId/pay')
+  async markAsPaid(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+  ) {
+    const userId = (req as any).user.sub;
+    const result = await this.splitBillService.markAsPaid(
+      userId,
+      id,
+      participantId,
+    );
+    if (!result)
+      throw new NotFoundException('Split bill or participant not found');
+    return result;
+  }
+
+  @Post(':id/participants/:participantId/revert')
+  async revertMarkAsPaid(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+  ) {
+    const userId = (req as any).user.sub;
+    const result = await this.splitBillService.revertMarkAsPaid(
+      userId,
+      id,
+      participantId,
+    );
+    if (!result)
+      throw new NotFoundException('Split bill or participant not found');
+    return result;
+  }
+
+  @Post(':id/confirm/:participantId')
+  async confirmPayment(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+  ) {
+    const userId = (req as any).user.sub;
+    const result = await this.splitBillService.confirmPayment(
+      userId,
+      id,
+      participantId,
+    );
+    if (!result)
+      throw new NotFoundException('Split bill or participant not found');
+    return result;
+  }
+
+  @Post(':id/reject/:participantId')
+  async rejectPayment(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+    @Body() dto: { reason?: string },
+  ) {
+    const userId = (req as any).user.sub;
+    const result = await this.splitBillService.rejectPayment(
+      userId,
+      id,
+      participantId,
+      dto.reason,
+    );
+    if (!result)
+      throw new NotFoundException('Split bill or participant not found');
+    return result;
+  }
+
+  @Post('upload-receipt')
+  @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        files: {
-          type: 'array',
-          items: {
-            type: 'string',
-            format: 'binary',
-          },
+        file: {
+          type: 'string',
+          format: 'binary',
         },
       },
     },
   })
-  async uploadReceiptProofs(
+  async uploadReceipt(@UploadedFile() file: Express.Multer.File) {
+    const imageUrl = await this.splitBillService.uploadGenericReceipt(file);
+    return { imageUrl };
+  }
+
+  @Post(':id/receipt-image')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  async uploadReceiptImage(
     @Req() req: Request,
     @Param('id') id: string,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFile() file: Express.Multer.File,
   ) {
     const userId = (req as any).user.sub;
-    const bill = await this.splitBillService.uploadReceiptProofs(userId, id, files || []);
+    const bill = await this.splitBillService.uploadReceiptImage(
+      userId,
+      id,
+      file,
+    );
     if (!bill) throw new NotFoundException('Split bill not found');
     return bill;
   }
 
   @Delete(':id')
-  async delete(@Req() req: Request, @Param('id') id: string){
+  async delete(@Req() req: Request, @Param('id') id: string) {
     const userId = (req as any).user.sub;
     const bill = await this.splitBillService.delete(userId, id);
     if (!bill) throw new NotFoundException('Split bill not found');

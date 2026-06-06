@@ -11,8 +11,9 @@ export class CreateSettingsDto {
   key: string;
 
   @ApiProperty({
-    description: 'The value for the setting. Stored as a string, but can represent booleans, numbers, or JSON depending on the key.',
-    example: 'monthly', 
+    description:
+      'The value for the setting. Stored as a string, but can represent booleans, numbers, or JSON depending on the key.',
+    example: 'monthly',
   })
   @IsString()
   @IsNotEmpty()

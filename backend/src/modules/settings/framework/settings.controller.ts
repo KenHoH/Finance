@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { SettingsService } from '../core/app/settings.service.js';
 import { CreateSettingsDto } from './dtos/create-settings.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
@@ -7,53 +17,41 @@ import { UpdateSettingsDto } from './dtos/update-settings.dto.js';
 @Controller('settings')
 @UseGuards(JwtAuthGuard)
 export class SettingsController {
+  constructor(private readonly settingsService: SettingsService) {}
 
-    constructor(
-    private readonly settingsService: SettingsService,  ) {}
+  @Post()
+  async create(@Req() req, @Body() dto: CreateSettingsDto) {
+    const userId = req.user.sub;
+    return this.settingsService.upsert(userId, dto);
+  }
 
-    @Post()
-    async create(
-        @Req() req,
-        @Body() dto: CreateSettingsDto,
-    ){
-        const userId = (req as any).user.sub;
-        return this.settingsService.upsert(userId, dto);
-    }
+  @Get()
+  async findByUserId(@Req() req) {
+    const userId = req.user.sub;
+    return this.settingsService.findByUserId(userId);
+  }
 
-    @Get()
-    async findByUserId(
-        @Req() req
-    ) {
-        const userId = (req as any).user.sub;
-        return this.settingsService.findByUserId(userId);
-    }
+  @Get(':key')
+  async findOneByKey(@Req() req, @Param('key') key: string) {
+    const userId = req.user.sub;
+    return this.settingsService.findOneByKey(userId, key);
+  }
 
-    @Get(':key')
-    async findOneByKey(
-        @Req() req,
-        @Param('key') key: string,
-    ) {
-        const userId = (req as any).user.sub;
-        return this.settingsService.findOneByKey(userId, key);
-    }
+  @Put(':key')
+  async update(
+    @Req() req,
+    @Param('key') key: string,
+    @Body() dto: UpdateSettingsDto,
+  ) {
+    const userId = req.user.sub;
+    const setting = await this.settingsService.update(userId, key, dto.value);
+    return setting;
+  }
 
-    @Put(':key')
-    async update(
-        @Req() req,
-        @Param('key') key: string,
-        @Body() dto: UpdateSettingsDto
-    ) {
-        const userId = (req as any).user.sub;
-        const setting = await this.settingsService.update(userId, key, dto.value);        return setting;
-    }
-
-    @Delete(':key')
-    async delete(
-        @Req() req,
-        @Param('key') key: string,
-    ) {
-        const userId = (req as any).user.sub;
-        await this.settingsService.delete(userId, key);        return { message: 'Setting deleted' };
-    }
+  @Delete(':key')
+  async delete(@Req() req, @Param('key') key: string) {
+    const userId = req.user.sub;
+    await this.settingsService.delete(userId, key);
+    return { message: 'Setting deleted' };
+  }
 }
-

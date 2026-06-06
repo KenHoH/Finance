@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   ChevronLeft, ChevronRight,
-  ArrowUpRight, X, Tag, FileText, Wallet, Pencil, Trash2, Plus, Camera, Upload, FileImage, Loader2, TrendingUp, MoreVertical
+  ArrowUpRight, X, Tag, FileText, Wallet, Pencil, Trash2, Plus, TrendingUp, MoreVertical
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -26,7 +26,7 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { getLucideIcon } from "@/lib/category-lucide-icons";
-import type { Category, Transaction, ScannedItem } from "@/lib/types";
+import type { Category, Transaction } from "@/lib/types";
 
 const COLORS = ["#60a5fa", "#fbbf24", "#34d399", "#22d3ee", "#f472b6"];
 
@@ -66,13 +66,6 @@ export default function IncomePage() {
   const [addInterval, setAddInterval] = useState<"none" | "daily" | "weekly" | "monthly" | "yearly">("none");
   const [isAddSuccess, setIsAddSuccess] = useState(false);
   const addSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [showScanSection, setShowScanSection] = useState(false);
-  const [scanFile, setScanFile] = useState<File | null>(null);
-  const [scanPreview, setScanPreview] = useState("");
-  const [scanItems, setScanItems] = useState<ScannedItem[]>([]);
-  const [isScanningReceipt, setIsScanningReceipt] = useState(false);
-  const scanFileInputRef = useRef<HTMLInputElement>(null);
 
   const itemsPerPage = 6;
 
@@ -166,70 +159,9 @@ export default function IncomePage() {
         setAddDate("");
         setAddCategoryId("");
         setAddInterval("none");
-        setShowScanSection(false);
-        setScanFile(null);
-        setScanPreview("");
-        setScanItems([]);
       }, 1500);
     },
   });
-
-  const scanMutation = useMutation({
-    mutationFn: async(file: File) => {
-      const formData = new FormData();
-      formData.append("image", file);
-      const res = await api.post("/receipts/scan", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      return res.data;
-    },
-    onSuccess: (data) => {
-      setIsScanningReceipt(false);
-      let extractedItems: ScannedItem[] = [];
-      if(data?.items && Array.isArray(data.items)){
-        extractedItems = data.items;
-      } else if(data?.item){
-        extractedItems = [{ item: data.item, price: data.price || 0, quantity: data.quantity || 1 }];
-      }
-      setScanItems(extractedItems);
-      if(extractedItems.length > 0){
-        const total = extractedItems.reduce((sum, it) => sum + (Number(it.price) * (Number(it.quantity) || 1)), 0);
-        setAddAmount(String(total));
-        const firstItemName = extractedItems[0].item;
-        if(!addDesc) setAddDesc(firstItemName);
-        addToast(`Extracted ${extractedItems.length} items from receipt`, "success");
-      } else {
-        addToast("Could not extract receipt data", "warning");
-      }
-    },
-    onError: (err) => {
-      setIsScanningReceipt(false);
-      addToast(extractApiError(err, "Failed to scan receipt"), "error");
-    },
-  });
-
-  const handleScanFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if(!f) return;
-    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-    if(!allowed.includes(f.type)){
-      addToast("Only PNG, JPEG, and WebP images are allowed", "error");
-      return;
-    }
-    if(f.size > 5 * 1024 * 1024){
-      addToast("File must be under 5MB", "error");
-      return;
-    }
-    setScanFile(f);
-    setScanPreview(URL.createObjectURL(f));
-    setScanItems([]);
-  };
-
-  const handleScanReceipt = () => {
-    if(!scanFile) return;
-    setIsScanningReceipt(true);
-    scanMutation.mutate(scanFile);
-  };
 
   const { data: incomeCategories = [] } = useQuery<Category[]>({
     queryKey: ["categories", "INCOME"],
@@ -899,80 +831,6 @@ export default function IncomePage() {
               <option value="monthly">Monthly</option>
               <option value="yearly">Yearly</option>
             </select>
-          </div>
-
-          {/* Inline Receipt Scan */}
-          <div className="border border-border rounded-xl p-3 space-y-3">
-            <button
-              type="button"
-              onClick={() => setShowScanSection(!showScanSection)}
-              className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-            >
-              <Camera className="w-4 h-4" />
-              {showScanSection ? "Hide receipt scan" : "Scan receipt to auto-fill"}
-            </button>
-
-            {showScanSection && (
-              <div className="space-y-3">
-                {!scanFile && (
-                  <div
-                    className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors bg-card"
-                    onClick={() => scanFileInputRef.current?.click()}
-                  >
-                    <FileImage className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm font-medium text-foreground">Click to upload receipt</p>
-                    <p className="text-xs text-muted-foreground">PNG, JPEG, WebP up to 5MB</p>
-                    <input ref={scanFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleScanFileChange} />
-                  </div>
-                )}
-
-                {scanPreview && (
-                  <div className="relative rounded-xl overflow-hidden border border-border bg-card">
-                    <img src={scanPreview} alt="Receipt preview" className="w-full max-h-48 object-contain bg-black/20" />
-                    <button
-                      type="button"
-                      onClick={() => { setScanFile(null); setScanPreview(""); setScanItems([]); }}
-                      className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-lg text-sky-400 hover:bg-black/80 transition-colors"
-                      aria-label="Remove"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                {scanFile && scanItems.length === 0 && !isScanningReceipt && (
-                  <div className="flex justify-center">
-                    <button
-                      type="button"
-                      onClick={handleScanReceipt}
-                      className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:brightness-110 transition-all active:scale-[0.98]"
-                    >
-                      <Upload className="w-4 h-4" /> Scan Receipt
-                    </button>
-                  </div>
-                )}
-
-                {isScanningReceipt && (
-                  <div className="flex items-center justify-center gap-2 py-4">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Scanning receipt...</span>
-                  </div>
-                )}
-
-                {scanItems.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-foreground">Extracted Items</p>
-                    {scanItems.map((item, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm">
-                        <span className="flex-1 truncate">{item.item}</span>
-                        <span className="text-muted-foreground">x{item.quantity || 1}</span>
-                        <span className="font-medium">{formatCurrency(Number(item.price))}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

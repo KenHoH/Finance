@@ -17,11 +17,14 @@ import { BullModule } from '@nestjs/bullmq';
       }),
       inject: [ConfigService],
     }),
-    BullModule.forRoot({
-      connection: {
-        host: 'redis',
-        port: 6379,
-      },
+    BullModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+        },
+      }),
+      inject: [ConfigService],
     }),
     BullModule.registerQueue({
       name: 'saving',
@@ -29,7 +32,7 @@ import { BullModule } from '@nestjs/bullmq';
     NotificationModule,
     SettingsModule,
     DebtModule,
-    ActivityLogModule
+    ActivityLogModule,
   ],
   controllers: [BudgetController],
   providers: [BudgetService],

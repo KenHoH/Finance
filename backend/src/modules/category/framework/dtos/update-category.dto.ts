@@ -20,8 +20,9 @@ export class UpdateCategoryDto {
   type?: 'INCOME' | 'EXPENSE';
 
   @ApiPropertyOptional({
-    description: 'A visual identifier, emoji, or icon key used in the UI for this category',
-    example: 'icon-a', 
+    description:
+      'A visual identifier, emoji, or icon key used in the UI for this category',
+    example: 'icon-a',
   })
   @IsOptional()
   @IsString()

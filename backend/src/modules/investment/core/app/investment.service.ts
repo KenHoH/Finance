@@ -1,21 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
-import { CreateInvestmentDto, UpdateInvestmentDto, CreateAllocationDto } from '../../framework/dto/index.js';
+import {
+  CreateInvestmentDto,
+  UpdateInvestmentDto,
+  CreateAllocationDto,
+} from '../../framework/dto/index.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 
 @Injectable()
-export class InvestmentService{
+export class InvestmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogService: ActivityLogService,
-  ){}
+  ) {}
 
-  async create(userId: string, dto: CreateInvestmentDto){
+  async create(userId: string, dto: CreateInvestmentDto) {
     // Verify category exists and belongs to user
     const category = await this.prisma.category.findFirst({
-      where: {id: dto.categoryId, userId, type: 'INVESTMENT'},
+      where: { id: dto.categoryId, userId, type: 'INVESTMENT' },
     });
-    if(!category) throw new Error('Investment category not found');
+    if (!category) throw new Error('Investment category not found');
 
     const investment = await this.prisma.investment.create({
       data: {
@@ -25,64 +29,84 @@ export class InvestmentService{
       },
     });
 
-    await this.activityLogService.logActivity(userId, 'CREATE', 'Investment', investment.id, {categoryId: dto.categoryId, totalAmount: Number(investment.totalAmount)});
+    await this.activityLogService.logActivity(
+      userId,
+      'CREATE',
+      'Investment',
+      investment.id,
+      {
+        categoryId: dto.categoryId,
+        totalAmount: Number(investment.totalAmount),
+      },
+    );
 
     return investment;
   }
 
-  async findAllByUser(userId: string){
+  async findAllByUser(userId: string) {
     return this.prisma.investment.findMany({
-      where: {userId},
-      include: {category: {select: {id: true, name: true, icon: true}}},
-      orderBy: {createdAt: 'desc'},
+      where: { userId },
+      include: { category: { select: { id: true, name: true, icon: true } } },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(userId: string, id: string){
+  async findOne(userId: string, id: string) {
     return this.prisma.investment.findFirst({
-      where: {id, userId},
+      where: { id, userId },
       include: {
-        category: {select: {id: true, name: true, icon: true}},
+        category: { select: { id: true, name: true, icon: true } },
       },
     });
   }
 
-  async update(userId: string, id: string, dto: UpdateInvestmentDto){
+  async update(userId: string, id: string, dto: UpdateInvestmentDto) {
     const investment = await this.prisma.investment.findFirst({
-      where: {id, userId},
+      where: { id, userId },
     });
-    if(!investment) return null;
+    if (!investment) return null;
 
     const updated = await this.prisma.investment.update({
-      where: {id},
-      data: {totalAmount: dto.totalAmount},
+      where: { id },
+      data: { totalAmount: dto.totalAmount },
     });
 
-    await this.activityLogService.logActivity(userId, 'UPDATE', 'Investment', id, {totalAmount: Number(updated.totalAmount)});
+    await this.activityLogService.logActivity(
+      userId,
+      'UPDATE',
+      'Investment',
+      id,
+      { totalAmount: Number(updated.totalAmount) },
+    );
 
     return updated;
   }
 
-  async delete(userId: string, id: string){
+  async delete(userId: string, id: string) {
     const investment = await this.prisma.investment.findFirst({
-      where: {id, userId},
+      where: { id, userId },
     });
-    if(!investment) return null;
+    if (!investment) return null;
 
-    await this.activityLogService.logActivity(userId, 'DELETE', 'Investment', id);
+    await this.activityLogService.logActivity(
+      userId,
+      'DELETE',
+      'Investment',
+      id,
+    );
 
     return this.prisma.investment.delete({
-      where: {id},
+      where: { id },
     });
   }
 
   // Investment Allocation
-  async createAllocation(userId: string, dto: CreateAllocationDto){
+  async createAllocation(userId: string, dto: CreateAllocationDto) {
     // Verify category exists and belongs to user
     const category = await this.prisma.category.findFirst({
-      where: {id: dto.categoryId, userId, type: 'INVESTMENT'},
+      where: { id: dto.categoryId, userId, type: 'INVESTMENT' },
     });
-    if(!category) throw new Error('Investment category not found');
+    if (!category) throw new Error('Investment category not found');
 
     // Create allocation record
     const allocation = await this.prisma.investmentAllocation.create({
@@ -104,7 +128,7 @@ export class InvestmentService{
         },
       },
       update: {
-        totalAmount: {increment: dto.amount},
+        totalAmount: { increment: dto.amount },
       },
       create: {
         userId,
@@ -113,23 +137,29 @@ export class InvestmentService{
       },
     });
 
-    await this.activityLogService.logActivity(userId, 'CREATE_ALLOCATION', 'InvestmentAllocation', allocation.id, {categoryId: dto.categoryId, amount: Number(allocation.amount)});
+    await this.activityLogService.logActivity(
+      userId,
+      'CREATE_ALLOCATION',
+      'InvestmentAllocation',
+      allocation.id,
+      { categoryId: dto.categoryId, amount: Number(allocation.amount) },
+    );
 
     return allocation;
   }
 
-  async getAllocationsByCategory(userId: string, categoryId: string){
+  async getAllocationsByCategory(userId: string, categoryId: string) {
     return this.prisma.investmentAllocation.findMany({
-      where: {userId, categoryId},
-      orderBy: {allocationDate: 'desc'},
+      where: { userId, categoryId },
+      orderBy: { allocationDate: 'desc' },
     });
   }
 
-  async getAllAllocations(userId: string){
+  async getAllAllocations(userId: string) {
     return this.prisma.investmentAllocation.findMany({
-      where: {userId},
-      include: {category: {select: {id: true, name: true, icon: true}}},
-      orderBy: {allocationDate: 'desc'},
+      where: { userId },
+      include: { category: { select: { id: true, name: true, icon: true } } },
+      orderBy: { allocationDate: 'desc' },
     });
   }
 }

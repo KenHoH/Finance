@@ -16,7 +16,6 @@ import {
   FileText,
   PiggyBank,
   Menu,
-  X,
   PanelLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

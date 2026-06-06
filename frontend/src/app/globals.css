@@ -119,6 +119,12 @@ body {
   animation: fade-in 0.4s ease-out forwards;
 }
 
+@keyframes loading {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0); }
+  100% { transform: translateX(100%); }
+}
+
 button, [role="button"], input[type="submit"], input[type="button"], select, a {
   cursor: pointer;
 }

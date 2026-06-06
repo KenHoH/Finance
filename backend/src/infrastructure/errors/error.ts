@@ -1,13 +1,13 @@
 export class AuthError extends Error {
-  constructor(message = "Authentication failed") {
+  constructor(message = 'Authentication failed') {
     super(message);
-    this.name = "AuthError";
+    this.name = 'AuthError';
   }
 }
 
 export class ConnectionError extends Error {
-  constructor(message = "Connection failed") {
+  constructor(message = 'Connection failed') {
     super(message);
-    this.name = "ConnectionError";
+    this.name = 'ConnectionError';
   }
 }

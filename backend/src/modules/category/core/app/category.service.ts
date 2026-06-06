@@ -12,7 +12,7 @@ export class CategoryService {
     private readonly activityLogService: ActivityLogService,
   ) {}
 
-  async create(userId: string, dto: CreateCategoryDto){
+  async create(userId: string, dto: CreateCategoryDto) {
     const existing = await this.prisma.category.findFirst({
       where: {
         userId,
@@ -20,7 +20,7 @@ export class CategoryService {
       },
     });
 
-    if(existing){
+    if (existing) {
       throw new ConflictException('A category with this name already exists.');
     }
 
@@ -33,25 +33,28 @@ export class CategoryService {
       },
     });
 
-    await this.activityLogService.logActivity(userId, 'CREATE', 'Category', category.id, {name: category.name, type: category.type});
+    await this.activityLogService.logActivity(
+      userId,
+      'CREATE',
+      'Category',
+      category.id,
+      { name: category.name, type: category.type },
+    );
 
     return category;
   }
 
-  async findAll(userId: string, type?: string){
+  async findAll(userId: string, type?: string) {
     return this.prisma.category.findMany({
       where: {
-        OR: [
-          { userId },
-          { userId: null },
-        ],
+        OR: [{ userId }, { userId: null }],
         ...(type ? { type: type as CategoryType } : {}),
       },
       orderBy: { name: 'asc' },
     });
   }
 
-  async findOne(userId: string, id: string){
+  async findOne(userId: string, id: string) {
     return this.prisma.category.findFirst({
       where: {
         id,
@@ -60,14 +63,14 @@ export class CategoryService {
     });
   }
 
-  async update(userId: string, id: string, dto: UpdateCategoryDto){
+  async update(userId: string, id: string, dto: UpdateCategoryDto) {
     const category = await this.prisma.category.findFirst({
       where: { id, userId },
     });
 
-    if(!category) return null;
+    if (!category) return null;
 
-    if(dto.name && dto.name.toLowerCase() !== category.name.toLowerCase()){
+    if (dto.name && dto.name.toLowerCase() !== category.name.toLowerCase()) {
       const existing = await this.prisma.category.findFirst({
         where: {
           userId,
@@ -76,8 +79,10 @@ export class CategoryService {
         },
       });
 
-      if(existing){
-        throw new ConflictException('A category with this name already exists.');
+      if (existing) {
+        throw new ConflictException(
+          'A category with this name already exists.',
+        );
       }
     }
 
@@ -90,17 +95,23 @@ export class CategoryService {
       },
     });
 
-    await this.activityLogService.logActivity(userId, 'UPDATE', 'Category', id, {name: updated.name, type: updated.type});
+    await this.activityLogService.logActivity(
+      userId,
+      'UPDATE',
+      'Category',
+      id,
+      { name: updated.name, type: updated.type },
+    );
 
     return updated;
   }
 
-  async delete(userId: string, id: string){
+  async delete(userId: string, id: string) {
     const category = await this.prisma.category.findFirst({
       where: { id, userId },
     });
 
-    if(!category) return null;
+    if (!category) return null;
 
     await this.activityLogService.logActivity(userId, 'DELETE', 'Category', id);
 

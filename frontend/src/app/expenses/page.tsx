@@ -7,13 +7,12 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import {
-  CreditCard, ArrowDownRight, X, Pencil, Trash2, Camera, Plus, Upload, FileImage, Loader2, TrendingUp, MoreVertical
+  CreditCard, ArrowDownRight, X, Pencil, Trash2, Plus, TrendingUp, MoreVertical
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
-import type { ScannedItem } from "@/lib/types";
 import { format, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, del, put, api, extractApiError } from "@/lib/api";
@@ -47,13 +46,6 @@ export default function ExpensesPage() {
   const [addInterval, setAddInterval] = useState<"none" | "daily" | "weekly" | "monthly" | "yearly">("none");
   const [isAddSuccess, setIsAddSuccess] = useState(false);
   const addSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [showScanSection, setShowScanSection] = useState(false);
-  const [scanFile, setScanFile] = useState<File | null>(null);
-  const [scanPreview, setScanPreview] = useState("");
-  const [scanItems, setScanItems] = useState<ScannedItem[]>([]);
-  const [isScanningReceipt, setIsScanningReceipt] = useState(false);
-  const scanFileInputRef = useRef<HTMLInputElement>(null);
 
   const itemsPerPage = 6;
 
@@ -106,102 +98,9 @@ export default function ExpensesPage() {
         setAddDate("");
         setAddCategoryId("");
         setAddInterval("none");
-        setShowScanSection(false);
-        setScanFile(null);
-        setScanPreview("");
-        setScanItems([]);
       }, 1500);
     },
   });
-
-  const [isAddingScanned, setIsAddingScanned] = useState(false);
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
-
-  async function handleAddScannedItems(){
-    if(!scanItems.length) return;
-    setIsAddingScanned(true);
-    const date = addDate ? dateToApiISO(addDate) : new Date().toISOString();
-    const catId = addCategoryId || undefined;
-    for(const item of scanItems){
-      const amt = Number(item.price) * (Number(item.quantity) || 1);
-      await createMutation.mutateAsync({
-        description: item.item.trim() || "Receipt item",
-        amount: amt,
-        type: "EXPENSE",
-        date,
-        categoryId: catId,
-      });
-    }
-    setIsAddingScanned(false);
-    setIsAddOpen(false);
-    setAddDesc("");
-    setAddAmount("");
-    setAddDate("");
-    setAddCategoryId("");
-    setAddInterval("none");
-    setShowScanSection(false);
-    setScanFile(null);
-    setScanPreview("");
-    setScanItems([]);
-    addToast(`Added ${scanItems.length} expenses from receipt`, "success");
-  }
-
-  const scanMutation = useMutation({
-    mutationFn: async(file: File) => {
-      const formData = new FormData();
-      formData.append("image", file);
-      const res = await api.post("/receipts/scan", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      return res.data;
-    },
-    onSuccess: (data) => {
-      setIsScanningReceipt(false);
-      let extractedItems: ScannedItem[] = [];
-      if(data?.items && Array.isArray(data.items)){
-        extractedItems = data.items;
-      } else if(data?.item){
-        extractedItems = [{ item: data.item, price: data.price || 0, quantity: data.quantity || 1 }];
-      }
-      setScanItems(extractedItems);
-      if(extractedItems.length > 0){
-        const total = extractedItems.reduce((sum, it) => sum + (Number(it.price) * (Number(it.quantity) || 1)), 0);
-        setAddAmount(String(total));
-        const firstItemName = extractedItems[0].item;
-        if(!addDesc) setAddDesc(firstItemName);
-        addToast(`Extracted ${extractedItems.length} items from receipt`, "success");
-      } else {
-        addToast("Could not extract receipt data", "warning");
-      }
-    },
-    onError: (err) => {
-      setIsScanningReceipt(false);
-      addToast(extractApiError(err, "Failed to scan receipt"), "error");
-    },
-  });
-
-  const handleScanFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if(!f) return;
-    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-    if(!allowed.includes(f.type)){
-      addToast("Only PNG, JPEG, and WebP images are allowed", "error");
-      return;
-    }
-    if(f.size > 5 * 1024 * 1024){
-      addToast("File must be under 5MB", "error");
-      return;
-    }
-    setScanFile(f);
-    setScanPreview(URL.createObjectURL(f));
-    setScanItems([]);
-  };
-
-  const handleScanReceipt = () => {
-    if(!scanFile) return;
-    setIsScanningReceipt(true);
-    scanMutation.mutate(scanFile);
-  };
 
   const { data: expenseCategories = [] } = useQuery<Category[]>({
     queryKey: ["categories", "EXPENSE"],
@@ -552,97 +451,6 @@ export default function ExpensesPage() {
             </select>
           </div>
 
-          {/* Inline Receipt Scan */}
-          <div className="border border-border rounded-xl p-3 space-y-3">
-            <button
-              type="button"
-              onClick={() => setShowScanSection(!showScanSection)}
-              className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-            >
-              <Camera className="w-4 h-4" />
-              {showScanSection ? "Hide receipt scan" : "Scan receipt to auto-fill"}
-            </button>
-
-            {showScanSection && (
-              <div className="space-y-3">
-                {!scanFile && (
-                  <div
-                    className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors bg-card"
-                    onClick={() => scanFileInputRef.current?.click()}
-                  >
-                    <FileImage className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm font-medium text-foreground">Click to upload receipt</p>
-                    <p className="text-xs text-muted-foreground">PNG, JPEG, WebP up to 5MB</p>
-                    <input ref={scanFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleScanFileChange} />
-                  </div>
-                )}
-
-                {scanPreview && (
-                  <div className="relative rounded-xl overflow-hidden border border-border bg-card">
-                    <img src={scanPreview} alt="Receipt preview" className="w-full max-h-48 object-contain bg-black/20" />
-                    <button
-                      type="button"
-                      onClick={() => { setScanFile(null); setScanPreview(""); setScanItems([]); }}
-                      className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-lg text-sky-400 hover:bg-black/80 transition-colors"
-                      aria-label="Remove"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                {scanFile && scanItems.length === 0 && !isScanningReceipt && (
-                  <div className="flex justify-center">
-                    <button
-                      type="button"
-                      onClick={handleScanReceipt}
-                      className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:brightness-110 transition-all active:scale-[0.98]"
-                    >
-                      <Upload className="w-4 h-4" /> Scan Receipt
-                    </button>
-                  </div>
-                )}
-
-                {isScanningReceipt && (
-                  <div className="flex items-center justify-center gap-2 py-4">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Scanning receipt...</span>
-                  </div>
-                )}
-
-                {scanItems.length > 0 && (
-                  <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{scanItems.length} items extracted</p>
-                        <p className="text-xs text-muted-foreground">Total: {formatCurrency(scanItems.reduce((sum, it) => sum + (Number(it.price) * (Number(it.quantity) || 1)), 0))}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsReviewOpen(true)}
-                        className="text-sm font-medium text-primary hover:underline"
-                      >
-                        Review Items
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddScannedItems}
-                      disabled={isAddingScanned}
-                      className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {isAddingScanned ? (
-                        <><Loader2 className="w-4 h-4 animate-spin" /> Adding items...</>
-                      ) : (
-                        <><Plus className="w-4 h-4" /> Add all as expenses</>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -662,14 +470,6 @@ export default function ExpensesPage() {
         </form>
       </Modal>
 
-      <ReviewItemsModal
-        isOpen={isReviewOpen}
-        onClose={() => setIsReviewOpen(false)}
-        items={scanItems}
-        onChange={setScanItems}
-        onAddAll={() => { setIsReviewOpen(false); handleAddScannedItems(); }}
-        isAdding={isAddingScanned}
-      />
     </div>
   );
 }
@@ -861,96 +661,3 @@ function TransactionDetailModal({
   );
 }
 
-function ReviewItemsModal({
-  isOpen,
-  onClose,
-  items,
-  onChange,
-  onAddAll,
-  isAdding,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  items: ScannedItem[];
-  onChange: (items: ScannedItem[]) => void;
-  onAddAll: () => void;
-  isAdding: boolean;
-}){
-  if(!isOpen) return null;
-
-  function updateItem(index: number, field: keyof ScannedItem, value: string | number){
-    const next = [...items];
-    next[index] = { ...next[index], [field]: value };
-    onChange(next);
-  }
-
-  function removeItem(index: number){
-    onChange(items.filter((_, i) => i !== index));
-  }
-
-  const total = items.reduce((sum, it) => sum + (Number(it.price) * (Number(it.quantity) || 1)), 0);
-
-  return (
-    <AnimatePresence>
-      <motion.div key="backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]" />
-      <motion.div key="modal" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-md bg-card border border-border rounded-xl shadow-2xl z-[70] p-6 max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-semibold text-foreground">Review Items</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-sky-500/[0.05] rounded-lg transition-colors" aria-label="Close"><X className="w-5 h-5 text-muted-foreground" /></button>
-        </div>
-
-        <div className="space-y-3 mb-5">
-          {items.map((item, i) => (
-            <div key={i} className="bg-background border border-border rounded-xl p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={item.item}
-                  onChange={(e) => updateItem(i, "item", e.target.value)}
-                  className="flex-1 bg-card border border-border rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-primary"
-                  placeholder="Item name"
-                />
-                <button onClick={() => removeItem(i)} className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0" aria-label="Remove item">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <label className="text-[10px] uppercase text-muted-foreground font-semibold">Qty</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={item.quantity || 1}
-                    onChange={(e) => updateItem(i, "quantity", Number(e.target.value))}
-                    className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-primary"
-                  />
-                </div>
-                <div className="flex-[2]">
-                  <label className="text-[10px] uppercase text-muted-foreground font-semibold">Price</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={item.price}
-                    onChange={(e) => updateItem(i, "price", Number(e.target.value))}
-                    className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-primary"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between pt-3 border-t border-border">
-          <p className="text-sm font-semibold text-foreground">Total: {formatCurrency(total)}</p>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sky-500/[0.03] transition-colors">Cancel</button>
-            <button onClick={onAddAll} disabled={isAdding || items.length === 0} className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50">
-              {isAdding ? "Adding..." : "Add all"}
-            </button>
-          </div>
-        </div>
-      </motion.div>
-    </AnimatePresence>
-  );
-}

@@ -2,8 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Tag, Plus, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Loader2, ArrowLeft, Search } from "lucide-react";
-import Link from "next/link";
+import { Tag, Plus, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Loader2, Search } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
 import { useToastStore } from "@/store/useToastStore";

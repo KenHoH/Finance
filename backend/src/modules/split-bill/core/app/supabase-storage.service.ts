@@ -14,34 +14,53 @@ export class SupabaseStorageService {
     );
   }
 
-  private async uploadImage(file: Express.Multer.File, fileName: string): Promise<string> {
+  private async ensureBucket(bucket: string) {
+    const { data: buckets } = await this.supabase.storage.listBuckets();
+    if (!buckets?.find((b) => b.name === bucket)) {
+      await this.supabase.storage.createBucket(bucket, { public: true });
+    }
+  }
+
+  private async uploadImage(
+    file: Express.Multer.File,
+    fileName: string,
+    bucket: string,
+  ): Promise<string> {
+    await this.ensureBucket(bucket);
+
     const compressed = await sharp(file.buffer)
       .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 60 })
       .toBuffer();
 
     const { error } = await this.supabase.storage
-      .from('payment-proofs')
+      .from(bucket)
       .upload(fileName, compressed, {
         contentType: 'image/webp',
       });
 
     if (error) throw new Error(`Upload failed: ${error.message}`);
 
-    return `${this.configService.get<string>('SUPABASE_URL')}/storage/v1/object/public/payment-proofs/${fileName}`;
+    return `${this.configService.get<string>('SUPABASE_URL')}/storage/v1/object/public/${bucket}/${fileName}`;
   }
 
-  async uploadPaymentProof(file: Express.Multer.File, participantId: string): Promise<string> {
+  async uploadPaymentProof(
+    file: Express.Multer.File,
+    participantId: string,
+  ): Promise<string> {
     const fileName = `${participantId}-${Date.now()}.webp`;
 
-    return this.uploadImage(file, fileName);
+    return this.uploadImage(file, fileName, 'payment-proofs');
   }
 
-  async uploadSplitBillReceiptProofs(files: Express.Multer.File[], billId: string): Promise<string[]> {
+  async uploadSplitBillReceiptProofs(
+    files: Express.Multer.File[],
+    billId: string,
+  ): Promise<string[]> {
     return Promise.all(
       files.map((file, index) => {
         const fileName = `split-bill-${billId}-${Date.now()}-${index}.webp`;
-        return this.uploadImage(file, fileName);
+        return this.uploadImage(file, fileName, 'payment-proofs');
       }),
     );
   }

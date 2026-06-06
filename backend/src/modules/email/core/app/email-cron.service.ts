@@ -13,14 +13,14 @@ export class EmailCronService {
   ) {}
 
   @Cron('0 2,14 * * *')
-  async handleEmailSync(){
+  async handleEmailSync() {
     this.logger.log('Starting email auto-sync (9 AM & 9 PM WIB)');
 
     const users = await this.prisma.user.findMany({
       where: {
-        identities: {some: {provider: 'google'}},
+        identities: { some: { provider: 'google' } },
       },
-      select: {id: true, email: true},
+      select: { id: true, email: true },
     });
 
     this.logger.log(`Found ${users.length} users with Google linked`);
@@ -28,17 +28,25 @@ export class EmailCronService {
     let successCount = 0;
     let failCount = 0;
 
-    for(const user of users){
-      try{
-        const result = await this.emailService.syncUserEmails(user.id, user.email, true);
-        this.logger.log(`Synced user ${user.id}: ${result.created} created, ${result.skipped} skipped`);
+    for (const user of users) {
+      try {
+        const result = await this.emailService.syncUserEmails(
+          user.id,
+          user.email,
+          true,
+        );
+        this.logger.log(
+          `Synced user ${user.id}: ${result.created} created, ${result.skipped} skipped`,
+        );
         successCount++;
-      } catch(err: any){
+      } catch (err: any) {
         this.logger.error(`Failed to sync user ${user.id}: ${err.message}`);
         failCount++;
       }
     }
 
-    this.logger.log(`Email sync complete. Success: ${successCount}, Failed: ${failCount}`);
+    this.logger.log(
+      `Email sync complete. Success: ${successCount}, Failed: ${failCount}`,
+    );
   }
 }

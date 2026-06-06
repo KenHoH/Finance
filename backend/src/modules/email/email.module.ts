@@ -10,7 +10,13 @@ import { AuthModule } from '../auth/auth.module.js';
 import { TransactionModule } from '../transaction/transaction.module.js';
 
 @Module({
-  imports: [JwtModule.register({}), PrismaModule, ActivityLogModule, forwardRef(() => AuthModule), TransactionModule],
+  imports: [
+    JwtModule.register({}),
+    PrismaModule,
+    ActivityLogModule,
+    forwardRef(() => AuthModule),
+    TransactionModule,
+  ],
   controllers: [EmailController],
   providers: [EmailService, EmailCronService],
   exports: [EmailService],

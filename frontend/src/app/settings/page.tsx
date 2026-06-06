@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, Mail, Tag, PiggyBank, ArrowRight, LogOut, Wallet, User } from "lucide-react";
+import { Save, Loader2, Mail, Tag, PiggyBank, ArrowRight, LogOut, Wallet } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import { api, extractApiError } from "@/lib/api";
 import { useToastStore } from "@/store/useToastStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { validateString } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ export default function SettingsPage(){
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
   const [profileName, setProfileName] = useState("");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
@@ -133,16 +135,27 @@ export default function SettingsPage(){
             </div>
           </div>
           <button
-            onClick={() => {
-              logout();
-              addToast("Logged out", "success");
-            }}
+            onClick={() => setShowLogoutConfirm(true)}
             className="px-4 py-2 rounded-lg text-sm font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-colors active:scale-[0.98]"
           >
             Log out
           </button>
         </div>
       </motion.section>
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          logout();
+          addToast("Logged out", "success");
+        }}
+        onCancel={() => setShowLogoutConfirm(false)}
+        title="Log out?"
+        description="Are you sure you want to sign out of your account?"
+        confirmLabel="Log out"
+        variant="danger"
+      />
     </div>
   );
 }

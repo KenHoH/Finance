@@ -1,4 +1,9 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 
 const DANGEROUS_PROTOCOLS = /^\s*(javascript|vbscript|data)\s*:/i;
@@ -18,11 +23,11 @@ function sanitizeString(value: string): string {
 }
 
 function sanitize(obj: any): any {
-  if(typeof obj === 'string') return sanitizeString(obj);
-  if(Array.isArray(obj)) return obj.map(sanitize);
-  if(obj && typeof obj === 'object'){
+  if (typeof obj === 'string') return sanitizeString(obj);
+  if (Array.isArray(obj)) return obj.map(sanitize);
+  if (obj && typeof obj === 'object') {
     const sanitized: any = {};
-    for(const key of Object.keys(obj)){
+    for (const key of Object.keys(obj)) {
       sanitized[key] = sanitize(obj[key]);
     }
     return sanitized;
@@ -34,20 +39,20 @@ function sanitize(obj: any): any {
 export class SanitizeInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-    if(request.body){
+    if (request.body) {
       const s = sanitize(request.body);
-      Object.keys(request.body).forEach((k) => delete (request.body as any)[k]);
+      Object.keys(request.body).forEach((k) => delete request.body[k]);
       Object.assign(request.body, s);
     }
-    if(request.query){
+    if (request.query) {
       const s = sanitize(request.query);
-      Object.keys(request.query).forEach((k) => delete (request.query as any)[k]);
-      Object.assign(request.query as any, s);
+      Object.keys(request.query).forEach((k) => delete request.query[k]);
+      Object.assign(request.query, s);
     }
-    if(request.params){
+    if (request.params) {
       const s = sanitize(request.params);
-      Object.keys(request.params).forEach((k) => delete (request.params as any)[k]);
-      Object.assign(request.params as any, s);
+      Object.keys(request.params).forEach((k) => delete request.params[k]);
+      Object.assign(request.params, s);
     }
     return next.handle();
   }

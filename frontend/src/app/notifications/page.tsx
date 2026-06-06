@@ -11,7 +11,10 @@ import {
   Receipt,
   Target,
   Info,
-  X,
+  ArrowLeftRight,
+  UserCheck,
+  UserX,
+  DollarSign,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, api, extractApiError } from "@/lib/api";
@@ -46,6 +49,14 @@ function getTypeMeta(type: string){
       return { icon: AlertTriangle, color: "text-amber-300", bg: "bg-amber-500/20", label: "Budget" };
     case "GOAL_UPDATE":
       return { icon: Target, color: "text-sky-300", bg: "bg-sky-500/20", label: "Goal" };
+    case "SPLIT_BILL_INVITE":
+      return { icon: ArrowLeftRight, color: "text-sky-300", bg: "bg-sky-500/20", label: "Split Bill" };
+    case "SPLIT_BILL_PAID":
+      return { icon: DollarSign, color: "text-amber-300", bg: "bg-amber-500/20", label: "Payment" };
+    case "SPLIT_BILL_CONFIRMED":
+      return { icon: UserCheck, color: "text-emerald-300", bg: "bg-emerald-500/20", label: "Confirmed" };
+    case "SPLIT_BILL_REJECTED":
+      return { icon: UserX, color: "text-rose-300", bg: "bg-rose-500/20", label: "Rejected" };
     default:
       return { icon: Info, color: "text-slate-300", bg: "bg-slate-500/20", label: "System" };
   }
@@ -292,23 +303,6 @@ export default function NotificationsPage(){
               <p className="text-base font-medium text-foreground leading-relaxed">{selected.message}</p>
             </div>
 
-            {!selected.isRead && (
-              <>
-                <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
-                  <span className="px-2.5 py-1 rounded-full text-sm font-bold bg-amber-500/10 text-amber-400">
-                    Unread
-                  </span>
-                </div>
-                <button
-                  onClick={() => { markRead.mutate(selected.id); handleClose(); }}
-                  disabled={markRead.isPending}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors active:scale-[0.98] disabled:opacity-60"
-                >
-                  {markRead.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-                  Mark as read
-                </button>
-              </>
-            )}
           </div>
         )}
       </Modal>

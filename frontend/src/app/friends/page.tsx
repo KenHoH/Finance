@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, UserPlus, UserCheck, Check, X, User, MoreVertical, Search, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { FriendUser, Friend, FriendRequest } from "@/lib/types";
-import { rollbackOnError } from "@/lib/optimistic";
 
 function getInitials(name: string){
   return name.slice(0, 2).toUpperCase();
@@ -30,10 +29,14 @@ export default function FriendsPage(){
   const [justAcceptedIds, setJustAcceptedIds] = useState<Set<string>>(new Set());
   const [justRejectedIds, setJustRejectedIds] = useState<Set<string>>(new Set());
 
-  const { data: friends = [], isLoading: friendsLoading } = useQuery<Friend[]>({
-    queryKey: ["friends"],
-    queryFn: () => get<Friend[]>("/friends"),
+  const { data: summary, isLoading: summaryLoading } = useQuery<{friends: Friend[]; receivedRequests: FriendRequest[]; sentRequests: FriendRequest[]}>({
+    queryKey: ["friends", "summary"],
+    queryFn: () => get<{friends: Friend[]; receivedRequests: FriendRequest[]; sentRequests: FriendRequest[]}>("/friends/summary"),
   });
+
+  const friends = summary?.friends || [];
+  const receivedRequests = useMemo(() => summary?.receivedRequests || [], [summary]);
+  const sentRequests = useMemo(() => summary?.sentRequests || [], [summary]);
 
   useEffect(() =>{
     function handleClick(e: MouseEvent){
@@ -45,15 +48,13 @@ export default function FriendsPage(){
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const { data: receivedRequests = [], isLoading: reqLoading } = useQuery<FriendRequest[]>({
-    queryKey: ["friend-requests", "received"],
-    queryFn: () => get<FriendRequest[]>("/friends/requests/received"),
-  });
-
-  const { data: sentRequests = [] } = useQuery<FriendRequest[]>({
-    queryKey: ["friend-requests", "sent"],
-    queryFn: () => get<FriendRequest[]>("/friends/requests/sent"),
-  });
+  const shownPendingToastRef = useRef(false);
+  useEffect(() =>{
+    if(receivedRequests.length > 0 && !shownPendingToastRef.current){
+      shownPendingToastRef.current = true;
+      addToast("You have " + receivedRequests.length + " pending friend request" + (receivedRequests.length > 1 ? "s" : "") + ". Check the Requests tab.", "info");
+    }
+  }, [receivedRequests, addToast]);
 
   const sentIdsSet = React.useMemo(() => {
     const ids = new Set(sentRequests.map((r) => r.receiver.id));
@@ -74,7 +75,7 @@ export default function FriendsPage(){
     },
     onSuccess: (_, receiverId) => {
       addToast("Friend request sent", "success");
-      queryClient.invalidateQueries({ queryKey: ["friend-requests", "sent"] });
+      queryClient.invalidateQueries({ queryKey: ["friends", "summary"] });
       setActiveTab("requests");
       setSearchQuery("");
       setShowAddModal(false);
@@ -100,37 +101,41 @@ export default function FriendsPage(){
     onMutate: async ({ requestId, action }) => {
       if(action === "ACCEPT") setJustAcceptedIds((prev) => new Set([...prev, requestId]));
       if(action === "REJECT") setJustRejectedIds((prev) => new Set([...prev, requestId]));
-      const previousFriends = queryClient.getQueryData<Friend[]>(["friends"]) || [];
-      const previousReceived = queryClient.getQueryData<FriendRequest[]>(["friend-requests", "received"]) || [];
-      const previousSent = queryClient.getQueryData<FriendRequest[]>(["friend-requests", "sent"]) || [];
-      if(action === "ACCEPT"){
-        const req = previousReceived.find((r) => r.id === requestId);
+      const previousSummary = queryClient.getQueryData<{friends: Friend[]; receivedRequests: FriendRequest[]; sentRequests: FriendRequest[]}>(["friends", "summary"]);
+      if(action === "ACCEPT" && previousSummary){
+        const req = previousSummary.receivedRequests.find((r) => r.id === requestId);
         if(req){
           const newFriend: Friend = {
             friendshipId: `opt-${Date.now()}`,
             friend: { id: req.sender.id, username: req.sender.username, email: req.sender.email, avatar: req.sender.avatar },
             createdAt: new Date().toISOString(),
           };
-          queryClient.setQueryData<Friend[]>(["friends"], (old) => [...(old || []), newFriend]);
+          queryClient.setQueryData(["friends", "summary"], {
+            ...previousSummary,
+            friends: [...previousSummary.friends, newFriend],
+            receivedRequests: previousSummary.receivedRequests.filter((r) => r.id !== requestId),
+            sentRequests: previousSummary.sentRequests.filter((r) => r.id !== requestId),
+          });
         }
+      } else if(previousSummary){
+        queryClient.setQueryData(["friends", "summary"], {
+          ...previousSummary,
+          receivedRequests: previousSummary.receivedRequests.filter((r) => r.id !== requestId),
+          sentRequests: previousSummary.sentRequests.filter((r) => r.id !== requestId),
+        });
       }
-      queryClient.setQueryData<FriendRequest[]>(["friend-requests", "received"], (old) => (old || []).filter((r) => r.id !== requestId));
-      queryClient.setQueryData<FriendRequest[]>(["friend-requests", "sent"], (old) => (old || []).filter((r) => r.id !== requestId));
-      return { previousFriends, previousReceived, previousSent };
+      return { previousSummary };
     },
     onError: (err, { requestId }, context) => {
       setJustAcceptedIds((prev) => { const next = new Set(prev); next.delete(requestId); return next; });
       setJustRejectedIds((prev) => { const next = new Set(prev); next.delete(requestId); return next; });
-      if(context){
-        queryClient.setQueryData(["friends"], context.previousFriends);
-        queryClient.setQueryData(["friend-requests", "received"], context.previousReceived);
-        queryClient.setQueryData(["friend-requests", "sent"], context.previousSent);
+      if(context?.previousSummary){
+        queryClient.setQueryData(["friends", "summary"], context.previousSummary);
       }
       addToast(extractApiError(err, "Failed to respond"), "error");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["friends"] });
-      queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["friends", "summary"] });
     },
     onSuccess: (_, { requestId, action }) => {
       setTimeout(() => {
@@ -148,21 +153,28 @@ export default function FriendsPage(){
   const removeFriend = useMutation({
     mutationFn: (friendshipId: string) => api.delete(`/friends/${friendshipId}`),
     onMutate: async (friendshipId) => {
-      const previous = queryClient.getQueryData<Friend[]>(["friends"]) || [];
-      queryClient.setQueryData<Friend[]>(["friends"], (old) => (old || []).filter((f) => f.friendshipId !== friendshipId));
+      const previous = queryClient.getQueryData<{friends: Friend[]; receivedRequests: FriendRequest[]; sentRequests: FriendRequest[]}>(["friends", "summary"]);
+      if(previous){
+        queryClient.setQueryData(["friends", "summary"], {
+          ...previous,
+          friends: previous.friends.filter((f) => f.friendshipId !== friendshipId),
+        });
+      }
       return { previous };
     },
     onError: (err, friendshipId, context) => {
-      rollbackOnError(queryClient, ["friends"], context);
+      if(context?.previous){
+        queryClient.setQueryData(["friends", "summary"], context.previous);
+      }
       addToast(extractApiError(err, "Failed to remove friend"), "error");
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["friends"] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["friends", "summary"] }),
     onSuccess: () => {
       addToast("Friend removed", "success");
     },
   });
 
-  const isLoading = friendsLoading || reqLoading;
+  const isLoading = summaryLoading;
 
   if(isLoading){
     return (

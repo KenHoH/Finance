@@ -11,9 +11,9 @@ import { EmailModule } from '../email/email.module.js';
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
-        signOptions: {expiresIn: '7d'},
+        signOptions: { expiresIn: '7d' },
       }),
-      inject: [ConfigService]
+      inject: [ConfigService],
     }),
     forwardRef(() => EmailModule),
   ],

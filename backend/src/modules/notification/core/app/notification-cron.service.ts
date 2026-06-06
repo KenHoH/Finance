@@ -17,7 +17,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
     await this.handlePeriodicNotifications();
   }
 
-  @Interval(1800000) // every 30 minutes
+  @Interval(process.env.NODE_ENV === 'production' ? 1800000 : 21600000) // 30min prod, 6h dev
   async handlePeriodicNotifications() {
     this.logger.log('Running periodic notification check...');
     await this.createBillReminders();
@@ -42,14 +42,24 @@ export class NotificationCronService implements OnApplicationBootstrap {
       include: { category: true },
     });
 
-    for(const bill of bills){
-      await this.notificationService.notifyBillReminder(bill, bill.category ?? undefined);
+    for (const bill of bills) {
+      await this.notificationService.notifyBillReminder(
+        bill,
+        bill.category ?? undefined,
+      );
     }
   }
 
   private async createBudgetAlerts() {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+    );
 
     const budgets = await this.prisma.budget.findMany({
       where: {
@@ -59,7 +69,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
       include: { category: true },
     });
 
-    for(const budget of budgets){
+    for (const budget of budgets) {
       const userId = budget.userId;
       const budgetAmount = Number(budget.amount);
       const categoryName = budget.category?.name ?? 'Overall';
@@ -73,10 +83,14 @@ export class NotificationCronService implements OnApplicationBootstrap {
         },
       });
 
-      const totalSpent = transactions.reduce((sum, t) => sum + Number(t.amount), 0);
-      const percentage = budgetAmount > 0 ? Math.round((totalSpent / budgetAmount) * 100) : 0;
+      const totalSpent = transactions.reduce(
+        (sum, t) => sum + Number(t.amount),
+        0,
+      );
+      const percentage =
+        budgetAmount > 0 ? Math.round((totalSpent / budgetAmount) * 100) : 0;
 
-      if(totalSpent > budgetAmount){
+      if (totalSpent > budgetAmount) {
         const notified = await this.prisma.notification.findFirst({
           where: {
             userId,
@@ -85,7 +99,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
             createdAt: { gte: todayStart },
           },
         });
-        if(!notified){
+        if (!notified) {
           await this.notificationService.create(
             userId,
             'BUDGET_ALERT',
@@ -93,7 +107,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
             `You have exceeded your ${categoryName} budget. Current spending: Rp ${totalSpent.toLocaleString('id-ID')}`,
           );
         }
-      } else if(percentage >= 80){
+      } else if (percentage >= 80) {
         const notified = await this.prisma.notification.findFirst({
           where: {
             userId,
@@ -102,7 +116,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
             createdAt: { gte: todayStart },
           },
         });
-        if(!notified){
+        if (!notified) {
           await this.notificationService.create(
             userId,
             'BUDGET_ALERT',
@@ -116,7 +130,14 @@ export class NotificationCronService implements OnApplicationBootstrap {
 
   private async createGoalAlerts() {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+    );
     const in7Days = new Date(now);
     in7Days.setDate(in7Days.getDate() + 7);
 
@@ -126,15 +147,17 @@ export class NotificationCronService implements OnApplicationBootstrap {
       },
     });
 
-    for(const goal of goals){
+    for (const goal of goals) {
       const userId = goal.userId;
       const target = Number(goal.targetAmount);
       const current = Number(goal.currentAmount);
       const percentage = target > 0 ? Math.round((current / target) * 100) : 0;
 
       // deadline approaching
-      if(goal.deadline && goal.deadline <= in7Days && goal.deadline >= now){
-        const daysLeft = Math.ceil((goal.deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      if (goal.deadline && goal.deadline <= in7Days && goal.deadline >= now) {
+        const daysLeft = Math.ceil(
+          (goal.deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+        );
         const notified = await this.prisma.notification.findFirst({
           where: {
             userId,
@@ -143,7 +166,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
             createdAt: { gte: todayStart },
           },
         });
-        if(!notified){
+        if (!notified) {
           await this.notificationService.create(
             userId,
             'GOAL_UPDATE',
@@ -154,7 +177,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
       }
 
       // milestone reached (50%, 100%)
-      if(percentage >= 100){
+      if (percentage >= 100) {
         const notified = await this.prisma.notification.findFirst({
           where: {
             userId,
@@ -163,7 +186,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
             createdAt: { gte: todayStart },
           },
         });
-        if(!notified){
+        if (!notified) {
           await this.notificationService.create(
             userId,
             'GOAL_UPDATE',
@@ -171,7 +194,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
             `Congratulations! You have reached your goal "${goal.name}".`,
           );
         }
-      } else if(percentage >= 50){
+      } else if (percentage >= 50) {
         const notified = await this.prisma.notification.findFirst({
           where: {
             userId,
@@ -180,7 +203,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
             createdAt: { gte: todayStart },
           },
         });
-        if(!notified){
+        if (!notified) {
           await this.notificationService.create(
             userId,
             'GOAL_UPDATE',

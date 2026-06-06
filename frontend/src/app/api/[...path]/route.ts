@@ -12,7 +12,8 @@ async function proxyRequest(request: NextRequest, params: Promise<{ path: string
   const csrfToken = request.cookies.get("csrf-token")?.value;
 
   const headers = new Headers();
-  headers.set("Content-Type", request.headers.get("Content-Type") || "application/json");
+  const contentType = request.headers.get("Content-Type");
+  if(contentType) headers.set("Content-Type", contentType);
   headers.set("ngrok-skip-browser-warning", "true");
 
   if(incomingCookie){
@@ -26,14 +27,32 @@ async function proxyRequest(request: NextRequest, params: Promise<{ path: string
     headers.set("X-CSRF-Token", csrfToken);
   }
 
-  const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer();
+  // DEBUG: log what we received for all non-GET requests
+  if(!["GET", "HEAD"].includes(request.method)){
+    console.log("[API Proxy] POST/PUT body Content-Type:", contentType || "(none)");
+    console.log("[API Proxy] request.body:", !!request.body);
+  }
+
+  // Read body as raw bytes for all POST/PUT/PATCH to preserve exact multipart boundary
+  let body: BodyInit | undefined;
+  if(["GET", "HEAD"].includes(request.method)){
+    body = undefined;
+  } else {
+    const buf = await request.arrayBuffer();
+    body = buf.byteLength ? new Uint8Array(buf) : undefined;
+    console.log("[API Proxy] Body bytes:", buf.byteLength);
+  }
 
   const backendRes = await fetch(url.toString(), {
     method: request.method,
     headers,
-    body: body?.byteLength ? body : undefined,
+    body,
     redirect: "manual",
   });
+
+  if(!["GET", "HEAD"].includes(request.method)){
+    console.log("[API Proxy] Backend status:", backendRes.status);
+  }
 
   const resHeaders = new Headers();
   backendRes.headers.forEach((value, key) => {

@@ -15,7 +15,7 @@ export class EmailService {
     private readonly activityLogService: ActivityLogService,
     private readonly googleOauthService: GoogleOauthService,
     private readonly transactionService: TransactionService,
-  ) { }
+  ) {}
 
   private readonly logger = new Logger(EmailService.name);
 
@@ -31,8 +31,8 @@ export class EmailService {
       },
       data: {
         lastHistoryId: String(historyId),
-      }
-    })
+      },
+    });
 
     if (!user) {
       throw new Error(`User with email ${emailAddress} not found`);
@@ -46,7 +46,9 @@ export class EmailService {
     });
 
     if (!user?.lastHistoryId || !user) {
-      this.logger.warn(`No previous historyId found for ${emailAddress}. Initializing watch function.`);
+      this.logger.warn(
+        `No previous historyId found for ${emailAddress}. Initializing watch function.`,
+      );
 
       await this.watchGmail(emailAddress);
       return null;
@@ -56,13 +58,15 @@ export class EmailService {
   }
 
   async connectOauthClient(emailAddress: string) {
-    const oauthClient = this.googleOauthService.getOauthClient()
+    const oauthClient = this.googleOauthService.getOauthClient();
     let refreshToken;
 
     try {
       refreshToken = await this.getRefreshTokenByEmail(emailAddress);
     } catch (error) {
-      this.logger.error(`Failed to get refresh token for ${emailAddress}: ${error.message}`);
+      this.logger.error(
+        `Failed to get refresh token for ${emailAddress}: ${error.message}`,
+      );
       return null;
     }
 
@@ -84,14 +88,16 @@ export class EmailService {
   }
 
   /**
-   * 
-   * @param emailAddress 
+   *
+   * @param emailAddress
    * @returns nothing
    */
   async watchGmail(emailAddress: string) {
     const oauthClient = await this.connectOauthClient(emailAddress);
     if (oauthClient === null) {
-      this.logger.log("This email doesn't have a refresh token, skipping watch setup.");
+      this.logger.log(
+        "This email doesn't have a refresh token, skipping watch setup.",
+      );
       return;
     }
 
@@ -100,7 +106,9 @@ export class EmailService {
     const topicName = process.env.GMAIL_WATCH_TOPIC;
 
     if (!topicName) {
-      this.logger.error('GMAIL_WATCH_TOPIC is not set in environment variables.');
+      this.logger.error(
+        'GMAIL_WATCH_TOPIC is not set in environment variables.',
+      );
       return;
     }
 
@@ -114,17 +122,22 @@ export class EmailService {
       });
 
       const { historyId, expiration } = watchResponse.data;
-      this.logger.log(`Gmail watch set up for ${emailAddress}. History ID: ${historyId}, expires at: ${new Date(expiration!)}`);
+      this.logger.log(
+        `Gmail watch set up for ${emailAddress}. History ID: ${historyId}, expires at: ${new Date(expiration!)}`,
+      );
 
       if (!historyId) {
-        this.logger.error(`Failed to get historyId from watch response for ${emailAddress}`);
+        this.logger.error(
+          `Failed to get historyId from watch response for ${emailAddress}`,
+        );
         return;
       }
 
       await this.updateEmailHistoryId(emailAddress, historyId);
-
     } catch (error) {
-      this.logger.error(`Failed to set up Gmail watch for ${emailAddress}: ${error.message}`);
+      this.logger.error(
+        `Failed to set up Gmail watch for ${emailAddress}: ${error.message}`,
+      );
       return;
     }
   }
@@ -135,12 +148,16 @@ export class EmailService {
 
     const oauthClient = await this.connectOauthClient(emailAddress);
     if (oauthClient === null) {
-      this.logger.log("This email doesn't have a refresh token, skipping watch setup.");
+      this.logger.log(
+        "This email doesn't have a refresh token, skipping watch setup.",
+      );
       return;
     }
 
     const gmail = google.gmail({ version: 'v1', auth: oauthClient });
-    this.logger.log(`Processing email for ${emailAddress} with notification historyId ${newHistoryId}`);
+    this.logger.log(
+      `Processing email for ${emailAddress} with notification historyId ${newHistoryId}`,
+    );
 
     // Fetch user to get userId for transaction recording
     const user = await this.prisma.user.findUnique({
@@ -149,18 +166,24 @@ export class EmailService {
     });
 
     if (!user) {
-      this.logger.error(`User with email ${emailAddress} not found in database.`);
+      this.logger.error(
+        `User with email ${emailAddress} not found in database.`,
+      );
       return;
     }
     const userId = user.id;
 
     try {
-      let previousHistoryId = await this.getLastHistoryId(emailAddress);
+      const previousHistoryId = await this.getLastHistoryId(emailAddress);
 
-      this.logger.log(`Previous historyId for ${emailAddress} was ${previousHistoryId}`);
+      this.logger.log(
+        `Previous historyId for ${emailAddress} was ${previousHistoryId}`,
+      );
 
       if (!previousHistoryId) {
-        this.logger.error(`Failed to set up watch for ${emailAddress}, cannot process emails without historyId, make sure the user have initial historyId.`);
+        this.logger.error(
+          `Failed to set up watch for ${emailAddress}, cannot process emails without historyId, make sure the user have initial historyId.`,
+        );
         return;
       }
 
@@ -177,7 +200,7 @@ export class EmailService {
         return;
       }
 
-      let newMessages: string[] = [];
+      const newMessages: string[] = [];
       history.forEach((record) => {
         if (record.messagesAdded) {
           record.messagesAdded.forEach((msgAdded) => {
@@ -189,7 +212,9 @@ export class EmailService {
       });
 
       if (newMessages.length === 0) {
-        this.logger.warn('History was found, but no messagesAdded events were in it.');
+        this.logger.warn(
+          'History was found, but no messagesAdded events were in it.',
+        );
         await this.updateEmailHistoryId(emailAddress, newHistoryId);
         return;
       }
@@ -207,35 +232,48 @@ export class EmailService {
           if (!payload) continue;
 
           const headers = payload.headers || [];
-          const getHeader = (name: string) => headers.find(h => h.name?.toLowerCase() === name.toLowerCase())?.value || '';
+          const getHeader = (name: string) =>
+            headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())
+              ?.value || '';
 
           const subject = getHeader('subject');
           const from = getHeader('from');
           // Prioritize HTML for parsing, fallback to plain text if needed
-          const html = this.extractPart(payload, 'text/html') || this.extractPart(payload, 'text/plain') || '';
+          const html =
+            this.extractPart(payload, 'text/html') ||
+            this.extractPart(payload, 'text/plain') ||
+            '';
 
-          this.logger.log(`Successfully fetched email (${messageId}): ${emailResponse.data.snippet}`);
+          this.logger.log(
+            `Successfully fetched email (${messageId}): ${emailResponse.data.snippet}`,
+          );
           this.logger.log(`Email Body: ${emailBody}`);
 
           // INTEGRATION: Extract transaction info
           const extracted = extractInfo(subject, from, html, messageId);
 
           if (extracted.status) {
-            this.logger.log(`Extracted transaction info: ${JSON.stringify(extracted)}`);
-            let amount = Number(extracted.amount);
-            let date = new Date();
-            let receipient = extracted.recipient || 'Recipient not found';
-            let source = extracted.source || 'UNKNOWN';
+            this.logger.log(
+              `Extracted transaction info: ${JSON.stringify(extracted)}`,
+            );
+            const amount = Number(extracted.amount);
+            const date = new Date();
+            const receipient = extracted.recipient || 'Recipient not found';
+            const source = extracted.source || 'UNKNOWN';
 
-            this.logger.log(`Creating transaction for user ${userId} from email ${messageId} with amount ${amount}, date ${date}, recipient ${receipient}`);
+            this.logger.log(
+              `Creating transaction for user ${userId} from email ${messageId} with amount ${amount}, date ${date}, recipient ${receipient}`,
+            );
             const description = `${extracted.date} - ${receipient} - ${subject} - ${amount}`;
 
             const existing = await this.prisma.transaction.findFirst({
-              where: { userId, source: source, sourceId: messageId }
+              where: { userId, source: source, sourceId: messageId },
             });
 
             if (existing) {
-              this.logger.log(`Transaction for email ${messageId} already exists. Skipping.`);
+              this.logger.log(
+                `Transaction for email ${messageId} already exists. Skipping.`,
+              );
               continue;
             }
 
@@ -247,28 +285,33 @@ export class EmailService {
               source: source,
               sourceId: messageId,
               isAutoTracked: true,
-            })
+            });
 
             await this.activityLogService.logActivity(
               userId,
               'CREATE',
               'Transaction',
               transaction.id,
-              { amount: extracted.amount, source: source, description: extracted.recipient }
+              {
+                amount: extracted.amount,
+                source: source,
+                description: extracted.recipient,
+              },
             );
-
           } else {
-            this.logger.log(`No transaction info matched for email (${messageId}).`);
+            this.logger.log(
+              `No transaction info matched for email (${messageId}).`,
+            );
           }
-
         } catch (msgError) {
-          this.logger.error(`Failed to process message ${messageId}: ${msgError.message}`);
+          this.logger.error(
+            `Failed to process message ${messageId}: ${msgError.message}`,
+          );
           continue;
         }
       }
 
       await this.updateEmailHistoryId(emailAddress, newHistoryId);
-
     } catch (error) {
       this.logger.error(`Gmail API Error: ${error.message}`);
       throw error;
@@ -284,7 +327,9 @@ export class EmailService {
       }
 
       if (part.parts) {
-        const textPart = part.parts.find((p: any) => p.mimeType === 'text/plain');
+        const textPart = part.parts.find(
+          (p: any) => p.mimeType === 'text/plain',
+        );
         if (textPart) {
           const body = findBody(textPart);
           if (body) return body;
@@ -332,10 +377,11 @@ export class EmailService {
     return Buffer.from(base64, 'base64').toString('utf-8');
   }
 
-
   @Cron('0 0 * * *')
   async updateHistoryIdsForAllUsers() {
-    this.logger.log('Running daily job to update history IDs for all users with Gmail watch set up.');
+    this.logger.log(
+      'Running daily job to update history IDs for all users with Gmail watch set up.',
+    );
 
     const users = await this.prisma.user.findMany({
       select: {
@@ -348,12 +394,18 @@ export class EmailService {
       try {
         await this.watchGmail(emailAddress);
       } catch (error) {
-        this.logger.error(`Failed to update history ID for ${emailAddress}: ${error.message}`);
+        this.logger.error(
+          `Failed to update history ID for ${emailAddress}: ${error.message}`,
+        );
       }
     }
   }
 
-  async syncUserEmails(userId: string, userEmail: string, updateLastSync: boolean = false) {
+  async syncUserEmails(
+    userId: string,
+    userEmail: string,
+    updateLastSync: boolean = false,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { lastEmailSync: true },
@@ -369,16 +421,24 @@ export class EmailService {
 
     const since = user?.lastEmailSync || undefined;
     const imapEmail = authIdentity.providerEmail || userEmail;
-    const extracted = await connectToImap(imapEmail, authIdentity.accessToken, since);
+    const extracted = await connectToImap(
+      imapEmail,
+      authIdentity.accessToken,
+      since,
+    );
 
-    const emailIds = extracted.map(e => e.emailId).filter(Boolean) as string[];
+    const emailIds = extracted
+      .map((e) => e.emailId)
+      .filter(Boolean) as string[];
     const existingRows = await this.prisma.transaction.findMany({
       where: { userId, source: 'EMAIL', sourceId: { in: emailIds } },
       select: { sourceId: true },
     });
-    const existingSet = new Set(existingRows.map(r => r.sourceId));
+    const existingSet = new Set(existingRows.map((r) => r.sourceId));
 
-    const toCreate = extracted.filter(item => item.emailId && !existingSet.has(item.emailId));
+    const toCreate = extracted.filter(
+      (item) => item.emailId && !existingSet.has(item.emailId),
+    );
     const skipped = extracted.length - toCreate.length;
 
     const created: any[] = [];
@@ -401,7 +461,7 @@ export class EmailService {
         'CREATE',
         'Transaction',
         transaction.id,
-        { amount: item.amount, source: 'EMAIL', description: item.recipient }
+        { amount: item.amount, source: 'EMAIL', description: item.recipient },
       );
 
       created.push(transaction);
@@ -421,5 +481,4 @@ export class EmailService {
       transactions: created,
     };
   }
-
 }

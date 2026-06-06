@@ -19,4 +19,4 @@ import { TransactionModule } from '../transaction/transaction.module.js';
   providers: [ReceiptService],
   exports: [ReceiptService],
 })
-export class ReceiptModule {} 
+export class ReceiptModule {}

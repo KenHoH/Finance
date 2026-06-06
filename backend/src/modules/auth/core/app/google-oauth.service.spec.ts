@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GoogleOauthService } from './google-oauth.service.js';
 
-
 describe('GoogleOauthService', () => {
   let service: GoogleOauthService;
 
