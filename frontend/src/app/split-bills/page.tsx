@@ -687,12 +687,20 @@ export default function SplitBillsPage(){
             </div>
             <div className="flex flex-wrap gap-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
-                <span className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-[10px]">{(user?.username || 'You').slice(0,2).toUpperCase()}</span>
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.username} className="w-5 h-5 rounded-full object-cover" />
+                ) : (
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-[10px]">{(user?.username || 'You').slice(0,2).toUpperCase()}</span>
+                )}
                 {user?.username || 'You'} (you)
               </div>
               {selectedFriends.map((f) => (
                 <div key={f.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-full">
-                  <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px]">{f.username.slice(0,2).toUpperCase()}</span>
+                  {f.avatar ? (
+                    <img src={f.avatar} alt={f.username} className="w-5 h-5 rounded-full object-cover" />
+                  ) : (
+                    <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px]">{f.username.slice(0,2).toUpperCase()}</span>
+                  )}
                   {f.username}
                 </div>
               ))}
@@ -1092,9 +1100,13 @@ export default function SplitBillsPage(){
                             : "bg-accent/50 text-muted-foreground hover:bg-accent"
                         )}
                       >
-                        <span className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[8px]", assigned.includes(userId || 'creator') ? "bg-white/20" : "bg-accent")}>
-                          {(user?.username || 'Y').slice(0,1).toUpperCase()}
-                        </span>
+                        {user?.avatar ? (
+                          <img src={user.avatar} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
+                        ) : (
+                          <span className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[8px]", assigned.includes(userId || 'creator') ? "bg-white/20" : "bg-accent")}>
+                            {(user?.username || 'Y').slice(0,1).toUpperCase()}
+                          </span>
+                        )}
                         {user?.username || 'You'}
                       </button>
                       {selectedFriends.map(f => {
@@ -1119,9 +1131,13 @@ export default function SplitBillsPage(){
                                 : "bg-accent/50 text-muted-foreground hover:bg-accent"
                             )}
                           >
-                            <span className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[8px]", isAssigned ? "bg-white/20" : "bg-accent")}>
-                              {f.username.slice(0,1).toUpperCase()}
-                            </span>
+                            {f.avatar ? (
+                              <img src={f.avatar} alt={f.username} className="w-4 h-4 rounded-full object-cover" />
+                            ) : (
+                              <span className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[8px]", isAssigned ? "bg-white/20" : "bg-accent")}>
+                                {f.username.slice(0,1).toUpperCase()}
+                              </span>
+                            )}
                             {f.username}
                           </button>
                         );
@@ -1221,7 +1237,7 @@ export default function SplitBillsPage(){
               ...selectedFriends.map(f => f.id),
               ...manualParticipants.map(m => m.id),
             ];
-            const subtotals = new Map<string, { name: string; subtotal: number }>();
+            const subtotals = new Map<string, { name: string; subtotal: number; avatar?: string }>();
             const participantItems = new Map<string, { item: string; qty: number; price: number; share: number }[]>();
             scannedItems.forEach((item, idx) => {
               const assigned = itemAssignments[idx] || [];
@@ -1233,8 +1249,9 @@ export default function SplitBillsPage(){
                   const friend = selectedFriends.find(f => f.id === id);
                   const manual = manualParticipants.find(m => m.id === id);
                   const name = id === creatorId ? creatorName : (friend?.username || manual?.name || id);
-                  const current = subtotals.get(id) || { name, subtotal: 0 };
-                  subtotals.set(id, { name, subtotal: current.subtotal + share });
+                  const avatar = id === creatorId ? user?.avatar : (friend?.avatar || undefined);
+                  const current = subtotals.get(id) || { name, subtotal: 0, avatar };
+                  subtotals.set(id, { name, subtotal: current.subtotal + share, avatar: current.avatar || avatar });
                   const items = participantItems.get(id) || [];
                   items.push({ item: item.item, qty: item.quantity, price: item.price, share });
                   participantItems.set(id, items);
@@ -1258,6 +1275,7 @@ export default function SplitBillsPage(){
             const rawEntries = Array.from(subtotals.entries()).map(([id, v]) => ({
               id,
               name: v.name,
+              avatar: v.avatar,
               subtotal: v.subtotal,
               rawTax: v.subtotal * (taxPct / 100),
               rawService: v.subtotal * (servicePct / 100),
@@ -1278,6 +1296,7 @@ export default function SplitBillsPage(){
             const entries = rawEntries.map((e, i) => ({
               id: e.id,
               name: e.name,
+              avatar: e.avatar,
               subtotal: e.subtotal,
               tax: roundedTax[i],
               service: roundedService[i],
@@ -1295,7 +1314,14 @@ export default function SplitBillsPage(){
                       className="p-3 bg-accent/30 border border-border/60 rounded-xl cursor-pointer hover:bg-accent/50 transition-colors"
                     >
                       <div className="w-full flex items-center justify-between">
-                        <span className="text-sm font-semibold text-foreground">{e.name}</span>
+                        <div className="flex items-center gap-2">
+                          {e.avatar ? (
+                            <img src={e.avatar} alt={e.name} className="w-6 h-6 rounded-full object-cover" />
+                          ) : (
+                            <span className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary">{e.name.slice(0,2).toUpperCase()}</span>
+                          )}
+                          <span className="text-sm font-semibold text-foreground">{e.name}</span>
+                        </div>
                         <span className="text-sm font-bold text-primary">{formatCurrency(e.total)}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">

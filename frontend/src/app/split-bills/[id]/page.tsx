@@ -512,8 +512,9 @@ export default function SplitBillDetailPage() {
                             className="hidden"
                             onChange={(e) => handleProofFileChange(e, p.id)}
                           />
-                          {(canActAsParticipant || (isCreator && p.status === "PENDING")) && (
-                            <div className="flex w-full gap-2">
+                          <div className="flex w-full gap-2">
+                            {/* Upload Proof - self when PENDING, creator when PENDING or PAID_PENDING_CONFIRMATION */}
+                            {(canActAsParticipant || (isCreator && (p.status === "PENDING" || p.status === "PAID_PENDING_CONFIRMATION"))) && (
                               <button
                                 type="button"
                                 onClick={() => proofFileInputRef.current?.click()}
@@ -521,6 +522,9 @@ export default function SplitBillDetailPage() {
                               >
                                 <Upload className="w-3.5 h-3.5" /> Upload Proof
                               </button>
+                            )}
+                            {/* Mark as Paid - only when PENDING */}
+                            {(canActAsParticipant || (isCreator && p.status === "PENDING")) && (
                               <button
                                 type="button"
                                 onClick={() => setMarkAsPaidConfirmId(p.id)}
@@ -534,8 +538,8 @@ export default function SplitBillDetailPage() {
                                 )}
                                 {isCreator ? "Mark Paid" : "I Have Paid"}
                               </button>
-                            </div>
-                          )}
+                            )}
+                          </div>
                           {/* Revert button */}
                           {(isMe || isCreator) && p.status === "PAID_PENDING_CONFIRMATION" && (
                             <button

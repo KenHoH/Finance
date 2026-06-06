@@ -1,3 +1,4 @@
 .windsurf
 docs
 count-loc.ps1
+*.md
