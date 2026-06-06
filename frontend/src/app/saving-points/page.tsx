@@ -18,7 +18,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { SavingPoint, Goal, Category, DebtPoint, Budget } from "@/lib/types";
 import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
 
-export default function SavingPointsPage(){
+export default function SavingPointsPage() {
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,7 +39,7 @@ export default function SavingPointsPage(){
 
   const { data: points = [], isLoading } = useQuery<SavingPoint[]>({
     queryKey: ["saving-points"],
-    queryFn: async() => {
+    queryFn: async () => {
       const res = await get<unknown>("/saving-points");
       return Array.isArray(res) ? res : [];
     },
@@ -47,7 +47,7 @@ export default function SavingPointsPage(){
 
   const { data: goals = [] } = useQuery<Goal[]>({
     queryKey: ["goals"],
-    queryFn: async() => {
+    queryFn: async () => {
       const res = await get<unknown>("/goals");
       return Array.isArray(res) ? res : [];
     },
@@ -55,7 +55,7 @@ export default function SavingPointsPage(){
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["categories"],
-    queryFn: async() => {
+    queryFn: async () => {
       const res = await get<unknown>("/categories");
       return Array.isArray(res) ? res.filter((c: Category) => c.type === "INVESTMENT") : [];
     },
@@ -63,7 +63,7 @@ export default function SavingPointsPage(){
 
   const { data: budgets = [] } = useQuery<Budget[]>({
     queryKey: ["budgets"],
-    queryFn: async() => {
+    queryFn: async () => {
       const res = await get<unknown>("/budgets");
       return Array.isArray(res) ? res : [];
     },
@@ -71,8 +71,8 @@ export default function SavingPointsPage(){
 
   const { data: debtPoints = [] } = useQuery<DebtPoint[]>({
     queryKey: ["debt-points", budgets.map((b) => b.id)],
-    queryFn: async() => {
-      if(budgets.length === 0) return [];
+    queryFn: async () => {
+      if (budgets.length === 0) return [];
       const res = await post<unknown>("/debt/budget-ids", budgets.map((b) => b.id));
       return Array.isArray(res) ? res : [];
     },
@@ -209,7 +209,7 @@ export default function SavingPointsPage(){
 
   const totalSaved = points.reduce((sum, p) => sum + Number(p.savingAmount), 0);
 
-  if(isLoading){
+  if (isLoading) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto pb-24">
         <div className="flex items-center justify-between">
@@ -217,12 +217,12 @@ export default function SavingPointsPage(){
           <Skeleton className="h-10 w-36" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {[0,1,2].map((i) => (
+          {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
         <div className="space-y-4">
-          {[0,1,2,3].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-20" />
           ))}
         </div>
@@ -335,8 +335,27 @@ export default function SavingPointsPage(){
       >
         <div className="space-y-3">
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">Budget ID</label>
-            <input type="text" value={budgetId} onChange={(e) => setBudgetId(e.target.value)} placeholder="Budget UUID" className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+            <label htmlFor="budget-select" className="text-sm font-medium text-foreground mb-1 block">Budget</label>
+            <select
+              id="budget-select"
+              value={budgetId}
+              onChange={(e) => setBudgetId(e.target.value)}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            >
+              <option value="">Select a budget</option>
+              {budgets.map((b) => {
+                const start = format(new Date(b.startDate), "dd MMM yyyy");
+                const end = format(new Date(b.endDate), "dd MMM yyyy");
+                const label = b.category?.name
+                  ? `${b.category.name} — ${start} - ${end}`
+                  : `${start} - ${end}`;
+                return (
+                  <option key={b.id} value={b.id}>
+                    {label} ({formatCurrency(Number(b.amount))})
+                  </option>
+                );
+              })}
+            </select>
           </div>
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">Saving Amount</label>
@@ -350,7 +369,7 @@ export default function SavingPointsPage(){
               validateString(budgetId, "Budget", { min: 1 }),
               validateNumber(savingAmount, "Saving Amount", { min: 0.01 })
             );
-            if(errors.length > 0){
+            if (errors.length > 0) {
               addToast(errors[0].message, "error");
               return;
             }
@@ -441,24 +460,24 @@ export default function SavingPointsPage(){
             const errors = runValidators(
               validateNumber(allocateAmount, "Amount", { min: 0.01 })
             );
-            if(errors.length > 0){
+            if (errors.length > 0) {
               addToast(errors[0].message, "error");
               return;
             }
-            if(allocateModal && Number(allocateAmount) > allocateModal.amount){
+            if (allocateModal && Number(allocateAmount) > allocateModal.amount) {
               addToast("Allocation cannot exceed available amount", "error");
               return;
             }
-            if(!allocateModal) return;
+            if (!allocateModal) return;
             const dto = { id: allocateModal.id, amount: Number(allocateAmount), note: note || undefined };
-            if(allocateTab === "goal"){
-              if(!goalId){ addToast("Select a goal", "error"); return; }
+            if (allocateTab === "goal") {
+              if (!goalId) { addToast("Select a goal", "error"); return; }
               allocateGoalMutation.mutate({ ...dto, goalId });
-            } else if(allocateTab === "investment"){
-              if(!investCategoryId){ addToast("Select an investment category", "error"); return; }
+            } else if (allocateTab === "investment") {
+              if (!investCategoryId) { addToast("Select an investment category", "error"); return; }
               allocateInvestmentMutation.mutate({ ...dto, categoryId: investCategoryId });
-            } else if(allocateTab === "debt"){
-              if(!debtPointId){ addToast("Select a debt", "error"); return; }
+            } else if (allocateTab === "debt") {
+              if (!debtPointId) { addToast("Select a debt", "error"); return; }
               payDebtMutation.mutate({ ...dto, debtPointId });
             }
           }} disabled={allocateGoalMutation.isPending || allocateInvestmentMutation.isPending || payDebtMutation.isPending} className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50">Allocate</button>
@@ -484,11 +503,11 @@ export default function SavingPointsPage(){
           <button
             onClick={() => {
               const err = validateNumber(editAmount, "Saving Amount", { min: 0.01 });
-              if(err){
+              if (err) {
                 addToast(err.message, "error");
                 return;
               }
-              if(editPoint) updateMutation.mutate({ id: editPoint.id, savingAmount: Number(editAmount) });
+              if (editPoint) updateMutation.mutate({ id: editPoint.id, savingAmount: Number(editAmount) });
             }}
             disabled={updateMutation.isPending}
             className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50"
@@ -500,7 +519,7 @@ export default function SavingPointsPage(){
 
       <ConfirmDialog
         isOpen={showDeleteConfirm}
-        onConfirm={() => { if(pointToDelete) deleteMutation.mutate(pointToDelete); }}
+        onConfirm={() => { if (pointToDelete) deleteMutation.mutate(pointToDelete); }}
         onCancel={() => setShowDeleteConfirm(false)}
         title="Delete saving point?"
         description="Are you sure you want to delete this saving point? This action cannot be undone."
