@@ -59,13 +59,19 @@ export default function SplitBillDetailPage() {
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [receiptLoaded, setReceiptLoaded] = useState(false);
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [proofTargetParticipant, setProofTargetParticipant] = useState<string | null>(null);
+  const [markAsPaidConfirmId, setMarkAsPaidConfirmId] = useState<string | null>(null);
 
-  const { data: bill, isLoading } = useQuery<SplitBill>({
+  const { data: bill, isLoading, error } = useQuery<SplitBill>({
     queryKey: ["split-bills", billId],
     queryFn: async () => {
       const res = await api.get(`/split-bills/${billId}`);
       return res.data;
     },
+    enabled: !!billId,
+    meta: { suppressGlobalError: true },
   });
 
   const updateParticipantMutation = useMutation({
@@ -178,6 +184,8 @@ export default function SplitBillDetailPage() {
     setProofFile(f);
     setProofPreview(URL.createObjectURL(f));
     setProofForParticipant(participantId);
+    setProofTargetParticipant(participantId);
+    setShowProofModal(true);
   };
 
   const handleCancelProof = () => {
@@ -194,8 +202,33 @@ export default function SplitBillDetailPage() {
 
   const handleConfirmProofUpload = () => {
     if(!proofFile || !proofForParticipant) return;
-    uploadProofMutation.mutate({ participantId: proofForParticipant, file: proofFile });
-    handleCancelProof();
+    uploadProofMutation.mutate(
+      { participantId: proofForParticipant, file: proofFile },
+      {
+        onSuccess: () => {
+          markAsPaidMutation.mutate(
+            { participantId: proofForParticipant },
+            {
+              onSuccess: () => {
+                addToast("Proof uploaded and marked as paid", "success");
+                handleCancelProof();
+                setShowProofModal(false);
+                setProofTargetParticipant(null);
+              },
+              onError: (err) => {
+                addToast(extractApiError(err, "Proof uploaded but failed to mark as paid"), "error");
+                handleCancelProof();
+                setShowProofModal(false);
+                setProofTargetParticipant(null);
+              }
+            }
+          );
+        },
+        onError: (err) => {
+          addToast(extractApiError(err, "Failed to upload proof"), "error");
+        }
+      }
+    );
   };
 
   if(isLoading){
@@ -212,7 +245,14 @@ export default function SplitBillDetailPage() {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="text-center space-y-3">
-          <p className="text-muted-foreground font-medium">Bill not found</p>
+          {error ? (
+            <>
+              <p className="text-muted-foreground font-medium">Failed to load bill</p>
+              <p className="text-sm text-rose-400">{extractApiError(error, "Please try again.")}</p>
+            </>
+          ) : (
+            <p className="text-muted-foreground font-medium">Bill not found</p>
+          )}
           <button
             onClick={() => router.push("/split-bills")}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:opacity-90 transition-opacity"
@@ -280,11 +320,18 @@ export default function SplitBillDetailPage() {
         {bill.receiptImageUrl && (
           <div className="space-y-2">
             <h4 className="text-sm font-bold text-slate-400 uppercase px-2">Original Receipt</h4>
-            <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="rounded-xl overflow-hidden border border-border bg-card relative">
+              {!receiptLoaded && (
+                <Skeleton className="absolute inset-0 w-full h-96 rounded-xl" />
+              )}
               <img
                 src={bill.receiptImageUrl}
                 alt="Receipt"
-                className="w-full h-96 object-contain bg-neutral-900 cursor-pointer"
+                className={cn(
+                  "w-full h-96 object-contain bg-neutral-900 cursor-pointer transition-opacity",
+                  receiptLoaded ? "opacity-100" : "opacity-0"
+                )}
+                onLoad={() => setReceiptLoaded(true)}
                 onClick={() => setLightboxImage(bill.receiptImageUrl || null)}
               />
             </div>
@@ -299,7 +346,6 @@ export default function SplitBillDetailPage() {
             {bill.participants.map((p) => {
               const isMe = p.userId === userId;
               const isCreatorParticipant = p.userId === bill.creatorId;
-              const showProofPreview = proofPreview && proofFile && proofForParticipant === p.id;
               const canActAsParticipant = isMe && p.status === "PENDING";
               const canManageAsCreator = isCreator && (p.status === "PENDING" || p.status === "PAID_PENDING_CONFIRMATION");
               return (
@@ -355,7 +401,12 @@ export default function SplitBillDetailPage() {
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500 text-white hover:brightness-110 transition-all disabled:opacity-50"
                             title="Confirm payment"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Confirm
+                            {confirmPaymentMutation.isPending && confirmPaymentMutation.variables?.participantId === p.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            )}
+                            Confirm
                           </button>
                           <button
                             type="button"
@@ -370,7 +421,12 @@ export default function SplitBillDetailPage() {
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-rose-500 text-white hover:brightness-110 transition-all disabled:opacity-50"
                             title="Reject payment"
                           >
-                            <X className="w-3.5 h-3.5" /> Reject
+                            {rejectPaymentMutation.isPending && rejectPaymentMutation.variables?.participantId === p.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <X className="w-3.5 h-3.5" />
+                            )}
+                            Reject
                           </button>
                         </div>
                       )}
@@ -448,41 +504,7 @@ export default function SplitBillDetailPage() {
                   {/* Actions row: participant or creator */}
                   {(canActAsParticipant || canManageAsCreator) && (
                     <div className="mt-3 ml-[52px]">
-                      {showProofPreview ? (
-                        <div className="rounded-lg border border-border bg-card p-3 space-y-2">
-                          <p className="text-xs font-bold text-muted-foreground">Preview</p>
-                          <img src={proofPreview} alt="Preview" className="w-full h-32 object-contain rounded-lg bg-neutral-900" />
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={handleConfirmProofUpload}
-                              disabled={uploadProofMutation.isPending}
-                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 text-white hover:brightness-110 transition-all disabled:opacity-50"
-                            >
-                              {uploadProofMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} OK
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleCancelProof}
-                              disabled={uploadProofMutation.isPending}
-                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-accent text-foreground hover:bg-accent/80 transition-colors disabled:opacity-50"
-                            >
-                              <X className="w-3.5 h-3.5" /> Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {/* Upload Proof button - participant or creator */}
-                          {(canActAsParticipant || (isCreator && p.status === "PENDING")) && (
-                            <button
-                              type="button"
-                              onClick={() => proofFileInputRef.current?.click()}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-accent hover:bg-accent/80 transition-colors text-foreground"
-                            >
-                              <Upload className="w-3.5 h-3.5" /> Upload Proof
-                            </button>
-                          )}
+                      <div className="flex flex-wrap gap-2">
                           <input
                             ref={proofFileInputRef}
                             type="file"
@@ -490,16 +512,29 @@ export default function SplitBillDetailPage() {
                             className="hidden"
                             onChange={(e) => handleProofFileChange(e, p.id)}
                           />
-                          {/* Mark as Paid button - participant or creator */}
                           {(canActAsParticipant || (isCreator && p.status === "PENDING")) && (
-                            <button
-                              type="button"
-                              onClick={() => markAsPaidMutation.mutate({ participantId: p.id })}
-                              disabled={markAsPaidMutation.isPending}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 text-white hover:brightness-110 transition-all disabled:opacity-50"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" /> {isCreator ? "Mark Paid" : "I Have Paid"}
-                            </button>
+                            <div className="flex w-full gap-2">
+                              <button
+                                type="button"
+                                onClick={() => proofFileInputRef.current?.click()}
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-accent hover:bg-accent/80 transition-colors text-foreground"
+                              >
+                                <Upload className="w-3.5 h-3.5" /> Upload Proof
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setMarkAsPaidConfirmId(p.id)}
+                                disabled={markAsPaidMutation.isPending}
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-sky-500 text-white hover:brightness-110 transition-all disabled:opacity-50"
+                              >
+                                {markAsPaidMutation.isPending && markAsPaidMutation.variables?.participantId === p.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                )}
+                                {isCreator ? "Mark Paid" : "I Have Paid"}
+                              </button>
+                            </div>
                           )}
                           {/* Revert button */}
                           {(isMe || isCreator) && p.status === "PAID_PENDING_CONFIRMATION" && (
@@ -509,11 +544,15 @@ export default function SplitBillDetailPage() {
                               disabled={revertMarkAsPaidMutation.isPending}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors disabled:opacity-50"
                             >
-                              <Undo2 className="w-3.5 h-3.5" /> Cancel
+                              {revertMarkAsPaidMutation.isPending && revertMarkAsPaidMutation.variables?.participantId === p.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Undo2 className="w-3.5 h-3.5" />
+                              )}
+                              Cancel
                             </button>
                           )}
                         </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -574,6 +613,55 @@ export default function SplitBillDetailPage() {
         confirmLabel={confirmPaymentMutation.isPending ? "Confirming..." : "Confirm Payment"}
         variant="primary"
       />
+
+      <ConfirmDialog
+        isOpen={!!markAsPaidConfirmId}
+        onConfirm={() => {
+          if(markAsPaidConfirmId){
+            markAsPaidMutation.mutate({ participantId: markAsPaidConfirmId });
+            setMarkAsPaidConfirmId(null);
+          }
+        }}
+        onCancel={() => setMarkAsPaidConfirmId(null)}
+        title="Mark as paid?"
+        description="Are you sure you want to mark this participant as paid?"
+        confirmLabel={markAsPaidMutation.isPending ? "Marking..." : "Mark as Paid"}
+        variant="primary"
+      />
+
+      {/* Proof Upload Preview Modal */}
+      {showProofModal && proofPreview && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground">Preview Payment Proof</h3>
+              <button
+                type="button"
+                onClick={() => { setShowProofModal(false); handleCancelProof(); setProofTargetParticipant(null); }}
+                disabled={uploadProofMutation.isPending || markAsPaidMutation.isPending}
+                className="p-1.5 rounded-lg hover:bg-accent transition-colors disabled:opacity-30"
+                aria-label="Cancel"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <img src={proofPreview} alt="Proof preview" className="w-full h-56 object-contain rounded-xl bg-neutral-900" />
+            <button
+              type="button"
+              onClick={handleConfirmProofUpload}
+              disabled={uploadProofMutation.isPending || markAsPaidMutation.isPending}
+              className="w-full py-2.5 rounded-xl text-sm font-bold bg-sky-500 text-white hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {(uploadProofMutation.isPending || markAsPaidMutation.isPending) ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              Upload & Mark as Paid
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

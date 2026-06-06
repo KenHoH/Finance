@@ -237,9 +237,4 @@ export class SplitBillController {
     return { message: 'Split bill deleted' };
   }
 
-  @Delete('receipt')
-  async deleteReceipt(@Body() dto: { imageUrl: string }) {
-    await this.splitBillService.deleteReceipt(dto.imageUrl);
-    return { message: 'Receipt deleted' };
-  }
 }

@@ -78,6 +78,7 @@ export default function SplitBillsPage(){
 
   // Non-registered participants (manual name entry)
   const [manualParticipants, setManualParticipants] = useState<{ id: string; name: string }[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
 
 
   const { data: bills = [], isLoading, isFetching } = useQuery<SplitBill[]>({
@@ -255,6 +256,8 @@ export default function SplitBillsPage(){
       return;
     }
 
+    setIsCreating(true);
+
     const subtotal = scannedItems.length > 0
       ? scannedItems.reduce((sum, it) => sum + it.price * it.quantity, 0)
       : 0;
@@ -287,6 +290,7 @@ export default function SplitBillsPage(){
         const res = await uploadReceiptMutation.mutateAsync(receiptFile);
         receiptImageUrl = res;
       } catch {
+        setIsCreating(false);
         return;
       }
     }
@@ -311,6 +315,8 @@ export default function SplitBillsPage(){
           // silent fail on cleanup
         }
       }
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -514,6 +520,7 @@ export default function SplitBillsPage(){
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
+          setIsSuccess(false);
           setScannedItems([]);
           setShowReviewModal(false);
           setShowAssignmentModal(false);
@@ -676,9 +683,13 @@ export default function SplitBillsPage(){
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Participants</label>
-              <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">{selectedFriends.length + manualParticipants.length}</span>
+              <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">{1 + selectedFriends.length + manualParticipants.length}</span>
             </div>
             <div className="flex flex-wrap gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-[10px]">{(user?.username || 'You').slice(0,2).toUpperCase()}</span>
+                {user?.username || 'You'} (you)
+              </div>
               {selectedFriends.map((f) => (
                 <div key={f.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-full">
                   <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px]">{f.username.slice(0,2).toUpperCase()}</span>
@@ -778,12 +789,19 @@ export default function SplitBillsPage(){
           <button
             type="button"
             onClick={() => {
-              if(selectedFriends.length + manualParticipants.length === 0) return;
+              if(selectedFriends.length + manualParticipants.length === 0){
+                addToast("Add at least one friend or participant first", "error");
+                return;
+              }
               setShowReviewModal(false);
               setShowAssignmentModal(true);
             }}
-            disabled={selectedFriends.length + manualParticipants.length === 0}
-            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-bold hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+            className={cn(
+              "w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-bold transition-opacity active:scale-[0.98]",
+              selectedFriends.length + manualParticipants.length === 0
+                ? "opacity-40 cursor-not-allowed active:scale-100"
+                : "hover:opacity-90"
+            )}
           >
             Next: Assign Items
           </button>
@@ -940,8 +958,16 @@ export default function SplitBillsPage(){
           {/* Selected so far */}
           {(selectedFriends.length > 0 || manualParticipants.length > 0) && (
             <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Selected ({selectedFriends.length + manualParticipants.length})</label>
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Selected ({1 + selectedFriends.length + manualParticipants.length})</label>
               <div className="flex flex-wrap gap-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.username} className="w-5 h-5 rounded-full object-cover" />
+                  ) : (
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-[10px]">{(user?.username || 'You').slice(0,2).toUpperCase()}</span>
+                  )}
+                  {user?.username || 'You'} (you)
+                </div>
                 {selectedFriends.map((f) => (
                   <div key={f.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-full">
                     {f.avatar ? (
@@ -1263,21 +1289,24 @@ export default function SplitBillsPage(){
               <div className="space-y-3">
                 <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
                   {entries.map(e => (
-                    <div key={e.id} className="p-3 bg-accent/30 border border-border/60 rounded-xl">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedPreviewParticipant(prev => prev === e.id ? null : e.id)}
-                        className="w-full flex items-center justify-between text-left"
-                      >
+                    <div
+                      key={e.id}
+                      onClick={() => setExpandedPreviewParticipant(prev => prev === e.id ? null : e.id)}
+                      className="p-3 bg-accent/30 border border-border/60 rounded-xl cursor-pointer hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="w-full flex items-center justify-between">
                         <span className="text-sm font-semibold text-foreground">{e.name}</span>
                         <span className="text-sm font-bold text-primary">{formatCurrency(e.total)}</span>
-                      </button>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                         <span>Sub {formatCurrency(Math.round(e.subtotal))}</span>
                         {e.tax > 0 && <span>+Tax {formatCurrency(e.tax)}</span>}
                         {e.service > 0 && <span>+Svc {formatCurrency(e.service)}</span>}
                         {e.discount > 0 && <span className="text-emerald-400">-Disc {formatCurrency(e.discount)}</span>}
                       </div>
+                      {expandedPreviewParticipant !== e.id && e.items.length > 0 && (
+                        <p className="text-[10px] text-sky-400 mt-1 font-medium">Click to see what they paid for</p>
+                      )}
                       {expandedPreviewParticipant === e.id && e.items.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-border/40 space-y-1">
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Items</p>
@@ -1330,10 +1359,17 @@ export default function SplitBillsPage(){
               setShowPreviewModal(false);
               handleCreateSubmit();
             }}
-            disabled={createMutation.isPending || !description.trim()}
-            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-bold hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-60"
+            disabled={isCreating || !description.trim()}
+            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-bold hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {createMutation.isPending ? "Creating..." : "Create Split Bill"}
+            {isCreating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create Split Bill"
+            )}
           </button>
         </div>
       </Modal>

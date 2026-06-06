@@ -289,21 +289,29 @@ export class SplitBillService {
 
     if (!canManage && !isOwnParticipant) return null;
 
+    const updateData: Record<string, unknown> = {};
+    if(dto.notes !== undefined){
+      updateData.notes = dto.notes;
+    }
+    if(dto.status !== undefined){
+      updateData.status = dto.status;
+      if(dto.status === 'PAID_PENDING_CONFIRMATION' || dto.status === 'CONFIRMED'){
+        updateData.paidAt = new Date();
+      } else if(dto.status === 'PENDING'){
+        updateData.paidAt = null;
+        updateData.rejectionReason = dto.rejectionReason;
+      } else {
+        updateData.paidAt = null;
+        updateData.rejectionReason = null;
+      }
+    }
+
     const updated = await this.prisma.splitParticipant.update({
       where: { id: participantId },
-      data: {
-        status: dto.status,
-        paidAt:
-          dto.status === 'PAID_PENDING_CONFIRMATION' ||
-          dto.status === 'CONFIRMED'
-            ? new Date()
-            : null,
-        rejectionReason: dto.status === 'PENDING' ? dto.rejectionReason : null,
-        notes: dto.notes,
-      },
+      data: updateData,
     });
 
-    if (dto.status === 'CONFIRMED') {
+    if(dto.status === 'CONFIRMED'){
       await this.checkAndUpdateBillStatus(billId);
     }
 
@@ -563,7 +571,4 @@ export class SplitBillService {
     );
   }
 
-  async deleteReceipt(imageUrl: string) {
-    await this.storageService.deleteFile(imageUrl);
-  }
 }

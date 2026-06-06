@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FileText, Camera, Loader2, X, ArrowLeft } from "lucide-react";
+import { FileText, Camera, Loader2, ArrowLeft } from "lucide-react";
 
 interface SplitBillWizardProps {
   receiptPreview: string;
@@ -61,18 +61,6 @@ export const SplitBillWizard: React.FC<SplitBillWizardProps> = ({
                 alt="Receipt preview"
                 className="w-full max-h-48 object-contain bg-black/20"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  setReceiptFile(null);
-                  setReceiptPreview("");
-                  setScannedItems([]);
-                }}
-                className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-lg text-sky-400 hover:bg-black/80 transition-colors"
-                aria-label="Remove receipt"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
             {isScanning && (
               <div className="space-y-2">
@@ -99,12 +87,14 @@ export const SplitBillWizard: React.FC<SplitBillWizardProps> = ({
                 <div className="flex gap-2">
                   <button
                     type="button"
+                    disabled={isScanning}
                     onClick={() => {
+                      if(isScanning) return;
                       setReceiptFile(null);
                       setReceiptPreview("");
                       setScannedItems([]);
                     }}
-                    className="flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-accent text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-accent/80 transition-colors"
+                    className="flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-accent text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-accent/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     aria-label="Back"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />

@@ -68,6 +68,10 @@ export class ReceiptService {
             model: this.visionModel,
             messages: [
               {
+                role: 'system',
+                content: 'You are a receipt parser. You must respond with ONLY valid JSON. Do not include markdown, explanations, or any text outside the JSON object.',
+              },
+              {
                 role: 'user',
                 content: [
                   {
@@ -83,6 +87,7 @@ export class ReceiptService {
             ],
             temperature: 0.2,
             max_tokens: 8192,
+            response_format: { type: 'json_object' },
           }),
           signal: controller.signal,
         },
@@ -114,15 +119,60 @@ export class ReceiptService {
 
       // Extract JSON from markdown code blocks or raw text
       let jsonText = '';
-      const codeBlock = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (codeBlock) {
-        jsonText = codeBlock[1].trim();
-      } else {
-        const start = content.indexOf('{');
-        const end = content.lastIndexOf('}');
-        if (start !== -1 && end !== -1 && end > start) {
-          jsonText = content.slice(start, end + 1);
-        }
+
+      // Try multiple extraction strategies
+      const extractionStrategies = [
+        // Standard markdown code block
+        () => {
+          const match = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+          return match ? match[1].trim() : '';
+        },
+        // Multiple code blocks - take the one that looks most like JSON
+        () => {
+          const matches = content.matchAll(/```(?:json)?\s*([\s\S]*?)```/g);
+          let best = '';
+          for (const m of matches) {
+            const block = m[1].trim();
+            if (block.includes('"items"') || block.includes('"total"')) {
+              best = block;
+              break;
+            }
+            if (block.startsWith('{') && block.length > best.length) {
+              best = block;
+            }
+          }
+          return best;
+        },
+        // Find outermost curly braces
+        () => {
+          let depth = 0;
+          let start = -1;
+          let end = -1;
+          for (let i = 0; i < content.length; i++) {
+            if (content[i] === '{') {
+              if (depth === 0) start = i;
+              depth++;
+            } else if (content[i] === '}') {
+              depth--;
+              if (depth === 0 && start !== -1) {
+                end = i;
+                break;
+              }
+            }
+          }
+          return start !== -1 && end !== -1 ? content.slice(start, end + 1) : '';
+        },
+        // Simple fallback
+        () => {
+          const start = content.indexOf('{');
+          const end = content.lastIndexOf('}');
+          return start !== -1 && end !== -1 && end > start ? content.slice(start, end + 1) : '';
+        },
+      ];
+
+      for (const strategy of extractionStrategies) {
+        jsonText = strategy();
+        if (jsonText) break;
       }
 
       if (!jsonText) {
@@ -140,8 +190,11 @@ export class ReceiptService {
         | undefined;
       const attempts = [
         () => JSON.parse(jsonText),
+        // Remove trailing commas
         () => JSON.parse(jsonText.replace(/,(\s*[}\]])/g, '$1')),
+        // Escape newlines inside strings
         () => JSON.parse(jsonText.replace(/\n/g, '\\n').replace(/\r/g, '\\r')),
+        // Combine both fixes
         () =>
           JSON.parse(
             jsonText
@@ -149,6 +202,12 @@ export class ReceiptService {
               .replace(/\n/g, '\\n')
               .replace(/\r/g, '\\r'),
           ),
+        // Fix single quotes to double quotes
+        () => JSON.parse(jsonText.replace(/'/g, '"')),
+        // Remove comments
+        () => JSON.parse(jsonText.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')),
+        // Fix unquoted keys
+        () => JSON.parse(jsonText.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')),
       ];
       for (let i = 0; i < attempts.length; i++) {
         try {
