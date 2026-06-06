@@ -2,25 +2,73 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, Mail, Tag, PiggyBank, ArrowRight, LogOut, Wallet } from "lucide-react";
+import { Save, Loader2, Mail, Tag, PiggyBank, ArrowRight, LogOut, Wallet, Clock, CalendarDays, CheckCircle2, Settings2 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import Link from "next/link";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, extractApiError } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, get, extractApiError } from "@/lib/api";
 import { useToastStore } from "@/store/useToastStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { validateString } from "@/lib/validation";
 import { cn } from "@/lib/utils";
+
+interface SettingItem {
+  id: string;
+  userId: string;
+  key: string;
+  value: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const BUDGET_TIME_OPTIONS: { value: string; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: "DAILY", label: "Daily", desc: "Track budget usage on a daily basis", icon: Clock },
+  { value: "MONTHLY", label: "Monthly", desc: "Track budget usage over the full period", icon: CalendarDays },
+];
 
 export default function SettingsPage(){
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
   const [profileName, setProfileName] = useState("");
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+
+  // Fetch all user settings
+  const { data: settings = [], isLoading: settingsLoading } = useQuery<SettingItem[]>({
+    queryKey: ["settings"],
+    queryFn: () => get<SettingItem[]>("/settings"),
+  });
+
+  const budgetTimePref = settings.find((s) => s.key === "BUDGET_TIME_PREFERENCE");
+  const currentBudgetTime = budgetTimePref?.value ?? "MONTHLY";
+
+  const updateSettingMutation = useMutation({
+    mutationFn: (dto: { key: string; value: string }) =>
+      api.put(`/settings/${dto.key}`, { value: dto.value }),
+    onMutate: async (dto) => {
+      await queryClient.cancelQueries({ queryKey: ["settings"] });
+      const previous = queryClient.getQueryData<SettingItem[]>(["settings"]);
+      queryClient.setQueryData<SettingItem[]>(["settings"], (old = []) => {
+        const exists = old.find((s) => s.key === dto.key);
+        if (exists) {
+          return old.map((s) => (s.key === dto.key ? { ...s, value: dto.value } : s));
+        }
+        return [...old, { id: `opt-${Date.now()}`, userId: "", key: dto.key, value: dto.value, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }];
+      });
+      return { previous };
+    },
+    onError: (err, _dto, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["settings"], context.previous);
+      }
+      addToast(extractApiError(err, "Failed to update setting"), "error");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["settings"] }),
+    onSuccess: () => {
+      addToast("Preference updated", "success");
+    },
+  });
 
   const updateProfileMutation = useMutation({
     mutationFn: (dto: { username: string }) => api.patch("/auth/profile", dto),
@@ -102,6 +150,86 @@ export default function SettingsPage(){
           </div>
       </motion.section>
 
+      {/* Preferences */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Settings2 className="w-3.5 h-3.5" />
+          Preferences
+        </h2>
+        <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
+          {/* Budget Time Preference */}
+          <div>
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-foreground">Budget Time Preference</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Choose how your budget spending is monitored and alerts are triggered
+              </p>
+            </div>
+            {settingsLoading ? (
+              <div className="flex gap-3">
+                <Skeleton className="h-20 flex-1" />
+                <Skeleton className="h-20 flex-1" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {BUDGET_TIME_OPTIONS.map((opt) => {
+                  const isActive = currentBudgetTime === opt.value;
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.value}
+                      id={`pref-budget-time-${opt.value.toLowerCase()}`}
+                      onClick={() => {
+                        if (!isActive) {
+                          updateSettingMutation.mutate({ key: "BUDGET_TIME_PREFERENCE", value: opt.value });
+                        }
+                      }}
+                      disabled={updateSettingMutation.isPending}
+                      className={cn(
+                        "group relative flex items-start gap-3.5 p-4 rounded-xl border-2 transition-all duration-200 text-left",
+                        isActive
+                          ? "border-primary bg-primary/5 shadow-[0_0_0_1px_rgba(var(--primary-rgb),0.1)]"
+                          : "border-border hover:border-primary/30 hover:bg-accent/30",
+                        updateSettingMutation.isPending && "opacity-60 pointer-events-none"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                        isActive ? "bg-primary/15 text-primary" : "bg-accent text-muted-foreground group-hover:text-foreground"
+                      )}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-sm font-bold transition-colors",
+                          isActive ? "text-primary" : "text-foreground"
+                        )}>
+                          {opt.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{opt.desc}</p>
+                      </div>
+                      {isActive && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute top-3 right-3"
+                        >
+                          <CheckCircle2 className="w-5 h-5 text-primary" />
+                        </motion.div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.section>
+
       {/* Tools & Integrations */}
       <motion.section
         initial={{ opacity: 0, y: 12 }}
@@ -135,27 +263,16 @@ export default function SettingsPage(){
             </div>
           </div>
           <button
-            onClick={() => setShowLogoutConfirm(true)}
+            onClick={() => {
+              logout();
+              addToast("Logged out", "success");
+            }}
             className="px-4 py-2 rounded-lg text-sm font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-colors active:scale-[0.98]"
           >
             Log out
           </button>
         </div>
       </motion.section>
-
-      <ConfirmDialog
-        isOpen={showLogoutConfirm}
-        onConfirm={() => {
-          setShowLogoutConfirm(false);
-          logout();
-          addToast("Logged out", "success");
-        }}
-        onCancel={() => setShowLogoutConfirm(false)}
-        title="Log out?"
-        description="Are you sure you want to sign out of your account?"
-        confirmLabel="Log out"
-        variant="danger"
-      />
     </div>
   );
 }

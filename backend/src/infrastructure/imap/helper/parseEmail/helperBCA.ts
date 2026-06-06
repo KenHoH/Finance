@@ -1,53 +1,46 @@
-import * as cheerio from 'cheerio';
+import * as cheerio from 'cheerio'
 import { parseIDRCurrency } from '../parseCurrency/parseIDR.js';
 import { ExtractedInfo } from '../extractInfo.js';
 
 export function extractInfoFromHTMLBCA(html: string): ExtractedInfo {
-  const $ = cheerio.load(html);
+    const $ = cheerio.load(html);
 
-  const recipientName = $('td')
-    .filter((i, el) => {
-      const text = $(el).text().trim();
-      return (
-        text === 'Pembayaran Ke' ||
-        text === 'Nama Penerima' ||
-        text === 'Nama Perusahaan/Produk'
-      );
-    })
-    .next('td')
-    .next('td')
-    .text()
-    .trim();
+    const findValue = (labels: string[]) =>
+        $('td')
+            .filter((_, el) => labels.includes($(el).text().trim()))
+            .first()
+            .next('td')
+            .next('td')
+            .text()
+            .trim();
 
-  const totalAmountRaw = $('td')
-    .filter((i, el) => {
-      const text = $(el).text().trim();
-      return text === 'Total Bayar' || text === 'Nominal Tujuan';
-    })
-    .first()
-    .next('td')
-    .next('td')
-    .text()
-    .trim();
-  const dateRaw = $('td')
-    .filter((i, el) => $(el).text().trim() === 'Tanggal Transaksi')
-    .next('td')
-    .next('td')
-    .text()
-    .trim();
+    const recipientName = findValue([
+        'Nama Penerima',
+        'Pembayaran Ke',
+        'Nama Perusahaan/Produk',
+    ]);
 
-  const totalAmount = parseIDRCurrency(totalAmountRaw);
+    const totalAmountRaw = findValue([
+        'Nominal',           // ← this email uses "Nominal"
+        'Total Bayar',
+        'Nominal Tujuan',
+    ]);
 
-  console.log('BCA TRANSACTION DETAILS:');
-  console.log(`Recipient:  ${recipientName}`);
-  console.log(`Date:       ${dateRaw}`);
-  console.log(`Total:      ${totalAmount.toFixed(2)}`);
+    const dateRaw = findValue(['Tanggal Transaksi']);
 
-  return {
-    status: recipientName || totalAmount > 0 || dateRaw ? true : false,
-    amount: totalAmount,
-    date: dateRaw,
-    recipient: recipientName,
-    source: 'BCA',
-  };
+    const totalAmount = parseIDRCurrency(totalAmountRaw);
+
+    console.log("BCA TRANSACTION DETAILS:");
+    console.log(`Recipient:  ${recipientName}`);
+    console.log(`Date:       ${dateRaw}`);
+    console.log(`Total:      ${totalAmount.toFixed(2)}`);
+
+    return {
+        expenses: true,
+        status: !!(recipientName || totalAmount > 0 || dateRaw),
+        amount: totalAmount,
+        date: dateRaw,
+        recipient: recipientName,
+        source: 'BCA'
+    };
 }
