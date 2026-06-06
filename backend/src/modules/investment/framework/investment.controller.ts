@@ -30,8 +30,9 @@ export class InvestmentController {
     if (!req.user) throw new NotFoundException('not authenticated');
     try {
       return await this.investmentService.create(req.user.sub, dto);
-    } catch (e: any) {
-      throw new BadRequestException(e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      throw new BadRequestException(message);
     }
   }
 
@@ -81,8 +82,9 @@ export class InvestmentController {
     if (!req.user) throw new NotFoundException('not authenticated');
     try {
       return await this.investmentService.createAllocation(req.user.sub, dto);
-    } catch (e: any) {
-      throw new BadRequestException(e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      throw new BadRequestException(message);
     }
   }
 

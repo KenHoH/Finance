@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateBudgetDto } from '../../framework/dtos/create-budget.dto.js';
 import { UpdateBudgetDto } from '../../framework/dtos/update-budget.dto.js';
@@ -94,11 +94,6 @@ export class BudgetService {
     });
 
     if (!budget) return null;
-
-    const startDate = dto.startDate
-      ? new Date(dto.startDate)
-      : budget.startDate;
-    const endDate = dto.endDate ? new Date(dto.endDate) : budget.endDate;
 
     const updated = await this.prisma.budget.update({
       where: { id },
@@ -210,14 +205,27 @@ export class BudgetService {
     );
   }
 
-  private budgetsOverlap(a: any, b: any): boolean {
+  private budgetsOverlap(
+    a: { startDate: Date; endDate: Date },
+    b: { startDate: Date; endDate: Date },
+  ): boolean {
     return a.startDate <= b.endDate && a.endDate >= b.startDate;
   }
 
   private async calculateSpentForBudget(
     userId: string,
-    budget: any,
-    allBudgets: any[],
+    budget: {
+      id: string;
+      startDate: Date;
+      endDate: Date;
+      categoryId: string | null;
+    },
+    allBudgets: {
+      id: string;
+      startDate: Date;
+      endDate: Date;
+      categoryId: string | null;
+    }[],
   ): Promise<number> {
     const budgetDuration = this.getBudgetDurationDays(
       budget.startDate,
@@ -414,7 +422,10 @@ export class BudgetService {
     return results;
   }
 
-  public async checkBudgetOverall(userId: string, transaction: any) {
+  public async checkBudgetOverall(
+    userId: string,
+    transaction: { categoryId?: string | null; amount?: unknown },
+  ) {
     const today = new Date();
     const startOfToday = new Date(
       today.getFullYear(),

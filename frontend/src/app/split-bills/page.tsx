@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, CheckCircle2, Clock, ArrowDownLeft, ArrowUpRight, ChevronRight,
   X, Receipt,
-  Trash2, Pencil
+  Trash2, Pencil, User, Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -78,9 +78,9 @@ export default function SplitBillsPage(){
 
   // Non-registered participants (manual name entry)
   const [manualParticipants, setManualParticipants] = useState<{ id: string; name: string }[]>([]);
-  const [manualNameInput, setManualNameInput] = useState("");
 
-  const { data: bills = [], isLoading } = useQuery<SplitBill[]>({
+
+  const { data: bills = [], isLoading, isFetching } = useQuery<SplitBill[]>({
     queryKey: ["split-bills"],
     queryFn: async() => {
       const res = await get<unknown>("/split-bills");
@@ -154,7 +154,6 @@ export default function SplitBillsPage(){
       setDescription("");
       setSelectedFriends([]);
       setManualParticipants([]);
-      setManualNameInput("");
       setReceiptFile(null);
       setReceiptPreview("");
       setScannedItems([]);
@@ -292,17 +291,27 @@ export default function SplitBillsPage(){
       }
     }
 
-    createMutation.mutate({
-      description: description.trim(),
-      totalAmount: Math.max(0, grandTotal),
-      date: new Date().toISOString(),
-      receiptImageUrl,
-      items,
-      participants,
-      taxRate: taxPct,
-      serviceChargeRate: servicePct,
-      discountAmount: discountVal,
-    });
+    try {
+      await createMutation.mutateAsync({
+        description: description.trim(),
+        totalAmount: Math.max(0, grandTotal),
+        date: new Date().toISOString(),
+        receiptImageUrl,
+        items,
+        participants,
+        taxRate: taxPct,
+        serviceChargeRate: servicePct,
+        discountAmount: discountVal,
+      });
+    } catch {
+      if(receiptImageUrl){
+        try {
+          await api.delete("/split-bills/receipt", { data: { imageUrl: receiptImageUrl } });
+        } catch {
+          // silent fail on cleanup
+        }
+      }
+    }
   };
 
   const toggleFriend = (friend: Friend) => {
@@ -332,7 +341,13 @@ export default function SplitBillsPage(){
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-24">
+    <div className="space-y-6 max-w-7xl mx-auto pb-24 relative">
+      {createMutation.isPending && (
+        <div className="fixed inset-0 z-[90] bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-sm font-bold text-foreground">Creating split bill...</p>
+        </div>
+      )}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-7">
         <div className="flex items-center gap-5">
           <div className="p-3 bg-sky-500/10 rounded-xl">
@@ -400,6 +415,12 @@ export default function SplitBillsPage(){
       </div>
 
       <div className="space-y-4">
+        {isFetching && !isLoading && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Refreshing...
+          </div>
+        )}
         <AnimatePresence mode="popLayout">
           {filteredBills.map((bill, idx) => (
             <motion.div
@@ -428,18 +449,50 @@ export default function SplitBillsPage(){
               </div>
               <div className="flex flex-col md:items-end gap-3 border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6">
                 <div className="flex -space-x-2">
-                  {bill.participants.map((p) => (
-                    <div
-                      key={p.id}
-                      className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 border-card z-10 overflow-hidden bg-accent",
-                        p.status === 'CONFIRMED' ? "ring-2 ring-sky-500" : p.status === 'PAID_PENDING_CONFIRMATION' ? "ring-2 ring-amber-500" : ""
-                      )}
-                      title={p.name + ': ' + p.status}
-                    >
-                      {p.name.slice(0,2).toUpperCase()}
-                    </div>
-                  ))}
+                  {bill.participants.map((p) => {
+                    const statusRing = p.status === 'CONFIRMED'
+                      ? "ring-2 ring-sky-500"
+                      : p.status === 'PAID_PENDING_CONFIRMATION'
+                        ? "ring-2 ring-amber-500"
+                        : "";
+                    if(p.user?.avatar){
+                      return (
+                        <div
+                          key={p.id}
+                          className={cn("w-10 h-10 rounded-full overflow-hidden border-2 border-card z-10 shrink-0", statusRing)}
+                          title={p.name + ': ' + p.status}
+                        >
+                          <img src={p.user.avatar} alt={p.name} className="w-full h-full object-cover" />
+                        </div>
+                      );
+                    }
+                    if(p.userId){
+                      return (
+                        <div
+                          key={p.id}
+                          className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 border-card z-10 overflow-hidden bg-accent",
+                            statusRing
+                          )}
+                          title={p.name + ': ' + p.status}
+                        >
+                          {p.name.slice(0,2).toUpperCase()}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        key={p.id}
+                        className={cn(
+                          "w-10 h-10 rounded-full flex items-center justify-center border-2 border-card z-10 overflow-hidden bg-slate-700",
+                          statusRing
+                        )}
+                        title={p.name + ' (no account): ' + p.status}
+                      >
+                        <User className="w-5 h-5 text-slate-400" />
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="flex items-center gap-1 text-sm font-bold text-slate-400 group-hover:text-sky-400 transition-colors">
                   View Details <ChevronRight className="w-5 h-5" />
@@ -473,7 +526,6 @@ export default function SplitBillsPage(){
           setDiscountAmount("");
           setSelectedFriends([]);
           setManualParticipants([]);
-          setManualNameInput("");
           setFriendSearch("");
         }}
         title="New Split Bill"
@@ -726,10 +778,12 @@ export default function SplitBillsPage(){
           <button
             type="button"
             onClick={() => {
+              if(selectedFriends.length + manualParticipants.length === 0) return;
               setShowReviewModal(false);
               setShowAssignmentModal(true);
             }}
-            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-bold hover:opacity-90 transition-opacity active:scale-[0.98]"
+            disabled={selectedFriends.length + manualParticipants.length === 0}
+            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-bold hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
           >
             Next: Assign Items
           </button>
@@ -810,86 +864,76 @@ export default function SplitBillsPage(){
         onClose={() => {
           setShowFriendPickerModal(false);
           setFriendSearch("");
-          setManualNameInput("");
         }}
         title="Add Friends"
         description="Search your friends or add someone without an account."
         zIndex={72}
       >
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-          {/* Search friends */}
+          {/* Search friends / add manual */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Search Friends</label>
             <input
               type="text"
               value={friendSearch}
               onChange={(e) => setFriendSearch(e.target.value)}
-              placeholder="Search by name..."
+              placeholder="Search friends or type a name..."
               className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
             />
-            <div className="max-h-40 overflow-y-auto space-y-0.5">
+            <div className="max-h-48 overflow-y-auto space-y-0.5">
               {(() => {
                 const available = (friendSearch
                   ? friends.filter(f => f.username.toLowerCase().includes(friendSearch.toLowerCase()))
                   : friends
                 ).filter(f => !selectedFriends.find(sf => sf.id === f.id));
-                if(available.length === 0){
-                  return (
-                    <div className="text-center py-4">
-                      <p className="text-xs text-muted-foreground font-medium">{friendSearch ? "No matching friends" : "No friends available"}</p>
-                    </div>
-                  );
-                }
-                return available.map((friend) => (
-                  <button
-                    key={friend.id}
-                    type="button"
-                    onClick={() => toggleFriend(friend)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                      {friend.username.slice(0, 2).toUpperCase()}
-                    </div>
-                    <span className="text-sm font-medium text-foreground flex-1 text-left">{friend.username}</span>
-                    <Plus className="w-4 h-4 text-primary" />
-                  </button>
-                ));
+                return (
+                  <>
+                    {available.length === 0 && !friendSearch.trim() ? (
+                      <div className="text-center py-4 space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">No friends available</p>
+                        <div className="flex items-center justify-center gap-1.5 text-xs text-primary font-medium">
+                          <User className="w-3.5 h-3.5" />
+                          <span>Type a name above to add someone without an account</span>
+                        </div>
+                      </div>
+                    ) : (
+                      available.map((friend) => (
+                        <button
+                          key={friend.id}
+                          type="button"
+                          onClick={() => toggleFriend(friend)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent/50 transition-colors"
+                        >
+                          {friend.avatar ? (
+                            <img src={friend.avatar} alt={friend.username} className="w-9 h-9 rounded-full object-cover border border-border" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                              {friend.username.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-sm font-medium text-foreground flex-1 text-left">{friend.username}</span>
+                          <Plus className="w-4 h-4 text-primary" />
+                        </button>
+                      ))
+                    )}
+                    {friendSearch.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualParticipants((prev) => [...prev, { id: "manual-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), name: friendSearch.trim() }]);
+                          setFriendSearch("");
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent/50 transition-colors border-t border-dashed border-border/40 mt-1"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center">
+                          <User className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <span className="text-sm font-medium text-muted-foreground flex-1 text-left">Add &quot;{friendSearch.trim()}&quot; (not on platform)</span>
+                        <Plus className="w-4 h-4 text-primary" />
+                      </button>
+                    )}
+                  </>
+                );
               })()}
-            </div>
-          </div>
-
-          {/* Add without account */}
-          <div className="bg-accent/20 border border-border/60 rounded-xl p-3 space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Add Without Account</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={manualNameInput}
-                onChange={(e) => setManualNameInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if(e.key === "Enter"){
-                    e.preventDefault();
-                    if(manualNameInput.trim()){
-                      setManualParticipants((prev) => [...prev, { id: "manual-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), name: manualNameInput.trim() }]);
-                      setManualNameInput("");
-                    }
-                  }
-                }}
-                placeholder="Enter name..."
-                className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  if(manualNameInput.trim()){
-                    setManualParticipants((prev) => [...prev, { id: "manual-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), name: manualNameInput.trim() }]);
-                    setManualNameInput("");
-                  }
-                }}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
-              >
-                Add
-              </button>
             </div>
           </div>
 
@@ -900,7 +944,11 @@ export default function SplitBillsPage(){
               <div className="flex flex-wrap gap-2">
                 {selectedFriends.map((f) => (
                   <div key={f.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-full">
-                    <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px]">{f.username.slice(0,2).toUpperCase()}</span>
+                    {f.avatar ? (
+                      <img src={f.avatar} alt={f.username} className="w-5 h-5 rounded-full object-cover" />
+                    ) : (
+                      <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px]">{f.username.slice(0,2).toUpperCase()}</span>
+                    )}
                     {f.username}
                     <button type="button" onClick={() => toggleFriend(f)} className="hover:text-white ml-0.5" aria-label={"Remove " + f.username}>
                       <X className="w-3 h-3" />

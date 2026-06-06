@@ -8,6 +8,13 @@ import { Cron } from '@nestjs/schedule';
 import { extractInfo } from '../../../../infrastructure/imap/helper/extractInfo.js';
 import { TransactionService } from '../../../transaction/core/app/transaction.service.js';
 
+interface GmailPart {
+  mimeType?: string | null;
+  body?: { data?: string | null };
+  parts?: GmailPart[];
+  headers?: Array<{ name?: string | null; value?: string | null }>;
+}
+
 @Injectable()
 export class EmailService {
   constructor(
@@ -134,15 +141,19 @@ export class EmailService {
       }
 
       await this.updateEmailHistoryId(emailAddress, historyId);
-    } catch (error) {
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Failed to set up Gmail watch for ${emailAddress}: ${error.message}`,
+        `Failed to set up Gmail watch for ${emailAddress}: ${errMsg}`,
       );
       return;
     }
   }
 
-  async processEmails(message: any) {
+  async processEmails(message: { data?: string }) {
+    if (!message.data) {
+      throw new Error('Invalid Pub/Sub message: missing data');
+    }
     const decodedData = Buffer.from(message.data, 'base64').toString('utf-8');
     const { emailAddress, historyId: newHistoryId } = JSON.parse(decodedData);
 
@@ -228,8 +239,8 @@ export class EmailService {
           });
 
           const payload = emailResponse.data.payload;
-          const emailBody = this.extractEmailBody(payload);
           if (!payload) continue;
+          const emailBody = this.extractEmailBody(payload as GmailPart);
 
           const headers = payload.headers || [];
           const getHeader = (name: string) =>
@@ -240,8 +251,8 @@ export class EmailService {
           const from = getHeader('from');
           // Prioritize HTML for parsing, fallback to plain text if needed
           const html =
-            this.extractPart(payload, 'text/html') ||
-            this.extractPart(payload, 'text/plain') ||
+            this.extractPart(payload as GmailPart, 'text/html') ||
+            this.extractPart(payload as GmailPart, 'text/plain') ||
             '';
 
           this.logger.log(
@@ -303,33 +314,34 @@ export class EmailService {
               `No transaction info matched for email (${messageId}).`,
             );
           }
-        } catch (msgError) {
+        } catch (msgError: unknown) {
+          const errMsg =
+            msgError instanceof Error ? msgError.message : 'Unknown error';
           this.logger.error(
-            `Failed to process message ${messageId}: ${msgError.message}`,
+            `Failed to process message ${messageId}: ${errMsg}`,
           );
           continue;
         }
       }
 
       await this.updateEmailHistoryId(emailAddress, newHistoryId);
-    } catch (error) {
-      this.logger.error(`Gmail API Error: ${error.message}`);
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Gmail API Error: ${errMsg}`);
       throw error;
     }
   }
 
-  private extractEmailBody(payload: any): string {
+  private extractEmailBody(payload: GmailPart): string {
     let encodedBody = '';
 
-    const findBody = (part: any): string | null => {
+    const findBody = (part: GmailPart): string | null => {
       if (part.body && part.body.data) {
         return part.body.data;
       }
 
       if (part.parts) {
-        const textPart = part.parts.find(
-          (p: any) => p.mimeType === 'text/plain',
-        );
+        const textPart = part.parts.find((p) => p.mimeType === 'text/plain');
         if (textPart) {
           const body = findBody(textPart);
           if (body) return body;
@@ -357,7 +369,7 @@ export class EmailService {
   /**
    * Generic helper to extract a specific mime-type part from Gmail payload
    */
-  private extractPart(part: any, mimeType: string): string | null {
+  private extractPart(part: GmailPart, mimeType: string): string | null {
     if (part.mimeType === mimeType && part.body && part.body.data) {
       return this.decodeBase64(part.body.data);
     }
@@ -393,9 +405,10 @@ export class EmailService {
       const emailAddress = user.email;
       try {
         await this.watchGmail(emailAddress);
-      } catch (error) {
+      } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : 'Unknown error';
         this.logger.error(
-          `Failed to update history ID for ${emailAddress}: ${error.message}`,
+          `Failed to update history ID for ${emailAddress}: ${errMsg}`,
         );
       }
     }
@@ -441,7 +454,7 @@ export class EmailService {
     );
     const skipped = extracted.length - toCreate.length;
 
-    const created: any[] = [];
+    const created: Record<string, unknown>[] = [];
     for (const item of toCreate) {
       const transaction = await this.prisma.transaction.create({
         data: {

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { NotificationType } from '../../framework/dtos/create-notification.js';
 
 @Injectable()
 export class NotificationService {
@@ -9,14 +10,17 @@ export class NotificationService {
     return this.prisma.notification.create({
       data: {
         userId,
-        type: type as any,
+        type: type as unknown as NotificationType,
         title,
         message,
       },
     });
   }
 
-  async notifyBillReminder(bill: any, category?: any) {
+  async notifyBillReminder(
+    bill: { userId: string; dueDate: Date; title: string; amount: number },
+    category?: { name: string } | null,
+  ) {
     const now = new Date();
     const daysUntil = Math.ceil(
       (bill.dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),

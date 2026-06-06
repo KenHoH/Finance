@@ -9,7 +9,6 @@ import {
   Req,
   UseGuards,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { BillService } from '../core/app/bill.service.js';

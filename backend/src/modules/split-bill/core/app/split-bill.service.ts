@@ -562,4 +562,8 @@ export class SplitBillService {
       'receipt-' + Date.now(),
     );
   }
+
+  async deleteReceipt(imageUrl: string) {
+    await this.storageService.deleteFile(imageUrl);
+  }
 }

@@ -153,7 +153,10 @@ export class TransactionService {
   /**
    *  UNUSED function replaced by budgetService checkBudgetOverall
    */
-  private async checkBudgetAlert(userId: string, transaction: any) {
+  private async checkBudgetAlert(
+    userId: string,
+    transaction: { categoryId?: string | null },
+  ) {
     const today = new Date();
     const budgets = await this.prisma.budget.findMany({
       where: {

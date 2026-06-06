@@ -23,7 +23,6 @@ export class SavingPointService {
   @Cron('0 0 1 * * *') // Runs once at 1:00:00 AM every day
   async handleCron() {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const today = new Date();
 
     // Budgets that ended yesterday (endDate between yesterday start and end)
     const yesterdayStart = new Date(
@@ -62,9 +61,21 @@ export class SavingPointService {
     }
   }
 
-  async savingDaily(userId: string, budget: any, date: Date) {
+  async savingDaily(
+    userId: string,
+    budget: {
+      id: string;
+      userId: string;
+      startDate: Date;
+      endDate: Date;
+      amount: unknown;
+      categoryId: string | null;
+    },
+    date: Date,
+  ) {
     const periodDays = Math.ceil(
-      (budget.endDate - budget.startDate) / (1000 * 60 * 60 * 24),
+      (budget.endDate.getTime() - budget.startDate.getTime()) /
+        (1000 * 60 * 60 * 24),
     );
     const dailyLimit = Number(budget.amount) / periodDays;
 

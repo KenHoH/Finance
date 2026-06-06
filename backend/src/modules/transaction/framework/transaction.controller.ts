@@ -9,12 +9,8 @@ import {
   Query,
   Req,
   UseGuards,
-  UseInterceptors,
-  UploadedFile,
   NotFoundException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { TransactionService } from '../core/app/transaction.service.js';
 import { CreateTransactionDto } from './dtos/create-transaction.dto.js';
@@ -29,20 +25,20 @@ export class TransactionController {
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateTransactionDto) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const transaction = await this.transactionService.create(userId, dto);
     return transaction;
   }
 
   @Get()
   async findAll(@Req() req: Request, @Query() filters: FilterTransactionDto) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     return this.transactionService.findAll(userId, filters);
   }
 
   @Get(':id')
   async findOne(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const transaction = await this.transactionService.findOne(userId, id);
     if (!transaction) throw new NotFoundException('Transaction not found');
     return transaction;
@@ -54,7 +50,7 @@ export class TransactionController {
     @Param('id') id: string,
     @Body() dto: UpdateTransactionDto,
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const transaction = await this.transactionService.update(userId, id, dto);
     if (!transaction) throw new NotFoundException('Transaction not found');
     return transaction;
@@ -62,7 +58,7 @@ export class TransactionController {
 
   @Delete(':id')
   async delete(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const transaction = await this.transactionService.delete(userId, id);
     if (!transaction) throw new NotFoundException('Transaction not found');
     return { message: 'Transaction deleted' };

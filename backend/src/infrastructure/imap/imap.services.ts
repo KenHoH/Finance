@@ -52,13 +52,15 @@ export async function connectToImap(
 
     await client.logout();
     return results;
-  } catch (err: any) {
-    if (err.authenticationFailed) {
-      throw new AuthError();
-    }
-
-    if (err.code === 'NoConnection') {
-      throw new ConnectionError();
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null) {
+      const e = err as Record<string, unknown>;
+      if (e.authenticationFailed) {
+        throw new AuthError();
+      }
+      if (e.code === 'NoConnection') {
+        throw new ConnectionError();
+      }
     }
     throw err;
   }

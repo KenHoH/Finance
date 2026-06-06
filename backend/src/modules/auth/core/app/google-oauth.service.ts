@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
+import type { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class GoogleOauthService {
-  private oauth2Client;
+  private oauth2Client: OAuth2Client;
   private readonly logger = new Logger(GoogleOauthService.name);
 
   constructor(private readonly configService: ConfigService) {
@@ -25,11 +26,11 @@ export class GoogleOauthService {
     );
   }
 
-  public getOauthClient() {
+  public getOauthClient(): OAuth2Client {
     return this.oauth2Client;
   }
 
-  public getAuthUrl(state?: string) {
+  public getAuthUrl(state?: string): string {
     const scopes = [
       'https://www.googleapis.com/auth/gmail.readonly',
       'https://mail.google.com/',
@@ -60,6 +61,11 @@ export class GoogleOauthService {
     const oauth2 = google.oauth2({ version: 'v2', auth: this.oauth2Client });
     const { data } = await oauth2.userinfo.get();
     console.log('user profile = ', { email: data.email, name: data.name });
-    return data;
+    return data as {
+      email?: string;
+      name?: string;
+      picture?: string;
+      id?: string;
+    };
   }
 }

@@ -44,7 +44,7 @@ export class NotificationCronService implements OnApplicationBootstrap {
 
     for (const bill of bills) {
       await this.notificationService.notifyBillReminder(
-        bill,
+        { ...bill, amount: Number(bill.amount) },
         bill.category ?? undefined,
       );
     }

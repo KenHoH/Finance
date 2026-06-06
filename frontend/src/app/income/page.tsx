@@ -491,12 +491,20 @@ export default function IncomePage() {
                       </td>
                       <td className="px-7 py-5 font-semibold text-foreground text-base">{t.description || "-"}</td>
                       <td className="px-6 py-5">
-                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold bg-primary/10 text-primary border border-primary/20">
+                        <span className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-sm font-bold bg-primary/10 text-primary border border-primary/20">
                           {(() => {
                             const LucideIcon = getLucideIcon(t.category?.icon);
-                            if(LucideIcon) return <LucideIcon className="w-5 h-5" />;
+                            if(LucideIcon) return (
+                              <span className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
+                                <LucideIcon className="w-7 h-7" />
+                              </span>
+                            );
                             const icon = getCategoryIcon(t.category?.name);
-                            if(icon) return <img src={icon} alt="" className="w-5 h-5 object-contain" />;
+                            if(icon) return (
+                              <span className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
+                                <img src={icon} alt="" className="w-7 h-7 object-contain" />
+                              </span>
+                            );
                             return null;
                           })()}
                           {t.category?.name || "Uncategorized"}

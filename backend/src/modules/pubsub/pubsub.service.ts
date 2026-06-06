@@ -3,6 +3,12 @@ import { GoogleOauthService } from '../auth/core/app/google-oauth.service.js';
 import { google } from 'googleapis';
 import { AuthService } from '../auth/core/app/auth.service.js';
 
+interface GmailPart {
+  mimeType?: string | null;
+  body?: { data?: string | null };
+  parts?: GmailPart[];
+}
+
 @Injectable()
 export class PubsubService {
   private readonly logger = new Logger(PubsubService.name);
@@ -12,7 +18,10 @@ export class PubsubService {
     private readonly authService: AuthService,
   ) {}
 
-  async processEmails(message: any) {
+  async processEmails(message: { data?: string }) {
+    if (!message.data) {
+      throw new Error('Invalid Pub/Sub message: missing data');
+    }
     const decodedData = Buffer.from(message.data, 'base64').toString('utf-8');
     const { emailAddress, historyId } = JSON.parse(decodedData);
 
@@ -23,9 +32,10 @@ export class PubsubService {
     try {
       refreshToken =
         await this.authService.getRefreshTokenByEmail(emailAddress);
-    } catch (error) {
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Failed to get refresh token for ${emailAddress}: ${error.message}`,
+        `Failed to get refresh token for ${emailAddress}: ${errMsg}`,
       );
       return;
     }
@@ -65,17 +75,23 @@ export class PubsubService {
       });
 
       const payload = emailResponse.data.payload;
-      const emailBody = this.extractEmailBody(payload);
+      if (!payload) {
+        this.logger.warn('Email payload is empty');
+        return;
+      }
+      const emailBody = this.extractEmailBody(payload as GmailPart);
       this.logger.log(
         `Successfully fetched email: ${emailResponse.data.snippet}`,
       );
       this.logger.log(`Email Body: ${emailBody}`);
-    } catch (error) {
-      this.logger.error(`Gmail API Error: ${error.message}`);
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Gmail API Error: ${errMsg}`);
       throw error;
     }
   }
-  private extractEmailBody(payload: any): string {
+
+  private extractEmailBody(payload: GmailPart): string {
     let encodedBody = '';
 
     // If it's a simple text email

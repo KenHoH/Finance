@@ -10,8 +10,8 @@ export class ChatService {
     model: string,
   ) {
     const apiKey =
-      this.configService.get('OPENROUTER_API_KEY') ||
-      this.configService.get('NEXT_PUBLIC_OPENROUTER_API_KEY');
+      this.configService.get<string>('OPENROUTER_API_KEY') ||
+      this.configService.get<string>('NEXT_PUBLIC_OPENROUTER_API_KEY');
     if (!apiKey) {
       throw new BadRequestException('OpenRouter API key is not configured');
     }

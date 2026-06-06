@@ -13,16 +13,17 @@ export class EmailController {
 
   @Get()
   async getMailBoxes(@Req() request: Request) {
-    const userId = (request as any).user.sub;
-    const email = (request as any).user.email;
+    const userId = request.user.sub;
+    const email = request.user.email;
     return this.emailService.getMailboxs(userId, email);
   }
 
   @Public()
   @Post()
-  async processEmails(@Req() request: any) {
+  async processEmails(@Req() request: Request) {
     try {
-      const { message } = request.body;
+      const body = request.body as { message?: { data?: string } };
+      const message = body.message;
 
       if (!message || !message.data) {
         return { status: 'error', message: 'Invalid Pub/Sub message format' };

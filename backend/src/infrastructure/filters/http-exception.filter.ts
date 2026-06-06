@@ -25,18 +25,28 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       const res = exception.getResponse();
       if (typeof res === 'object' && res !== null) {
-        const obj = res as Record<string, any>;
-        message = obj.message || exception.message;
-        error = obj.error || 'Error';
+        const obj = res as Record<string, unknown>;
+        const msg = obj.message;
+        if (typeof msg === 'string' || Array.isArray(msg)) {
+          message = msg;
+        }
+        const err = obj.error;
+        if (typeof err === 'string') {
+          error = err;
+        }
       } else {
         message = String(res);
       }
     } else if (this.isPrismaError(exception)) {
-      const prismaError = exception as any;
-      switch (prismaError.code) {
+      const code = (exception as Record<string, unknown>).code as string;
+      const meta = (exception as Record<string, unknown>).meta as
+        | Record<string, unknown>
+        | undefined;
+      const target = meta?.target as string[] | undefined;
+      switch (code) {
         case 'P2002':
           status = HttpStatus.CONFLICT;
-          message = `Duplicate value on field: ${prismaError.meta?.target?.join(', ') || 'unknown'}`;
+          message = `Duplicate value on field: ${target?.join(', ') || 'unknown'}`;
           error = 'Conflict';
           break;
         case 'P2025':
@@ -75,8 +85,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       typeof exception === 'object' &&
       exception !== null &&
       'code' in exception &&
-      typeof (exception as any).code === 'string' &&
-      (exception as any).code.startsWith('P')
+      typeof (exception as Record<string, unknown>).code === 'string' &&
+      String((exception as Record<string, unknown>).code).startsWith('P')
     );
   }
 }

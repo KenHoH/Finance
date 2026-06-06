@@ -30,19 +30,19 @@ export class SplitBillController {
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateSplitBillDto) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     return this.splitBillService.create(userId, dto);
   }
 
   @Get()
   async findAll(@Req() req: Request) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     return this.splitBillService.findAll(userId);
   }
 
   @Get(':id')
   async findOne(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const bill = await this.splitBillService.findOne(userId, id);
     if (!bill) throw new NotFoundException('Split bill not found');
     return bill;
@@ -54,7 +54,7 @@ export class SplitBillController {
     @Param('id') id: string,
     @Body() dto: UpdateSplitBillDto,
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const bill = await this.splitBillService.update(userId, id, dto);
     if (!bill) throw new NotFoundException('Split bill not found');
     return bill;
@@ -67,7 +67,7 @@ export class SplitBillController {
     @Param('participantId') participantId: string,
     @Body() dto: UpdateParticipantDto,
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const participant = await this.splitBillService.updateParticipant(
       userId,
       id,
@@ -99,7 +99,7 @@ export class SplitBillController {
     @Param('participantId') participantId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const result = await this.splitBillService.uploadProof(
       userId,
       id,
@@ -117,7 +117,7 @@ export class SplitBillController {
     @Param('id') id: string,
     @Param('participantId') participantId: string,
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const result = await this.splitBillService.markAsPaid(
       userId,
       id,
@@ -134,7 +134,7 @@ export class SplitBillController {
     @Param('id') id: string,
     @Param('participantId') participantId: string,
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const result = await this.splitBillService.revertMarkAsPaid(
       userId,
       id,
@@ -151,7 +151,7 @@ export class SplitBillController {
     @Param('id') id: string,
     @Param('participantId') participantId: string,
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const result = await this.splitBillService.confirmPayment(
       userId,
       id,
@@ -169,7 +169,7 @@ export class SplitBillController {
     @Param('participantId') participantId: string,
     @Body() dto: { reason?: string },
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const result = await this.splitBillService.rejectPayment(
       userId,
       id,
@@ -219,7 +219,7 @@ export class SplitBillController {
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const bill = await this.splitBillService.uploadReceiptImage(
       userId,
       id,
@@ -231,9 +231,15 @@ export class SplitBillController {
 
   @Delete(':id')
   async delete(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const bill = await this.splitBillService.delete(userId, id);
     if (!bill) throw new NotFoundException('Split bill not found');
     return { message: 'Split bill deleted' };
+  }
+
+  @Delete('receipt')
+  async deleteReceipt(@Body() dto: { imageUrl: string }) {
+    await this.splitBillService.deleteReceipt(dto.imageUrl);
+    return { message: 'Receipt deleted' };
   }
 }

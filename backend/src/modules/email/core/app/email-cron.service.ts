@@ -39,8 +39,9 @@ export class EmailCronService {
           `Synced user ${user.id}: ${result.created} created, ${result.skipped} skipped`,
         );
         successCount++;
-      } catch (err: any) {
-        this.logger.error(`Failed to sync user ${user.id}: ${err.message}`);
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : 'Unknown error';
+        this.logger.error(`Failed to sync user ${user.id}: ${errMsg}`);
         failCount++;
       }
     }

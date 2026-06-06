@@ -100,7 +100,10 @@ export class ReceiptService {
         throw new Error(`OpenRouter error ${response.status}: ${errText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+        model?: string;
+      };
       console.log(
         '[ReceiptService] OpenRouter response choices:',
         data.choices ? 'present' : 'missing',
@@ -151,14 +154,16 @@ export class ReceiptService {
         try {
           parsed = attempts[i]();
           break;
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const errMsg =
+            err instanceof Error ? err.message : 'Unknown parse error';
           if (i === attempts.length - 1) {
             console.error(
               '[ReceiptService] All JSON parse attempts failed. Raw JSON text:',
               jsonText.substring(0, 1000),
             );
-            console.error('[ReceiptService] Parse error:', err.message);
-            throw new Error(`JSON parse failed: ${err.message}`);
+            console.error('[ReceiptService] Parse error:', errMsg);
+            throw new Error(`JSON parse failed: ${errMsg}`);
           }
         }
       }
@@ -173,15 +178,19 @@ export class ReceiptService {
         raw_text: parsed.raw_text || content,
         message: 'Receipt scanned successfully via AI',
       };
-    } catch (err: any) {
-      if (err.name === 'AbortError' || err.code === 'UND_ERR_HEADERS_TIMEOUT') {
+    } catch (err: unknown) {
+      const isTimeout =
+        (err instanceof Error && err.name === 'AbortError') ||
+        (typeof err === 'object' &&
+          err !== null &&
+          (err as Record<string, unknown>).code === 'UND_ERR_HEADERS_TIMEOUT');
+      if (isTimeout) {
         throw new BadRequestException(
           'Receipt scanning timed out. The AI model may be overloaded. Please try again in a few seconds.',
         );
       }
-      throw new BadRequestException(
-        `Receipt scanning failed: ${err.message || 'Unknown error'}`,
-      );
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      throw new BadRequestException(`Receipt scanning failed: ${errMsg}`);
     }
   }
 

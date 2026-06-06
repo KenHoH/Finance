@@ -25,7 +25,9 @@ export class ActivityLogService {
     const { entity, action, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
 
-    const where: any = { userId };
+    const where: { userId: string; entity?: string; action?: string } = {
+      userId,
+    };
     if (entity) where.entity = entity;
     if (action) where.action = action;
 
@@ -62,7 +64,7 @@ export class ActivityLogService {
     action: string,
     entity: string,
     entityId?: string,
-    details?: Record<string, any>,
+    details?: Record<string, unknown>,
   ) {
     return this.prisma.activityLog.create({
       data: {

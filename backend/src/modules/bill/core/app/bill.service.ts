@@ -44,7 +44,10 @@ export class BillService {
             where: { id: bill.categoryId },
           })
         : null;
-      await this.notificationService.notifyBillReminder(bill, cat);
+      await this.notificationService.notifyBillReminder(
+        { ...bill, amount: Number(bill.amount) },
+        cat,
+      );
     }
 
     return bill;
@@ -95,7 +98,10 @@ export class BillService {
             where: { id: updated.categoryId },
           })
         : null;
-      await this.notificationService.notifyBillReminder(updated, cat);
+      await this.notificationService.notifyBillReminder(
+        { ...updated, amount: Number(updated.amount) },
+        cat,
+      );
     }
 
     return updated;

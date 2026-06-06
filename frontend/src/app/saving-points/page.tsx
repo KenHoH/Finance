@@ -2,29 +2,24 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { PiggyBank, Plus, Edit2, Trash2, Target, Wallet, ArrowLeft, TrendingUp, Landmark, AlertTriangle } from "lucide-react";
-import Link from "next/link";
+import { PiggyBank, Edit2, Trash2, Target, Wallet, TrendingUp, Landmark, AlertTriangle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { get, del, post, api, extractApiError } from "@/lib/api";
 import { useToastStore } from "@/store/useToastStore";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { validateString, validateNumber, runValidators } from "@/lib/validation";
+import { validateNumber, runValidators } from "@/lib/validation";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { SavingPoint, Goal, Category, DebtPoint, Budget } from "@/lib/types";
-import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
+import { optimisticUpdate, optimisticDelete, rollbackOnError } from "@/lib/optimistic";
 
 export default function SavingPointsPage(){
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCreateSuccess, setIsCreateSuccess] = useState(false);
-  const [budgetId, setBudgetId] = useState("");
-  const [savingAmount, setSavingAmount] = useState("");
   const [allocateModal, setAllocateModal] = useState<{ id: string; amount: number } | null>(null);
   const [goalId, setGoalId] = useState("");
   const [allocateAmount, setAllocateAmount] = useState("");
@@ -77,33 +72,6 @@ export default function SavingPointsPage(){
       return Array.isArray(res) ? res : [];
     },
     enabled: budgets.length > 0,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (dto: { budgetId: string; savingAmount: number }) => api.post("/saving-points", dto),
-    onMutate: async (dto) => {
-      const temp: SavingPoint = {
-        id: `opt-${Date.now()}`,
-        budgetId: dto.budgetId,
-        savingAmount: dto.savingAmount,
-        createdAt: new Date().toISOString(),
-      };
-      return optimisticCreate(queryClient, ["saving-points"], temp);
-    },
-    onError: (err, dto, context) => {
-      rollbackOnError(queryClient, ["saving-points"], context);
-      addToast(extractApiError(err, "Failed to create saving point"), "error");
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["saving-points"] }),
-    onSuccess: () => {
-      setIsCreateSuccess(true);
-      setTimeout(() => {
-        setIsCreateSuccess(false);
-        setIsModalOpen(false);
-        setBudgetId("");
-        setSavingAmount("");
-      }, 1500);
-    },
   });
 
   const deleteMutation = useMutation({
@@ -240,17 +208,8 @@ export default function SavingPointsPage(){
             </div>
             Saving Points
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Track savings from your budgets</p>
-          <Link href="/settings" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-sky-400 transition-colors mt-2">
-            <ArrowLeft className="w-3 h-3" /> Back to Settings
-          </Link>
+          <p className="text-sm text-muted-foreground mt-1">Auto-generated from unused budget surplus</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.98] hover:brightness-110"
-        >
-          <Plus className="w-5 h-5" /> Create Point
-        </button>
       </header>
 
       {/* Summary */}
@@ -320,44 +279,10 @@ export default function SavingPointsPage(){
           <EmptyState
             image="/empty-savingpoints.png"
             title="No saving points yet"
-            description="Create a saving point from your budget surplus."
+            description="Saving points are auto-generated when your budget has leftover funds at the end of the period."
           />
         )}
       </div>
-
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => { setIsCreateSuccess(false); setIsModalOpen(false); }}
-        title="Create Saving Point"
-        description="Link a budget and set a saving amount."
-        isSuccess={isCreateSuccess}
-        successMessage="Saving point successfully created!"
-      >
-        <div className="space-y-3">
-          <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">Budget ID</label>
-            <input type="text" value={budgetId} onChange={(e) => setBudgetId(e.target.value)} placeholder="Budget UUID" className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">Saving Amount</label>
-            <CurrencyInput value={savingAmount} onChange={setSavingAmount} placeholder="0" />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-5">
-          <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sky-500/[0.03] transition-colors">Cancel</button>
-          <button onClick={() => {
-            const errors = runValidators(
-              validateString(budgetId, "Budget", { min: 1 }),
-              validateNumber(savingAmount, "Saving Amount", { min: 0.01 })
-            );
-            if(errors.length > 0){
-              addToast(errors[0].message, "error");
-              return;
-            }
-            createMutation.mutate({ budgetId, savingAmount: Number(savingAmount) });
-          }} disabled={createMutation.isPending} className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50">Save</button>
-        </div>
-      </Modal>
 
       <Modal
         isOpen={!!allocateModal}

@@ -11,7 +11,16 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly userCache = new Map<
     string,
-    { user: any; expires: number }
+    {
+      user: {
+        id: string;
+        email: string;
+        username: string;
+        avatar: string | null;
+        createdAt: Date;
+      };
+      expires: number;
+    }
   >();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -30,6 +39,9 @@ export class AuthService {
 
   async handleGoogleLogin(code: string, state?: string) {
     const tokens = await this.googleOauthService.getToken(code);
+    if (!tokens.access_token) {
+      throw new Error('no access token from google');
+    }
     const profile = await this.googleOauthService.getUserProfile(
       tokens.access_token,
     );
@@ -279,7 +291,9 @@ export class AuthService {
     if (frontendUrl) {
       try {
         allowedOrigins.add(new URL(frontendUrl).origin);
-      } catch {}
+      } catch {
+        /* ignore invalid URL */
+      }
     }
 
     if (process.env.NODE_ENV !== 'production') {

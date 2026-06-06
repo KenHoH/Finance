@@ -1,5 +1,12 @@
 import { Controller, Logger, Post, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { PubsubService } from './pubsub.service.js';
+
+interface PubSubBody {
+  message?: {
+    data?: string;
+  };
+}
 
 @Controller('pubsub')
 export class PubsubController {
@@ -8,9 +15,10 @@ export class PubsubController {
   constructor(private readonly pubsubService: PubsubService) {}
 
   @Post()
-  async handlePubSubMessage(@Req() request: any) {
+  async handlePubSubMessage(@Req() request: Request) {
     try {
-      const { message } = request.body;
+      const body = request.body as PubSubBody;
+      const message = body.message;
 
       if (!message || !message.data) {
         return { status: 'error', message: 'Invalid Pub/Sub message format' };

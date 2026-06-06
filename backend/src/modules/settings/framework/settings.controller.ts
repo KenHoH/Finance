@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { SettingsService } from '../core/app/settings.service.js';
 import { CreateSettingsDto } from './dtos/create-settings.dto.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
@@ -20,26 +21,26 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Post()
-  async create(@Req() req, @Body() dto: CreateSettingsDto) {
+  async create(@Req() req: Request, @Body() dto: CreateSettingsDto) {
     const userId = req.user.sub;
     return this.settingsService.upsert(userId, dto);
   }
 
   @Get()
-  async findByUserId(@Req() req) {
+  async findByUserId(@Req() req: Request) {
     const userId = req.user.sub;
     return this.settingsService.findByUserId(userId);
   }
 
   @Get(':key')
-  async findOneByKey(@Req() req, @Param('key') key: string) {
+  async findOneByKey(@Req() req: Request, @Param('key') key: string) {
     const userId = req.user.sub;
     return this.settingsService.findOneByKey(userId, key);
   }
 
   @Put(':key')
   async update(
-    @Req() req,
+    @Req() req: Request,
     @Param('key') key: string,
     @Body() dto: UpdateSettingsDto,
   ) {
@@ -49,7 +50,7 @@ export class SettingsController {
   }
 
   @Delete(':key')
-  async delete(@Req() req, @Param('key') key: string) {
+  async delete(@Req() req: Request, @Param('key') key: string) {
     const userId = req.user.sub;
     await this.settingsService.delete(userId, key);
     return { message: 'Setting deleted' };

@@ -32,8 +32,9 @@ export class SavingPointController {
     if (!req.user) throw new NotFoundException('not authenticated');
     try {
       return await this.savingPointService.create(req.user.sub, dto);
-    } catch (e: any) {
-      throw new BadRequestException(e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      throw new BadRequestException(message);
     }
   }
 
@@ -84,8 +85,9 @@ export class SavingPointController {
         id,
         dto,
       );
-    } catch (e: any) {
-      throw new BadRequestException(e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      throw new BadRequestException(message);
     }
   }
 
@@ -102,8 +104,9 @@ export class SavingPointController {
         id,
         dto,
       );
-    } catch (e: any) {
-      throw new BadRequestException(e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      throw new BadRequestException(message);
     }
   }
 
@@ -116,8 +119,9 @@ export class SavingPointController {
     if (!req.user) throw new NotFoundException('not authenticated');
     try {
       return await this.savingPointService.payDebt(req.user.sub, id, dto);
-    } catch (e: any) {
-      throw new BadRequestException(e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      throw new BadRequestException(message);
     }
   }
 }

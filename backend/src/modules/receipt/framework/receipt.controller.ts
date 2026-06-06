@@ -62,7 +62,7 @@ export class ReceiptController {
 
   @Post('confirm')
   async confirmReceipt(@Req() req: Request, @Body() dto: ConfirmReceiptDto) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const result = await this.receiptService.confirmReceipt(userId, dto);
     return result;
   }

@@ -19,7 +19,9 @@ async function bootstrap() {
   if (frontendUrl) {
     try {
       allowedOrigins.add(new URL(frontendUrl).origin);
-    } catch {}
+    } catch {
+      /* ignore invalid FRONTEND_URL */
+    }
   }
   if (process.env.NODE_ENV !== 'production') {
     allowedOrigins.add('http://localhost:3000');
@@ -65,7 +67,7 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, documentFactory, {
     swaggerOptions: {
       persistAuthorization: true,
-      requestInterceptor: (request: any) => {
+      requestInterceptor: (request: Record<string, unknown>) => {
         request.credentials = 'include';
 
         if (typeof document !== 'undefined') {
@@ -75,8 +77,9 @@ async function bootstrap() {
             ?.split('=')[1];
 
           if (csrfToken) {
+            const headers = request.headers as Record<string, unknown>;
             request.headers = {
-              ...request.headers,
+              ...headers,
               'X-CSRF-Token': decodeURIComponent(csrfToken),
             };
           }
@@ -89,4 +92,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT || 3000);
 }
-bootstrap();
+void bootstrap();

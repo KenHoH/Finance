@@ -8,7 +8,7 @@ export class SavingProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job): Promise<any> {
+  async process(job: Job): Promise<void> {
     if (job.name === 'calculate') {
       const budgetId = job.data.budgetId;
       const userId = job.data.userId;

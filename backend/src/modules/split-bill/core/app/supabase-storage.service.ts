@@ -5,7 +5,7 @@ import sharp from 'sharp';
 
 @Injectable()
 export class SupabaseStorageService {
-  private supabase: SupabaseClient;
+  private supabase;
 
   constructor(private readonly configService: ConfigService) {
     this.supabase = createClient(

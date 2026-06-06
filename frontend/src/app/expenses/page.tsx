@@ -329,12 +329,20 @@ export default function ExpensesPage() {
                   <td className="px-7 py-5 whitespace-nowrap font-medium">{format(t.parsedDate, "dd MMM yyyy")}</td>
                   <td className="px-7 py-5 font-bold">{t.description || "-"}</td>
                   <td className="px-6 py-5">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 bg-accent text-foreground rounded-full text-sm font-bold border border-border">
+                    <span className="inline-flex items-center gap-2.5 px-4 py-2 bg-accent text-foreground rounded-full text-sm font-bold border border-border">
                       {(() => {
                         const LucideIcon = getLucideIcon(t.category?.icon);
-                        if(LucideIcon) return <LucideIcon className="w-5 h-5 text-primary" />;
+                        if(LucideIcon) return (
+                          <span className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
+                            <LucideIcon className="w-7 h-7 text-primary" />
+                          </span>
+                        );
                         const icon = getCategoryIcon(t.category?.name);
-                        if(icon) return <img src={icon} alt="" className="w-5 h-5 object-contain" />;
+                        if(icon) return (
+                          <span className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
+                            <img src={icon} alt="" className="w-7 h-7 object-contain" />
+                          </span>
+                        );
                         return null;
                       })()}
                       {t.category?.name || "Uncategorized"}

@@ -24,19 +24,19 @@ export class CategoryController {
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateCategoryDto) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     return this.categoryService.create(userId, dto);
   }
 
   @Get()
   async findAll(@Req() req: Request, @Query('type') type?: string) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     return this.categoryService.findAll(userId, type);
   }
 
   @Get(':id')
   async findOne(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const category = await this.categoryService.findOne(userId, id);
     if (!category) throw new NotFoundException('Category not found');
     return category;
@@ -48,7 +48,7 @@ export class CategoryController {
     @Param('id') id: string,
     @Body() dto: UpdateCategoryDto,
   ) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const category = await this.categoryService.update(userId, id, dto);
     if (!category) throw new NotFoundException('Category not found');
     return category;
@@ -56,7 +56,7 @@ export class CategoryController {
 
   @Delete(':id')
   async delete(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.sub;
+    const userId = req.user.sub;
     const category = await this.categoryService.delete(userId, id);
     if (!category) throw new NotFoundException('Category not found');
     return { message: 'Category deleted' };

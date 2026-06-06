@@ -140,12 +140,27 @@ export default function SplitBillDetailPage() {
 
   const deleteBillMutation = useMutation({
     mutationFn: () => api.delete(`/split-bills/${billId}`),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["split-bills", billId] });
+      await queryClient.cancelQueries({ queryKey: ["split-bills"] });
+      const previousBills = queryClient.getQueryData<SplitBill[]>(["split-bills"]);
+      queryClient.setQueryData<SplitBill[]>(["split-bills"], (old) =>
+        old ? old.filter((b) => b.id !== billId) : old
+      );
+      queryClient.removeQueries({ queryKey: ["split-bills", billId] });
+      return { previousBills };
+    },
+    onError: (err, _vars, context) => {
+      if (context?.previousBills) {
+        queryClient.setQueryData(["split-bills"], context.previousBills);
+      }
+      addToast(extractApiError(err, "Failed to delete split bill"), "error");
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["split-bills"] });
       addToast("Split bill deleted", "success");
       router.push("/split-bills");
     },
-    onError: (err) => addToast(extractApiError(err, "Failed to delete split bill"), "error"),
   });
 
   const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>, participantId: string) => {
@@ -212,7 +227,13 @@ export default function SplitBillDetailPage() {
   const isCreator = bill.creatorId === userId;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground relative">
+      {deleteBillMutation.isPending && (
+        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-sm font-bold text-foreground">Deleting split bill...</p>
+        </div>
+      )}
       <div className="max-w-2xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -297,8 +318,8 @@ export default function SplitBillDetailPage() {
                             <span className={cn("text-base font-bold", color.text)}>{p.name.slice(0,2).toUpperCase()}</span>
                           </div>
                         ) : (
-                          <div className={cn("w-10 h-10 rounded-full overflow-hidden shrink-0 flex items-center justify-center border", color.bg, color.border)}>
-                            <User className={cn("w-5 h-5", color.text)} />
+                          <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 flex items-center justify-center border bg-slate-700 border-slate-600">
+                            <User className="w-5 h-5 text-slate-400" />
                           </div>
                         );
                       })()}
