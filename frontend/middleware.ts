@@ -21,7 +21,8 @@ export function middleware(request: NextRequest) {
 
   // Page routes without auth token redirect to login
   if(!isPublic && !authToken){
-    return NextResponse.redirect(new URL('/login', request.url));
+    const origin = (process.env.FRONTEND_URL || request.nextUrl.origin).replace(/\/+$/, '');
+    return NextResponse.redirect(new URL('/login', origin));
   }
 
   return NextResponse.next();
