@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Tag, Plus, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Loader2, Search } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -34,6 +34,41 @@ export default function CategoriesPage(){
     queryKey: ["categories"],
     queryFn: () => get<Category[]>("/categories"),
   });
+
+  function CategoryIcon({ cat }: { cat: Category }){
+    const [imgLoading, setImgLoading] = useState(true);
+    const handleLoad = useCallback(() => setImgLoading(false), []);
+    const handleError = useCallback(() => setImgLoading(false), []);
+
+    const LucideIcon = getLucideIcon(cat.icon);
+    if(LucideIcon){
+      return (
+        <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-primary">
+          <LucideIcon className="w-7 h-7" />
+        </div>
+      );
+    }
+    const icon = getCategoryIcon(cat.name);
+    if(icon){
+      return (
+        <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center overflow-hidden relative">
+          {imgLoading && <Skeleton className="absolute inset-0 rounded-xl" />}
+          <img
+            src={icon}
+            alt=""
+            className={cn("w-11 h-11 object-contain transition-opacity duration-200", imgLoading ? "opacity-0" : "opacity-100")}
+            onLoad={handleLoad}
+            onError={handleError}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-muted-foreground font-bold text-sm">
+        {cat.name.slice(0, 2).toUpperCase()}
+      </div>
+    );
+  }
 
   const createMutation = useMutation({
     mutationFn: (dto: { name: string; type: "INCOME" | "EXPENSE"; icon?: string }) =>
@@ -179,29 +214,7 @@ export default function CategoriesPage(){
               className="group rounded-xl border border-border p-5 bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10 flex items-center justify-between"
             >
               <div className="flex items-center gap-4">
-                {(() => {
-                  const LucideIcon = getLucideIcon(cat.icon);
-                  if(LucideIcon){
-                    return (
-                      <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-primary">
-                        <LucideIcon className="w-7 h-7" />
-                      </div>
-                    );
-                  }
-                  const icon = getCategoryIcon(cat.name);
-                  if(icon){
-                    return (
-                      <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center overflow-hidden">
-                        <img src={icon} alt="" className="w-11 h-11 object-contain" />
-                      </div>
-                    );
-                  }
-                  return (
-                    <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-muted-foreground font-bold text-sm">
-                      {cat.name.slice(0, 2).toUpperCase()}
-                    </div>
-                  );
-                })()}
+                <CategoryIcon cat={cat} />
                 <div>
                   <p className="font-bold text-foreground">{cat.name}</p>
                   <p className="text-sm text-muted-foreground font-medium">Expense</p>
@@ -253,29 +266,7 @@ export default function CategoriesPage(){
               className="group rounded-xl border border-border p-5 bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-white/10 flex items-center justify-between"
             >
               <div className="flex items-center gap-4">
-                {(() => {
-                  const LucideIcon = getLucideIcon(cat.icon);
-                  if(LucideIcon){
-                    return (
-                      <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-primary">
-                        <LucideIcon className="w-7 h-7" />
-                      </div>
-                    );
-                  }
-                  const icon = getCategoryIcon(cat.name);
-                  if(icon){
-                    return (
-                      <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center overflow-hidden">
-                        <img src={icon} alt="" className="w-11 h-11 object-contain" />
-                      </div>
-                    );
-                  }
-                  return (
-                    <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-muted-foreground font-bold text-sm">
-                      {cat.name.slice(0, 2).toUpperCase()}
-                    </div>
-                  );
-                })()}
+                <CategoryIcon cat={cat} />
                 <div>
                   <p className="font-bold text-foreground">{cat.name}</p>
                   <p className="text-sm text-muted-foreground font-medium">Income</p>

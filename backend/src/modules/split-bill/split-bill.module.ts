@@ -6,6 +6,7 @@ import { SplitBillService } from './core/app/split-bill.service.js';
 import { SupabaseStorageService } from './core/app/supabase-storage.service.js';
 import { FriendModule } from '../friend/friend.module.js';
 import { NotificationModule } from '../notification/notification.module.js';
+import { TransactionModule } from '../transaction/transaction.module.js';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { NotificationModule } from '../notification/notification.module.js';
     }),
     FriendModule,
     NotificationModule,
+    TransactionModule,
   ],
   controllers: [SplitBillController],
   providers: [SplitBillService, SupabaseStorageService],

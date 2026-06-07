@@ -13,6 +13,7 @@ import { SupabaseStorageService } from './supabase-storage.service.js';
 import { FriendService } from '../../../friend/core/app/friend.service.js';
 import { NotificationService } from '../../../notification/core/app/notification.service.js';
 import { NotificationType } from '../../../notification/framework/dtos/create-notification.js';
+import { TransactionService } from '../../../transaction/core/app/transaction.service.js';
 import type { Express } from 'express';
 
 const splitBillInclude = {
@@ -46,6 +47,7 @@ export class SplitBillService {
     private readonly storageService: SupabaseStorageService,
     private readonly friendService: FriendService,
     private readonly notificationService: NotificationService,
+    private readonly transactionService: TransactionService,
   ) {}
 
   async create(creatorId: string, dto: CreateSplitBillDto) {
@@ -347,6 +349,8 @@ export class SplitBillService {
           participant.splitBill.description +
           '" has been confirmed.',
       );
+
+      await this.trackSplitBillExpense(updated.userId, participant);
     }
 
     return updated;
@@ -500,6 +504,10 @@ export class SplitBillService {
       );
     }
 
+    if (newStatus === 'CONFIRMED' && updated.userId) {
+      await this.trackSplitBillExpense(updated.userId, participant);
+    }
+
     await this.checkAndUpdateBillStatus(billId);
 
     return updated;
@@ -569,6 +577,38 @@ export class SplitBillService {
       file,
       'receipt-' + Date.now(),
     );
+  }
+
+  private async trackSplitBillExpense(
+    userId: string,
+    participant: { amountOwed: unknown; splitBill: { id: string; description: string }; userId?: string | null },
+  ) {
+    const existing = await this.prisma.transaction.findFirst({
+      where: {
+        userId,
+        source: 'SPLIT_BILL',
+        sourceId: participant.splitBill.id,
+      },
+    });
+    if(existing) return;
+
+    const category = await this.prisma.category.findFirst({
+      where: {
+        name: 'Bills & Utilities',
+        type: 'EXPENSE',
+        userId: null,
+      },
+    });
+
+    await this.transactionService.create(userId, {
+      amount: Number(participant.amountOwed),
+      type: 'EXPENSE',
+      description: `Split Bill: ${participant.splitBill.description}`,
+      date: new Date().toISOString(),
+      categoryId: category?.id,
+      source: 'SPLIT_BILL',
+      sourceId: participant.splitBill.id,
+    });
   }
 
 }

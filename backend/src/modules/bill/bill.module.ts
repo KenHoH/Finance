@@ -6,6 +6,7 @@ import { BillController } from './framework/bill.controller.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { ActivityLogModule } from '../activity-log/activity-log.module.js';
 import { NotificationModule } from '../notification/notification.module.js';
+import { TransactionModule } from '../transaction/transaction.module.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { NotificationModule } from '../notification/notification.module.js';
     }),
     ActivityLogModule,
     NotificationModule,
+    TransactionModule,
   ],
   controllers: [BillController],
   providers: [BillService],

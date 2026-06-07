@@ -7,6 +7,7 @@ import {
 } from '../../framework/dto/index.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 import { NotificationService } from '../../../notification/core/app/notification.service.js';
+import { TransactionService } from '../../../transaction/core/app/transaction.service.js';
 
 @Injectable()
 export class BillService {
@@ -14,6 +15,7 @@ export class BillService {
     private readonly prisma: PrismaService,
     private readonly activityLogService: ActivityLogService,
     private readonly notificationService: NotificationService,
+    private readonly transactionService: TransactionService,
   ) {}
 
   async create(userId: string, dto: CreateBillDto) {
@@ -139,7 +141,33 @@ export class BillService {
       amount: Number(paid.amount),
     });
 
+    await this.trackBillExpense(userId, paid);
+
     return paid;
+  }
+
+  private async trackBillExpense(
+    userId: string,
+    bill: { id: string; title: string; amount: unknown; categoryId: string | null; paidAt: Date | null },
+  ) {
+    const existing = await this.prisma.transaction.findFirst({
+      where: {
+        userId,
+        source: 'BILL',
+        sourceId: bill.id,
+      },
+    });
+    if(existing) return;
+
+    await this.transactionService.create(userId, {
+      amount: Number(bill.amount),
+      type: 'EXPENSE',
+      description: `Bill: ${bill.title}`,
+      date: (bill.paidAt ?? new Date()).toISOString(),
+      categoryId: bill.categoryId ?? undefined,
+      source: 'BILL',
+      sourceId: bill.id,
+    });
   }
 
   // Auto update overdue bills
