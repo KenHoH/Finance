@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowUpRight, CreditCard } from "lucide-react";
+import { X, ArrowUpRight, CreditCard, ArrowLeftRight, Target, Wallet } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useChatWidgetStore } from "@/store/useChatWidgetStore";
@@ -11,6 +11,9 @@ import { useChatWidgetStore } from "@/store/useChatWidgetStore";
 const QUICK_ACTIONS = [
   { label: "Income", href: "/income", icon: ArrowUpRight, color: "text-sky-400", bg: "bg-sky-500/10" },
   { label: "Expense", href: "/expenses", icon: CreditCard, color: "text-rose-400", bg: "bg-rose-500/10" },
+  { label: "Split Bill", href: "/split-bills", icon: ArrowLeftRight, color: "text-violet-400", bg: "bg-violet-500/10" },
+  { label: "Goals", href: "/goals", icon: Target, color: "text-amber-400", bg: "bg-amber-500/10" },
+  { label: "Budget", href: "/budgets", icon: Wallet, color: "text-emerald-400", bg: "bg-emerald-500/10" },
 ];
 
 export function QuickAddButton(){

@@ -27,7 +27,12 @@ function parseCookieValue(setCookieHeader: string): { name: string; value: strin
 
 export async function GET(request: NextRequest){
   log("===== OAUTH CALLBACK CALLED =====");
-  log("full url: " + request.nextUrl.origin);
+  log("full url: " + request.url);
+  log("nextUrl.origin: " + request.nextUrl.origin);
+  log("host header: " + (request.headers.get("host") || "(none)"));
+  log("x-forwarded-host: " + (request.headers.get("x-forwarded-host") || "(none)"));
+
+  const FRONTEND_URL = (process.env.FRONTEND_URL || request.nextUrl.origin).replace(/\/+$/, "");
 
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
@@ -38,7 +43,7 @@ export async function GET(request: NextRequest){
 
   if(!code){
     log("ERROR: missing code param");
-    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login", FRONTEND_URL));
   }
 
   const rawBackend = process.env.BACKEND_URL || "http://localhost:3001";
@@ -47,7 +52,7 @@ export async function GET(request: NextRequest){
 
   if(!backendUrl.startsWith("http")){
     log("ERROR: backend url invalid: " + backendUrl);
-    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login", FRONTEND_URL));
   }
 
   const callbackUrl = new URL("/auth/google/callback", backendUrl);
@@ -68,7 +73,7 @@ export async function GET(request: NextRequest){
   }catch(e){
     const msg = e instanceof Error ? e.message : String(e);
     log("ERROR: fetch failed: " + msg);
-    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login", FRONTEND_URL));
   }
 
   const status = backendRes.status;
@@ -77,7 +82,7 @@ export async function GET(request: NextRequest){
 
   if(status === 0){
     log("ERROR: fetch returned status 0 - possible CORS/network block");
-    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login", FRONTEND_URL));
   }
 
   if(status >= 300 && status < 400){
@@ -97,12 +102,13 @@ export async function GET(request: NextRequest){
     if(!cookies.has("token")){
       log("ERROR: backend 302 but NO token cookie found!");
       log("  cookies found: " + (Array.from(cookies.keys()).join(",") || "(none)"));
-      return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
+      return NextResponse.redirect(new URL("/login", FRONTEND_URL));
     }
 
     log("SUCCESS: token cookie found, redirecting to /dashboard");
+    log("FRONTEND_URL used: " + FRONTEND_URL);
 
-    const response = NextResponse.redirect(new URL("/dashboard", request.nextUrl.origin));
+    const response = NextResponse.redirect(new URL("/dashboard", FRONTEND_URL));
     response.cookies.set("token", cookies.get("token")!, {
       httpOnly: true, secure: false, sameSite: "lax", path: "/", maxAge: 7 * 24 * 60 * 60,
     });
@@ -118,11 +124,11 @@ export async function GET(request: NextRequest){
     let body = "";
     try{ body = await backendRes.text(); }catch{}
     log("ERROR: backend returned " + status + " body: " + body.substring(0, 300));
-    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login", FRONTEND_URL));
   }
 
   let body = "";
   try{ body = await backendRes.text(); }catch{}
   log("ERROR: unexpected status " + status + " body: " + body.substring(0, 300));
-  return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
+  return NextResponse.redirect(new URL("/login", FRONTEND_URL));
 }
