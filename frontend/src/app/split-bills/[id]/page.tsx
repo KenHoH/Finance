@@ -53,6 +53,7 @@ export default function SplitBillDetailPage() {
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [proofForParticipant, setProofForParticipant] = useState<string | null>(null);
   const proofFileInputRef = useRef<HTMLInputElement>(null);
+  const pendingProofIdRef = useRef<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [billToDelete, setBillToDelete] = useState<string | null>(null);
   const [confirmParticipantId, setConfirmParticipantId] = useState<string | null>(null);
@@ -169,7 +170,7 @@ export default function SplitBillDetailPage() {
     },
   });
 
-  const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>, participantId: string) => {
+  const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if(!f) return;
     const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
@@ -181,6 +182,8 @@ export default function SplitBillDetailPage() {
       addToast("File must be under 5MB", "error");
       return;
     }
+    const participantId = pendingProofIdRef.current;
+    if(!participantId) return;
     setProofFile(f);
     setProofPreview(URL.createObjectURL(f));
     setProofForParticipant(participantId);
@@ -338,6 +341,15 @@ export default function SplitBillDetailPage() {
             <p className="text-[10px] text-muted-foreground text-center">Tap image to view full size</p>
           </div>
         )}
+
+        {/* Shared hidden file input for proof upload */}
+        <input
+          ref={proofFileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleProofFileChange}
+        />
 
         {/* Participants */}
         <div>
@@ -505,19 +517,15 @@ export default function SplitBillDetailPage() {
                   {(canActAsParticipant || canManageAsCreator) && (
                     <div className="mt-3 ml-[52px]">
                       <div className="flex flex-wrap gap-2">
-                          <input
-                            ref={proofFileInputRef}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => handleProofFileChange(e, p.id)}
-                          />
                           <div className="flex w-full gap-2">
                             {/* Upload Proof - self when PENDING, creator when PENDING or PAID_PENDING_CONFIRMATION */}
                             {(canActAsParticipant || (isCreator && (p.status === "PENDING" || p.status === "PAID_PENDING_CONFIRMATION"))) && (
                               <button
                                 type="button"
-                                onClick={() => proofFileInputRef.current?.click()}
+                                onClick={() => {
+                                  pendingProofIdRef.current = p.id;
+                                  proofFileInputRef.current?.click();
+                                }}
                                 className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-accent hover:bg-accent/80 transition-colors text-foreground"
                               >
                                 <Upload className="w-3.5 h-3.5" /> Upload Proof
