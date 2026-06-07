@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = (process.env.BACKEND_URL || "https://footsore-uptake-autopilot.ngrok-free.dev").replace(/\/+$/, "");
+const BACKEND_URL = (process.env.BACKEND_URL || "http://localhost:3001").replace(/\/+$/, "");
 
 async function proxyRequest(request: NextRequest, params: Promise<{ path: string[] }>){
   const { path } = await params;

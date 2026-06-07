@@ -27,7 +27,7 @@ function parseCookieValue(setCookieHeader: string): { name: string; value: strin
 
 export async function GET(request: NextRequest){
   log("===== OAUTH CALLBACK CALLED =====");
-  log("full url: " + request.url);
+  log("full url: " + request.nextUrl.origin);
 
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
@@ -38,16 +38,16 @@ export async function GET(request: NextRequest){
 
   if(!code){
     log("ERROR: missing code param");
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
   }
 
-  const rawBackend = process.env.BACKEND_URL || "https://footsore-uptake-autopilot.ngrok-free.dev";
+  const rawBackend = process.env.BACKEND_URL || "http://localhost:3001";
   const backendUrl = rawBackend.replace(/\/+$/, "");
   log("backend url: " + backendUrl);
 
   if(!backendUrl.startsWith("http")){
     log("ERROR: backend url invalid: " + backendUrl);
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
   }
 
   const callbackUrl = new URL("/auth/google/callback", backendUrl);
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest){
   }catch(e){
     const msg = e instanceof Error ? e.message : String(e);
     log("ERROR: fetch failed: " + msg);
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
   }
 
   const status = backendRes.status;
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest){
 
   if(status === 0){
     log("ERROR: fetch returned status 0 - possible CORS/network block");
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
   }
 
   if(status >= 300 && status < 400){
@@ -97,12 +97,12 @@ export async function GET(request: NextRequest){
     if(!cookies.has("token")){
       log("ERROR: backend 302 but NO token cookie found!");
       log("  cookies found: " + (Array.from(cookies.keys()).join(",") || "(none)"));
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
     }
 
     log("SUCCESS: token cookie found, redirecting to /dashboard");
 
-    const response = NextResponse.redirect(new URL("/dashboard", request.url));
+    const response = NextResponse.redirect(new URL("/dashboard", request.nextUrl.origin));
     response.cookies.set("token", cookies.get("token")!, {
       httpOnly: true, secure: false, sameSite: "lax", path: "/", maxAge: 7 * 24 * 60 * 60,
     });
@@ -118,11 +118,11 @@ export async function GET(request: NextRequest){
     let body = "";
     try{ body = await backendRes.text(); }catch{}
     log("ERROR: backend returned " + status + " body: " + body.substring(0, 300));
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
   }
 
   let body = "";
   try{ body = await backendRes.text(); }catch{}
   log("ERROR: unexpected status " + status + " body: " + body.substring(0, 300));
-  return NextResponse.redirect(new URL("/login", request.url));
+  return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
 }

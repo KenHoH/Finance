@@ -27,6 +27,8 @@ async function bootstrap() {
     allowedOrigins.add('http://localhost:3000');
     allowedOrigins.add('http://localhost:3001');
   }
+  // Always allow the frontend container's internal Docker origin
+  allowedOrigins.add('http://next-app:3000');
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -90,6 +92,6 @@ async function bootstrap() {
     },
   });
 
-  await app.listen(process.env.PORT || 3000);
+  await app.listen(process.env.PORT || 3001, '0.0.0.0');
 }
 void bootstrap();
