@@ -5,15 +5,14 @@ import {
   IsDateString,
   IsOptional,
   IsString,
-  IsUUID,
 } from 'class-validator';
 
 export class CreateAllocationDto {
   @ApiProperty({
     description: 'Category ID to allocate to',
-    example: 'uuid-category',
+    example: 'investment-stocks',
   })
-  @IsUUID()
+  @IsString()
   categoryId: string;
 
   @ApiProperty({ description: 'Allocation amount', example: 1000 })

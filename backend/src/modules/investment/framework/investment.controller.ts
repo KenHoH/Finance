@@ -42,38 +42,6 @@ export class InvestmentController {
     return this.investmentService.findAllByUser(req.user.sub);
   }
 
-  @Get(':id')
-  async findOne(@Req() req: Request, @Param('id') id: string) {
-    if (!req.user) throw new NotFoundException('not authenticated');
-    const investment = await this.investmentService.findOne(req.user.sub, id);
-    if (!investment) throw new NotFoundException('Investment not found');
-    return investment;
-  }
-
-  @Put(':id')
-  async update(
-    @Req() req: Request,
-    @Param('id') id: string,
-    @Body() dto: UpdateInvestmentDto,
-  ) {
-    if (!req.user) throw new NotFoundException('not authenticated');
-    const investment = await this.investmentService.update(
-      req.user.sub,
-      id,
-      dto,
-    );
-    if (!investment) throw new NotFoundException('Investment not found');
-    return investment;
-  }
-
-  @Delete(':id')
-  async delete(@Req() req: Request, @Param('id') id: string) {
-    if (!req.user) throw new NotFoundException('not authenticated');
-    const investment = await this.investmentService.delete(req.user.sub, id);
-    if (!investment) throw new NotFoundException('Investment not found');
-    return { message: 'Investment deleted' };
-  }
-
   @Post('allocations')
   async createAllocation(
     @Req() req: Request,
@@ -104,5 +72,37 @@ export class InvestmentController {
       req.user.sub,
       categoryId,
     );
+  }
+
+  @Get(':id')
+  async findOne(@Req() req: Request, @Param('id') id: string) {
+    if (!req.user) throw new NotFoundException('not authenticated');
+    const investment = await this.investmentService.findOne(req.user.sub, id);
+    if (!investment) throw new NotFoundException('Investment not found');
+    return investment;
+  }
+
+  @Put(':id')
+  async update(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() dto: UpdateInvestmentDto,
+  ) {
+    if (!req.user) throw new NotFoundException('not authenticated');
+    const investment = await this.investmentService.update(
+      req.user.sub,
+      id,
+      dto,
+    );
+    if (!investment) throw new NotFoundException('Investment not found');
+    return investment;
+  }
+
+  @Delete(':id')
+  async delete(@Req() req: Request, @Param('id') id: string) {
+    if (!req.user) throw new NotFoundException('not authenticated');
+    const investment = await this.investmentService.delete(req.user.sub, id);
+    if (!investment) throw new NotFoundException('Investment not found');
+    return { message: 'Investment deleted' };
   }
 }
