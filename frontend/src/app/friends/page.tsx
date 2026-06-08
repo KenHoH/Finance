@@ -305,7 +305,7 @@ export default function FriendsPage(){
             );
           }) : (
             <EmptyState
-              image="/empty-friends.png"
+              image="/empty-friends.webp"
               title="No friends yet"
               description="Search for users by username or email to add them."
             />

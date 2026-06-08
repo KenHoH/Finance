@@ -76,7 +76,7 @@ export function DashboardOverview(){
       color: "text-primary",
       bgColor: "bg-primary/8",
       gradient: "from-sky-400/18 via-sky-400/10 to-transparent",
-      bgImage: "/card-bg-balance.png",
+      bgImage: "/card-bg-balance.webp",
     },
     {
       title: "Total Income",
@@ -86,7 +86,7 @@ export function DashboardOverview(){
       color: "text-emerald-400",
       bgColor: "bg-emerald-500/8",
       gradient: "from-emerald-500/18 via-emerald-500/10 to-transparent",
-      bgImage: "/card-bg-income.png",
+      bgImage: "/card-bg-income.webp",
     },
     {
       title: "Total Expenses",
@@ -96,7 +96,7 @@ export function DashboardOverview(){
       color: "text-rose-400",
       bgColor: "bg-rose-500/8",
       gradient: "from-rose-500/18 via-rose-500/10 to-transparent",
-      bgImage: "/card-bg-expense.png",
+      bgImage: "/card-bg-expense.webp",
     },
     {
       title: "Total Investments",
@@ -106,7 +106,7 @@ export function DashboardOverview(){
       color: "text-sky-300",
       bgColor: "bg-sky-500/8",
       gradient: "from-sky-400/18 via-sky-400/10 to-transparent",
-      bgImage: "/card-bg-invest.png",
+      bgImage: "/card-bg-invest.webp",
     },
     {
       title: "Active Budgets",
@@ -115,7 +115,7 @@ export function DashboardOverview(){
       color: "text-amber-400",
       bgColor: "bg-amber-500/8",
       gradient: "from-amber-500/18 via-amber-500/10 to-transparent",
-      bgImage: "/card-bg-budget.png",
+      bgImage: "/card-bg-budget.webp",
     },
     {
       title: "Active Goals",
@@ -124,7 +124,7 @@ export function DashboardOverview(){
       color: "text-violet-400",
       bgColor: "bg-violet-500/8",
       gradient: "from-violet-500/18 via-violet-500/10 to-transparent",
-      bgImage: "/card-bg-goal.png",
+      bgImage: "/card-bg-goal.webp",
     },
   ];
 
@@ -145,7 +145,7 @@ export function DashboardOverview(){
       animate="show"
       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 relative"
     >
-      <img src="/card-gradient.png" alt="" className="absolute -top-10 -right-10 w-80 h-80 object-cover opacity-[0.05] pointer-events-none rounded-full blur-3xl" />
+      <img src="/card-gradient.webp" alt="" className="absolute -top-10 -right-10 w-80 h-80 object-cover opacity-[0.05] pointer-events-none rounded-full blur-3xl" />
       {stats.map((stat, i) => (
         <motion.div
           key={i}

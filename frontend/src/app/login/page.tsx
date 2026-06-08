@@ -85,7 +85,7 @@ export default function LoginPage(){
             className="mt-6 rounded-2xl overflow-hidden border border-border shadow-lg max-h-[32vh] shrink-0"
           >
             <Image
-              src="/onboarding-hero.png"
+              src="/onboarding-hero.webp"
               alt="FinPro finance management illustration"
               width={560}
               height={360}
@@ -107,7 +107,7 @@ export default function LoginPage(){
           {/* Mobile-only logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
             <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-              <Image src="/logo.png" alt="" width={72} height={72} />
+              <Image src="/logo.webp" alt="" width={72} height={72} loading="eager" />
             </div>
             <span className="font-bold text-4xl tracking-tight text-foreground">FinPro</span>
           </div>

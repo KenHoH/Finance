@@ -19,11 +19,11 @@ import { optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOnError }
 
 function getInvestmentImage(name: string){
   const n = name.toLowerCase();
-  if(n.includes("stock")) return "/invest-stocks.png";
-  if(n.includes("crypto")) return "/invest-crypto.png";
-  if(n.includes("bond")) return "/invest-bonds.png";
-  if(n.includes("real estate") || n.includes("property") || n.includes("realestate")) return "/invest-realestate.png";
-  return "/invest-stocks.png";
+  if(n.includes("stock")) return "/invest-stocks.webp";
+  if(n.includes("crypto")) return "/invest-crypto.webp";
+  if(n.includes("bond")) return "/invest-bonds.webp";
+  if(n.includes("real estate") || n.includes("property") || n.includes("realestate")) return "/invest-realestate.webp";
+  return "/invest-stocks.webp";
 }
 
 export default function InvestmentsPage() {

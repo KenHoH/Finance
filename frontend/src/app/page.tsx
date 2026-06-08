@@ -183,7 +183,7 @@ export default function LandingPage() {
           className="relative z-10 hidden lg:flex items-center justify-center"
         >
           <img
-            src="/hero-illustration.png"
+            src="/hero-illustration.webp"
             alt=""
             className="w-full max-w-xl h-auto drop-shadow-2xl"
             width={512}
@@ -344,7 +344,7 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-2.5 font-bold text-foreground">
             <img
-              src="/logo.png"
+              src="/logo.webp"
               alt=""
               className="w-14 h-14 rounded-xl"
             />

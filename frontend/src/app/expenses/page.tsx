@@ -329,23 +329,15 @@ export default function ExpensesPage() {
                   <td className="px-7 py-5 whitespace-nowrap font-medium">{format(t.parsedDate, "dd MMM yyyy")}</td>
                   <td className="px-7 py-5 font-bold">{t.description || "-"}</td>
                   <td className="px-6 py-5">
-                    <span className="inline-flex items-center gap-2.5 px-4 py-2 bg-accent text-foreground rounded-full text-sm font-bold border border-border">
+                    <span className="inline-flex items-center justify-center gap-2 px-4 h-10 w-[160px] bg-accent text-foreground rounded-full text-sm font-bold border border-border">
                       {(() => {
                         const LucideIcon = getLucideIcon(t.category?.icon);
-                        if(LucideIcon) return (
-                          <span className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
-                            <LucideIcon className="w-7 h-7 text-primary" />
-                          </span>
-                        );
+                        if(LucideIcon) return <LucideIcon className="w-9 h-9 text-primary shrink-0" strokeWidth={2.5} />;
                         const icon = getCategoryIcon(t.category?.name);
-                        if(icon) return (
-                          <span className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
-                            <img src={icon} alt="" className="w-7 h-7 object-contain" />
-                          </span>
-                        );
+                        if(icon) return <img src={icon} alt="" className="w-9 h-9 object-contain shrink-0" />;
                         return null;
                       })()}
-                      {t.category?.name || "Uncategorized"}
+                      <span className="truncate">{t.category?.name || "Uncategorized"}</span>
                     </span>
                   </td>
                   <td className="px-7 py-5 text-muted-foreground font-medium capitalize">{t.source || "manual"}</td>

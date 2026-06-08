@@ -242,7 +242,7 @@ export default function CategoriesPage(){
           ))}
           {expenseCats.length === 0 && (
             <div className="col-span-full flex flex-col items-center p-8 border-2 border-dashed border-border rounded-xl text-center text-muted-foreground">
-              <img src="/empty-transactions.png" alt="" className="w-40 h-40 mb-3 opacity-70" />
+              <img src="/empty-transactions.webp" alt="" className="w-40 h-40 mb-3 opacity-70" />
               <p className="font-medium">
                 {searchQuery || activeTab !== "all" ? "No matching expense categories." : "No expense categories yet."}
               </p>
@@ -294,7 +294,7 @@ export default function CategoriesPage(){
           ))}
           {incomeCats.length === 0 && (
             <div className="col-span-full flex flex-col items-center p-8 border-2 border-dashed border-border rounded-xl text-center text-muted-foreground">
-              <img src="/empty-transactions.png" alt="" className="w-40 h-40 mb-3 opacity-70" />
+              <img src="/empty-transactions.webp" alt="" className="w-40 h-40 mb-3 opacity-70" />
               <p className="font-medium">
                 {searchQuery || activeTab !== "all" ? "No matching income categories." : "No income categories yet."}
               </p>

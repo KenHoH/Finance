@@ -116,7 +116,7 @@ export function ChatWidget() {
             <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 overflow-hidden">
-                  <Image src="/finbot.png" alt="FinBot" width={32} height={32} className="object-cover" />
+                  <Image src="/finbot.webp" alt="FinBot" width={32} height={32} className="object-cover" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold">FinBot</div>
@@ -173,7 +173,7 @@ export function ChatWidget() {
               {messages.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
                   <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-sky-950 ring-[3px] ring-sky-300 shadow-[0_0_20px_rgba(56,189,248,0.3)] overflow-hidden">
-                    <Image src="/finbot.png" alt="FinBot" width={64} height={64} className="object-cover" />
+                    <Image src="/finbot.webp" alt="FinBot" width={64} height={64} className="object-cover" />
                   </div>
                   <div className="text-sm font-medium">Ask me about your finances</div>
                   <div className="max-w-[240px] text-xs text-muted-foreground">

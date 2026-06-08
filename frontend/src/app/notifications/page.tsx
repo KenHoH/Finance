@@ -273,7 +273,7 @@ export default function NotificationsPage(){
 
         {!isLoading && filtered.length === 0 && (
           <EmptyState
-            image="/empty-notifications.png"
+            image="/empty-notifications.webp"
             title={filter === "unread" ? "No unread notifications" : "No notifications yet"}
             description="Notifications about bills, budgets, and goals will appear here."
           />

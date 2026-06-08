@@ -119,7 +119,7 @@ export function Dashboard(){
               <div className="p-4 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-12 rounded-lg skeleton-shimmer" />)}</div>
             ) : incomes.length === 0 ? (
               <div className="p-8 text-center">
-                <img src="/empty-transactions.png" alt="" className="w-52 h-52 mx-auto mb-3 opacity-60" />
+                <img src="/empty-transactions.webp" alt="" className="w-52 h-52 mx-auto mb-3 opacity-60" />
                 <p className="text-sm text-muted-foreground">No income transactions yet. <Link href="/income" className="text-primary font-semibold hover:underline">Add one</Link></p>
               </div>
             ) : (
@@ -162,7 +162,7 @@ export function Dashboard(){
               <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-14 rounded-lg skeleton-shimmer" />)}</div>
             ) : activeBudgets.length === 0 ? (
               <div className="text-center py-6">
-                <img src="/empty-budgets.png" alt="" className="w-52 h-52 mx-auto mb-2 opacity-70" />
+                <img src="/empty-budgets.webp" alt="" className="w-52 h-52 mx-auto mb-2 opacity-70" />
                 <p className="text-sm text-muted-foreground">No active budgets. <Link href="/budgets" className="text-primary font-semibold hover:underline">Create one</Link></p>
               </div>
             ) : (
@@ -217,7 +217,7 @@ export function Dashboard(){
               <div className="p-4 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-12 rounded-lg skeleton-shimmer" />)}</div>
             ) : expenses.length === 0 ? (
               <div className="p-8 text-center">
-                <img src="/empty-transactions.png" alt="" className="w-52 h-52 mx-auto mb-3 opacity-60" />
+                <img src="/empty-transactions.webp" alt="" className="w-52 h-52 mx-auto mb-3 opacity-60" />
                 <p className="text-sm text-muted-foreground">No expense transactions yet. <Link href="/expenses" className="text-primary font-semibold hover:underline">Add one</Link></p>
               </div>
             ) : (
@@ -260,7 +260,7 @@ export function Dashboard(){
               <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-14 rounded-lg skeleton-shimmer" />)}</div>
             ) : activeGoals.length === 0 ? (
               <div className="text-center py-6">
-                <img src="/empty-goals.png" alt="" className="w-52 h-52 mx-auto mb-2 opacity-70" />
+                <img src="/empty-goals.webp" alt="" className="w-52 h-52 mx-auto mb-2 opacity-70" />
                 <p className="text-sm text-muted-foreground">No active goals. <Link href="/goals" className="text-primary font-semibold hover:underline">Create one</Link></p>
               </div>
             ) : (

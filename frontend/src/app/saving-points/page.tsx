@@ -277,7 +277,7 @@ export default function SavingPointsPage(){
         ))}
         {points.length === 0 && (
           <EmptyState
-            image="/empty-savingpoints.png"
+            image="/empty-savingpoints.webp"
             title="No saving points yet"
             description="Saving points are auto-generated when your budget has leftover funds at the end of the period."
           />

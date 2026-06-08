@@ -35,7 +35,7 @@ export function QuickAddButton(){
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.8 }}
               transition={{ duration: 0.2 }}
-              className="flex flex-col items-end gap-2 mb-1"
+              className="flex flex-col items-end gap-2 mb-1 bg-card/95 backdrop-blur-xl border border-border rounded-2xl p-3 shadow-2xl"
             >
               {QUICK_ACTIONS.map((action, i) => (
                 <motion.div
@@ -76,7 +76,7 @@ export function QuickAddButton(){
                   className="w-10 h-10 rounded-full flex items-center justify-center border-2 border-sky-400 shadow-lg transition-transform hover:scale-110 bg-sky-500 overflow-hidden"
                   aria-label="Open chat"
                 >
-                  <Image src="/finbot.png" alt="FinBot" width={32} height={32} className="object-cover" />
+                  <Image src="/finbot.webp" alt="FinBot" width={32} height={32} className="object-cover" priority />
                 </button>
               </motion.div>
             </motion.div>
@@ -94,7 +94,7 @@ export function QuickAddButton(){
           {open ? (
             <X className="w-6 h-6" />
           ) : (
-            <Image src="/qa-icon.png" alt="" width={64} height={64} className="w-full h-full object-cover rounded-full" />
+            <Image src="/qa-icon.webp" alt="" width={64} height={64} className="w-full h-full object-cover rounded-full" priority />
           )}
         </motion.button>
       </div>

@@ -399,7 +399,7 @@ export default function BillsPage(){
         })}
         {bills.length === 0 && (
           <EmptyState
-            image="/empty-bills.png"
+            image="/empty-bills.webp"
             title="No bills yet"
             description="Create one to track payments."
           />

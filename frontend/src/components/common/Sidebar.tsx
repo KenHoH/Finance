@@ -93,7 +93,7 @@ export function Sidebar(){
             className="group relative flex items-center justify-center w-12 h-12 rounded-lg transition-colors"
             aria-label="Expand sidebar"
           >
-            <img src="/logo.png" alt="" className="w-12 h-12 rounded-lg shrink-0 group-hover:hidden" />
+            <img src="/logo.webp" alt="" className="w-12 h-12 rounded-lg shrink-0 group-hover:hidden" />
             <PanelLeft className="w-6 h-6 text-primary hidden group-hover:block" />
             <span className="absolute left-full ml-2 px-2 py-1 rounded-lg bg-slate-800 text-white text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-[60] shadow-lg border border-slate-700">
               Expand sidebar
@@ -101,7 +101,7 @@ export function Sidebar(){
           </button>
         ) : (
           <Link href="/dashboard" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
-            <img src="/logo.png" alt="" className="w-14 h-14 rounded-lg shrink-0" />
+            <img src="/logo.webp" alt="" className="w-14 h-14 rounded-lg shrink-0" />
             <span className="text-xl font-bold text-foreground tracking-tight">FinPro</span>
           </Link>
         )}
