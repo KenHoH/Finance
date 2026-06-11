@@ -2,6 +2,9 @@
 
 A full-stack personal finance web application that helps users track expenses, manage budgets, set savings goals, split bills with friends, and automatically capture transactions from email receipts and scanned receipts using AI.
 
+# Link website 
+https://footsore-uptake-autopilot.ngrok-free.dev/
+
 ## Table of Contents
 
 - [Architecture](#architecture)
