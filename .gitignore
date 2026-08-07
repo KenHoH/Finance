@@ -2,3 +2,7 @@
 docs
 count-loc.ps1
 *.md
+/.devenv
+/devenv.lock
+/devenv.nix
+/devenv.yaml
