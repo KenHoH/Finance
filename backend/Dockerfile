@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:24-alpine
 
 WORKDIR /usr/src/app
 
@@ -7,12 +7,9 @@ RUN npm install
 
 COPY . .
 
-RUN npx prisma generate
+RUN DATABASE_URL="postgresql://dummy:5432/db" npx prisma generate
 
 RUN npx nest build
 
-RUN rm -rf dist/generated && cp -r generated dist/generated
-
-RUN cp dist/generated/prisma/index.js dist/generated/prisma/client.js
-
 CMD ["node", "dist/src/main.js"]
+# CMD ["sleep", "infinity"]
