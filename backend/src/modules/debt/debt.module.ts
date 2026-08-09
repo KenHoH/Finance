@@ -15,6 +15,6 @@ import { JwtModule } from '@nestjs/jwt/dist/index.js';
   ],
   controllers: [DebtController],
   providers: [DebtService],
-  exports: [DebtService]
+  exports: [DebtService],
 })
 export class DebtModule {}

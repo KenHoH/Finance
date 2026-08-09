@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
-import { CreateGoalDto, UpdateGoalDto, ContributeGoalDto } from '../../framework/dto/index.js';
+import {
+  CreateGoalDto,
+  UpdateGoalDto,
+  ContributeGoalDto,
+} from '../../framework/dto/index.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
 
 @Injectable()
@@ -10,7 +14,7 @@ export class GoalService {
     private readonly activityLogService: ActivityLogService,
   ) {}
 
-  async create(userId: string, dto: CreateGoalDto){
+  async create(userId: string, dto: CreateGoalDto) {
     const goal = await this.prisma.goal.create({
       data: {
         userId,
@@ -20,33 +24,39 @@ export class GoalService {
       },
     });
 
-    await this.activityLogService.logActivity(userId, 'CREATE', 'Goal', goal.id, {name: goal.name, targetAmount: Number(goal.targetAmount)});
+    await this.activityLogService.logActivity(
+      userId,
+      'CREATE',
+      'Goal',
+      goal.id,
+      { name: goal.name, targetAmount: Number(goal.targetAmount) },
+    );
 
     return goal;
   }
 
-  async findAll(userId: string){
+  async findAll(userId: string) {
     return this.prisma.goal.findMany({
-      where: {userId},
-      orderBy: {createdAt: 'desc'},
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(userId: string, id: string){
+  async findOne(userId: string, id: string) {
     return this.prisma.goal.findFirst({
-      where: {id, userId},
+      where: { id, userId },
     });
   }
 
-  async update(userId: string, id: string, dto: UpdateGoalDto){
+  async update(userId: string, id: string, dto: UpdateGoalDto) {
     const goal = await this.prisma.goal.findFirst({
-      where: {id, userId},
+      where: { id, userId },
     });
 
-    if(!goal) return null;
+    if (!goal) return null;
 
     const updated = await this.prisma.goal.update({
-      where: {id},
+      where: { id },
       data: {
         name: dto.name,
         targetAmount: dto.targetAmount,
@@ -56,45 +66,48 @@ export class GoalService {
       },
     });
 
-    await this.activityLogService.logActivity(userId, 'UPDATE', 'Goal', id, {name: updated.name, targetAmount: Number(updated.targetAmount)});
+    await this.activityLogService.logActivity(userId, 'UPDATE', 'Goal', id, {
+      name: updated.name,
+      targetAmount: Number(updated.targetAmount),
+    });
 
     return updated;
   }
 
   async delete(userId: string, id: string) {
     const goal = await this.prisma.goal.findFirst({
-      where: {id, userId},
+      where: { id, userId },
     });
 
-    if(!goal) return null;
+    if (!goal) return null;
 
     await this.activityLogService.logActivity(userId, 'DELETE', 'Goal', id);
 
     return this.prisma.goal.delete({
-      where: {id},
+      where: { id },
     });
   }
 
-  async contribute(userId: string, id: string, dto: ContributeGoalDto){
+  async contribute(userId: string, id: string, dto: ContributeGoalDto) {
     const goal = await this.prisma.goal.findFirst({
-      where: {id, userId},
+      where: { id, userId },
     });
 
-    if(!goal) return null;
+    if (!goal) return null;
 
     // Kalau pakai SavingPoint, cek balance dan kurangi
-    if(dto.savingPointId){
+    if (dto.savingPointId) {
       const savingPoint = await this.prisma.savingPoint.findFirst({
-        where: {id: dto.savingPointId, budget: {userId}},
+        where: { id: dto.savingPointId, budget: { userId } },
       });
-      if(!savingPoint) throw new Error('SavingPoint not found');
-      if(Number(savingPoint.savingAmount) < dto.amount){
+      if (!savingPoint) throw new Error('SavingPoint not found');
+      if (Number(savingPoint.savingAmount) < dto.amount) {
         throw new Error('Insufficient saving balance');
       }
 
       await this.prisma.savingPoint.update({
-        where: {id: dto.savingPointId},
-        data: {savingAmount: {decrement: dto.amount}},
+        where: { id: dto.savingPointId },
+        data: { savingAmount: { decrement: dto.amount } },
       });
     }
 
@@ -104,7 +117,7 @@ export class GoalService {
 
     // Update goal
     await this.prisma.goal.update({
-      where: {id},
+      where: { id },
       data: {
         currentAmount: newAmount,
         status: isAchieved ? 'ACHIEVED' : goal.status,
@@ -122,10 +135,16 @@ export class GoalService {
       },
     });
 
-    await this.activityLogService.logActivity(userId, 'CONTRIBUTE', 'Goal', id, {amount: dto.amount, note: dto.note});
+    await this.activityLogService.logActivity(
+      userId,
+      'CONTRIBUTE',
+      'Goal',
+      id,
+      { amount: dto.amount, note: dto.note },
+    );
 
     return this.prisma.goal.findUnique({
-      where: {id},
+      where: { id },
     });
   }
 }

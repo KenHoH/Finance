@@ -96,6 +96,15 @@ export interface Friend {
   createdAt: string;
 }
 
+export interface SplitBillItem {
+  id: string;
+  item: string;
+  quantity: number;
+  price: number;
+  assignedTo: string[];
+  createdAt: string;
+}
+
 export interface SplitBill {
   id: string;
   creatorId: string;
@@ -103,15 +112,24 @@ export interface SplitBill {
   totalAmount: number;
   date: string;
   status: "PENDING" | "PARTIALLY_PAID" | "SETTLED";
-  participants: Participant[];
+  receiptImageUrl?: string;
+  items?: SplitBillItem[];
+  participants: SplitParticipant[];
+  creator?: User;
   createdAt: string;
 }
 
-export interface Participant {
+export interface SplitParticipant {
   id: string;
+  userId?: string;
   name: string;
-  amount: number;
-  status: "PENDING" | "PAID";
+  amountOwed: number;
+  status: "PENDING" | "PAID_PENDING_CONFIRMATION" | "CONFIRMED";
+  paidAt?: string;
+  paymentProofUrl?: string;
+  rejectionReason?: string;
+  notes?: string;
+  user?: User;
 }
 
 export interface SavingPoint {

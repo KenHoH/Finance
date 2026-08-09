@@ -3,8 +3,9 @@ import { IsNumber, IsOptional, Min, IsUUID } from 'class-validator';
 
 export class UpdateDebtDto {
   @ApiPropertyOptional({
-    description: 'The updated total debt amount for the associated budget. This represents the amount spent over the budget limit.',
-    example: 125.50,
+    description:
+      'The updated total debt amount for the associated budget. This represents the amount spent over the budget limit.',
+    example: 125.5,
   })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -12,7 +13,8 @@ export class UpdateDebtDto {
   debtAmount?: number;
 
   @ApiPropertyOptional({
-    description: 'The unique UUID version 4 identifier of the budget. Typically only included if business logic permits reassigning a debt point to a different budget.',
+    description:
+      'The unique UUID version 4 identifier of the budget. Typically only included if business logic permits reassigning a debt point to a different budget.',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @IsOptional()

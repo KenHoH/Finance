@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PubsubService } from './pubsub.service';
+import { PubsubService } from './pubsub.service.js';
 
 describe('PubsubService', () => {
   let service: PubsubService;

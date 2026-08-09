@@ -196,7 +196,7 @@ export default function InvestmentDetailPage(){
           <div className="p-6 overflow-y-auto flex-1">
             {allocations.length === 0 ? (
               <div className="text-center py-6">
-                <img src="/empty-investment.png" alt="" className="w-40 h-40 mx-auto mb-2 opacity-70" />
+                <img src="/empty-investment.webp" alt="" className="w-40 h-40 mx-auto mb-2 opacity-70" />
                 <p className="text-sm text-muted-foreground">No allocations yet.</p>
               </div>
             ) : (

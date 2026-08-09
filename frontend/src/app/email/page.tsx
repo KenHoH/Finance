@@ -111,7 +111,7 @@ export default function EmailPage(){
           ))}
           {created.length === 0 && (
             <div className="text-center py-10 text-muted-foreground text-sm border border-dashed border-border rounded-xl">
-              <img src="/empty-mail.png" alt="" className="w-40 h-40 mx-auto mb-2 opacity-70" />
+              <img src="/empty-mail.webp" alt="" className="w-40 h-40 mx-auto mb-2 opacity-70" />
               <p className="font-medium">No new transactions from email</p>
               <p className="text-sm mt-1">Click Sync Now to scan your Gmail inbox</p>
             </div>

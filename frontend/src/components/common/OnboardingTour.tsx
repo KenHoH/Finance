@@ -80,7 +80,7 @@ const STEPS: TourStep[] = [
   {
     target: "[data-tour='quick-add']",
     title: "Quick Add",
-    description: "This floating button lets you quickly add Income, Expenses, Bills, Goals, or Debts from anywhere.",
+    description: "This floating button lets you quickly access income, expense, and chat from anywhere.",
     position: "left",
   },
 ];

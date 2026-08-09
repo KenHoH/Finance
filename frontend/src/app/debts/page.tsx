@@ -160,7 +160,7 @@ export default function DebtsPage() {
         ))}
         {debts.length === 0 && (
           <EmptyState
-            image="/empty-debts.png"
+            image="/empty-debts.webp"
             title="No overspent budgets"
             description="You are on track! Debt points will appear here when budgets are exceeded."
           />

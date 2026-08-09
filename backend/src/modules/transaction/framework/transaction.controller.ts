@@ -1,6 +1,16 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, UseGuards, UseInterceptors, UploadedFile, NotFoundException } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { TransactionService } from '../core/app/transaction.service.js';
 import { CreateTransactionDto } from './dtos/create-transaction.dto.js';
@@ -10,43 +20,47 @@ import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)
-export class TransactionController{
-  constructor(
-    private readonly transactionService: TransactionService,  ) {}
+export class TransactionController {
+  constructor(private readonly transactionService: TransactionService) {}
 
   @Post()
-  async create(@Req() req: Request, @Body() dto: CreateTransactionDto){
-    const userId = (req as any).user.sub;
-    const transaction = await this.transactionService.create(userId, dto);    return transaction;
+  async create(@Req() req: Request, @Body() dto: CreateTransactionDto) {
+    const userId = req.user.sub;
+    const transaction = await this.transactionService.create(userId, dto);
+    return transaction;
   }
 
   @Get()
-  async findAll(@Req() req: Request, @Query() filters: FilterTransactionDto){
-    const userId = (req as any).user.sub;
+  async findAll(@Req() req: Request, @Query() filters: FilterTransactionDto) {
+    const userId = req.user.sub;
     return this.transactionService.findAll(userId, filters);
   }
 
   @Get(':id')
-  async findOne(@Req() req: Request, @Param('id') id: string){
-    const userId = (req as any).user.sub;
+  async findOne(@Req() req: Request, @Param('id') id: string) {
+    const userId = req.user.sub;
     const transaction = await this.transactionService.findOne(userId, id);
     if (!transaction) throw new NotFoundException('Transaction not found');
     return transaction;
   }
 
   @Put(':id')
-  async update(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateTransactionDto){
-    const userId = (req as any).user.sub;
+  async update(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() dto: UpdateTransactionDto,
+  ) {
+    const userId = req.user.sub;
     const transaction = await this.transactionService.update(userId, id, dto);
-    if(!transaction) throw new NotFoundException('Transaction not found');    return transaction;
+    if (!transaction) throw new NotFoundException('Transaction not found');
+    return transaction;
   }
 
   @Delete(':id')
-  async delete(@Req() req: Request, @Param('id') id: string){
-    const userId = (req as any).user.sub;
+  async delete(@Req() req: Request, @Param('id') id: string) {
+    const userId = req.user.sub;
     const transaction = await this.transactionService.delete(userId, id);
-    if(!transaction) throw new NotFoundException('Transaction not found');    return {message: 'Transaction deleted'};
+    if (!transaction) throw new NotFoundException('Transaction not found');
+    return { message: 'Transaction deleted' };
   }
 }
-
-

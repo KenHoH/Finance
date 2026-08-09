@@ -18,7 +18,7 @@ import { ActivityLogModule } from '../activity-log/activity-log.module.js';
       inject: [ConfigService],
     }),
     BudgetModule,
-    ActivityLogModule
+    ActivityLogModule,
   ],
   controllers: [TransactionController],
   providers: [TransactionService],

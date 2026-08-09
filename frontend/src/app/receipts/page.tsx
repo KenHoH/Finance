@@ -145,7 +145,7 @@ export default function ReceiptsPage(){
           className="border-2 border-dashed border-border rounded-xl p-10 text-center cursor-pointer hover:border-primary/50 transition-colors bg-card"
           onClick={() => fileInputRef.current?.click()}
         >
-          <img src="/scan-receipt-hero.png" alt="" className="w-28 h-28 mx-auto mb-3 object-contain opacity-80" />
+          <img src="/scan-receipt-hero.webp" alt="" className="w-28 h-28 mx-auto mb-3 object-contain opacity-80" />
           <p className="text-sm font-medium text-foreground mb-1">Click to upload receipt</p>
           <p className="text-sm text-muted-foreground">PNG, JPEG, WebP up to 5MB</p>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
@@ -188,7 +188,7 @@ export default function ReceiptsPage(){
       {/* No items found after scan */}
       {file && items.length === 0 && !isScanning && scanAttempted && (
         <EmptyState
-          image="/empty-receipts.png"
+          image="/empty-receipts.webp"
           title="No receipt data found"
           description="Try uploading a clearer image of the receipt."
         />

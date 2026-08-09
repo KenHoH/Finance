@@ -17,7 +17,6 @@ import {
   Smartphone,
   Wifi,
   Scissors,
-  Shirt,
   Baby,
   Dumbbell,
   Landmark,

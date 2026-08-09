@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { ModalProps } from "@/lib/types";
 
 function trapFocus(node: HTMLElement, event: KeyboardEvent){
@@ -33,8 +34,10 @@ export function Modal({
   description,
   children,
   isSuccess = false,
-  successMessage = "Success!"
-}: ModalProps){
+  successMessage = "Success!",
+  zIndex = 40,
+  backdropClassName = "bg-black/60 backdrop-blur-sm"
+}: ModalProps & { zIndex?: number; backdropClassName?: string } ){
   const contentRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -80,8 +83,8 @@ export function Modal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            className={cn("fixed inset-0 z-40", backdropClassName)}
+            style={{ zIndex }}
           />
           <motion.div
             ref={contentRef}
@@ -91,7 +94,8 @@ export function Modal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md bg-card border border-border rounded-xl shadow-2xl z-50 p-6 outline-none focus:ring-1 focus:ring-primary max-h-[85vh] overflow-y-auto"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md bg-card border border-border rounded-xl shadow-2xl z-50 p-6 outline-none focus:ring-1 focus:ring-primary max-h-[85vh] overflow-y-auto font-sans"
+            style={{ zIndex: zIndex + 10 }}
             tabIndex={-1}
           >
             <AnimatePresence mode="wait">

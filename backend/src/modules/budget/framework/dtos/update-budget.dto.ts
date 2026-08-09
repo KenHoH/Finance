@@ -4,7 +4,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 export class UpdateBudgetDto {
   @ApiPropertyOptional({
     description: 'The allocated monetary amount for this budget',
-    example: 500.00,
+    example: 500.0,
   })
   @IsOptional()
   @IsNumber()

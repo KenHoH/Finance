@@ -22,20 +22,20 @@ export const metadata: Metadata = {
   description: "Track your income, expenses, budgets, goals, investments, debts, and split bills all in one beautifully simple dashboard.",
   icons: {
     icon: [
-      { url: "/logo.png", type: "image/png", sizes: "any" },
+      { url: "/logo.webp", type: "image/webp", sizes: "any" },
     ],
-    apple: "/logo.png",
+    apple: "/logo.webp",
   },
   manifest: "/manifest.json",
   openGraph: {
     title: "FinPro - Finance Dashboard",
     description: "Track your income, expenses, budgets, goals, investments, debts, and split bills all in one beautifully simple dashboard.",
-    images: ["/og-image.png"],
+    images: ["/og-image.webp"],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    images: ["/og-image.png"],
+    images: ["/og-image.webp"],
   },
 };
 
@@ -46,6 +46,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preload" href="/logo.webp" as="image" type="image/webp" />
+        <link rel="preload" href="/qa-icon.webp" as="image" type="image/webp" />
+        <link rel="preload" href="/finbot.webp" as="image" type="image/webp" />
+        <link rel="preload" href="/hero-illustration.webp" as="image" type="image/webp" />
+      </head>
       <body
         className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} antialiased bg-background text-foreground min-h-screen`}
       >

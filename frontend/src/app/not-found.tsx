@@ -19,7 +19,7 @@ export default function NotFound(){
       >
         <div className="mb-6">
           <img
-            src="/empty-404.png"
+            src="/empty-404.webp"
             alt=""
             className="w-56 h-56 mx-auto opacity-90"
           />

@@ -1,13 +1,29 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Req,
+  UseGuards,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { InvestmentService } from '../core/app/investment.service.js';
-import { CreateInvestmentDto, UpdateInvestmentDto, CreateAllocationDto } from './dto/index.js';
+import {
+  CreateInvestmentDto,
+  UpdateInvestmentDto,
+  CreateAllocationDto,
+} from './dto/index.js';
 import { JwtAuthGuard } from '../../auth/core/app/jwt-auth-guard.js';
 
 @Controller('investments')
 @UseGuards(JwtAuthGuard)
 export class InvestmentController {
-  constructor(private readonly investmentService: InvestmentService) { }
+  constructor(private readonly investmentService: InvestmentService) {}
 
   @Post()
   async create(@Req() req: Request, @Body() dto: CreateInvestmentDto) {
@@ -26,7 +42,10 @@ export class InvestmentController {
   }
 
   @Post('allocations')
-  async createAllocation(@Req() req: Request, @Body() dto: CreateAllocationDto) {
+  async createAllocation(
+    @Req() req: Request,
+    @Body() dto: CreateAllocationDto,
+  ) {
     if (!req.user) throw new NotFoundException('not authenticated');
     try {
       return await this.investmentService.createAllocation(req.user.sub, dto);
@@ -42,9 +61,15 @@ export class InvestmentController {
   }
 
   @Get('allocations/category/:categoryId')
-  async getAllocationsByCategory(@Req() req: Request, @Param('categoryId') categoryId: string) {
+  async getAllocationsByCategory(
+    @Req() req: Request,
+    @Param('categoryId') categoryId: string,
+  ) {
     if (!req.user) throw new NotFoundException('not authenticated');
-    return this.investmentService.getAllocationsByCategory(req.user.sub, categoryId);
+    return this.investmentService.getAllocationsByCategory(
+      req.user.sub,
+      categoryId,
+    );
   }
 
   @Get(':id')
@@ -56,9 +81,17 @@ export class InvestmentController {
   }
 
   @Put(':id')
-  async update(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateInvestmentDto) {
+  async update(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() dto: UpdateInvestmentDto,
+  ) {
     if (!req.user) throw new NotFoundException('not authenticated');
-    const investment = await this.investmentService.update(req.user.sub, id, dto);
+    const investment = await this.investmentService.update(
+      req.user.sub,
+      id,
+      dto,
+    );
     if (!investment) throw new NotFoundException('Investment not found');
     return investment;
   }
@@ -71,4 +104,3 @@ export class InvestmentController {
     return { message: 'Investment deleted' };
   }
 }
-

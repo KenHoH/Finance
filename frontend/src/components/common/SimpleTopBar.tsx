@@ -24,7 +24,7 @@ export function SimpleTopBar(){
   return (
     <nav className="fixed top-0 inset-x-0 z-50 h-16 flex items-center justify-between px-6 bg-card/80 backdrop-blur-md border-b border-border">
       <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-        <Image src="/logo.png" alt="" width={64} height={64} className="rounded-lg" />
+        <Image src="/logo.webp" alt="" width={64} height={64} className="rounded-lg" loading="eager" />
         <span className="text-xl font-bold tracking-tight text-foreground">FinPro</span>
       </Link>
 

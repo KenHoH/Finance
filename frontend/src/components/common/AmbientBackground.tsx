@@ -7,17 +7,17 @@ export function AmbientBackground(){
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
       <div className="absolute inset-0 bg-background" />
       <img
-        src="/blob-emerald.png"
+        src="/blob-emerald.webp"
         alt=""
         className="absolute top-[-15%] left-[-15%] w-[55vw] h-[55vw] opacity-[0.12] blur-[80px]"
       />
       <img
-        src="/blob-blue.png"
+        src="/blob-blue.webp"
         alt=""
         className="absolute bottom-[-15%] right-[-15%] w-[45vw] h-[45vw] opacity-[0.10] blur-[80px]"
       />
       <img
-        src="/blob-voilet.png"
+        src="/blob-voilet.webp"
         alt=""
         className="absolute top-[45%] left-[55%] w-[35vw] h-[35vw] opacity-[0.08] blur-[60px]"
       />

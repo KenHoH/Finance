@@ -22,6 +22,17 @@ const defaultCategories = [
   { name: 'Other Expense', type: 'EXPENSE' as const, icon: 'minus-circle' },
 ];
 
+const defaultInvestmentCategories = [
+  { name: 'Stocks', icon: 'trending-up' },
+  { name: 'Mutual Funds', icon: 'pie-chart' },
+  { name: 'Bonds', icon: 'shield' },
+  { name: 'Cryptocurrency', icon: 'bitcoin' },
+  { name: 'Gold', icon: 'award' },
+  { name: 'Real Estate', icon: 'home' },
+  { name: 'ETF', icon: 'bar-chart-2' },
+  { name: 'Other Investment', icon: 'briefcase' },
+];
+
 async function main(){
   console.log('Seeding default categories...');
 
@@ -41,7 +52,27 @@ async function main(){
     });
   }
 
+  seedInvestmentCategories();
+
   console.log(`Seeded ${defaultCategories.length} default categories`);
+}
+
+async function seedInvestmentCategories() {
+  for (const cat of defaultInvestmentCategories) {
+    await prisma.category.upsert({
+      where: {
+        id: `investment-${cat.name.toLowerCase().replace(/\s+/g, '-')}`,
+      },
+      update: {},
+      create: {
+        id: `investment-${cat.name.toLowerCase().replace(/\s+/g, '-')}`,
+        name: cat.name,
+        type: 'INVESTMENT',
+        icon: cat.icon,
+        userId: null,
+      },
+    });
+  }
 }
 
 main()
@@ -50,5 +81,5 @@ main()
     process.exit(1);
   })
   .finally(async() => {
-    await prisma.$disconnect();
+    // await prisma.$disconnect();
   });

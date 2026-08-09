@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/', '/api/auth/google', '/api/auth/csrf'];
+const PUBLIC_PATHS = ['/login', '/', '/api/auth/google', '/api/auth/csrf', '/api/email'];
 const PROTECTED_API_PREFIX = '/api/';
 
 export function middleware(request: NextRequest) {
@@ -21,7 +21,8 @@ export function middleware(request: NextRequest) {
 
   // Page routes without auth token redirect to login
   if(!isPublic && !authToken){
-    return NextResponse.redirect(new URL('/login', request.url));
+    const origin = (process.env.FRONTEND_URL || request.nextUrl.origin).replace(/\/+$/, '');
+    return NextResponse.redirect(new URL('/login', origin));
   }
 
   return NextResponse.next();

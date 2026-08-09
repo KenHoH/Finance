@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PubsubController } from './pubsub.controller';
+import { PubsubController } from './pubsub.controller.js';
 
 describe('PubsubController', () => {
   let controller: PubsubController;

@@ -3,7 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './modules/auth/auth.module.js';
-import { AppService } from './app.service.js'
+import { AppService } from './app.service.js';
 import { AppController } from './app.controller.js';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './modules/prisma/prisma.module.js';
@@ -60,7 +60,7 @@ import { ChatModule } from './modules/chat/chat.module.js';
   ],
 })
 export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer){
+  configure(consumer: MiddlewareConsumer) {
     consumer.apply(LoggingMiddleware).forRoutes('*');
   }
 }
