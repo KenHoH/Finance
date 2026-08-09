@@ -1,23 +1,18 @@
 FROM node:20
 
-# Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json
 COPY package*.json ./
 RUN npm install
 
-COPY prisma ./prisma/
+COPY . .
 
 RUN npx prisma generate
 
-# Copy the rest of the application code
-COPY . .
-
-# Build the application
 RUN npx nest build
 
 RUN rm -rf dist/generated && cp -r generated dist/generated
 
-# Run the application
+RUN cp dist/generated/prisma/index.js dist/generated/prisma/client.js
+
 CMD ["node", "dist/src/main.js"]
