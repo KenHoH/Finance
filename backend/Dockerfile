@@ -12,6 +12,9 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
+# Generate Prisma client after schema is available
+RUN DATABASE_URL="postgresql://localhost:5432/postgres" npx prisma generate
+
 # Build the application
 RUN npx nest build
 
