@@ -2,7 +2,7 @@ name: Build and Deploy Backend Dev
 
 on:
   push:
-    branches: ['ken/dev']
+    branches: ["ken/dev"]
 
 jobs:
   build:
@@ -21,9 +21,11 @@ jobs:
       - name: Build and push to dockerhub
         uses: docker/build-push-action@v5
         with:
+          context: .
+          file: ./backend/Dockerfile
           push: true
           tags: kenhoh/backend-dev:latest
-          
+
   deploy:
     needs: build
     name: Deploy image on OCI compute instance
