@@ -12,6 +12,7 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
+RUN npx prisma generate
 # Build the application
 RUN npx nest build
 
