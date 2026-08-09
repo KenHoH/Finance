@@ -5,11 +5,9 @@ WORKDIR /usr/src/app
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
+RUN npm install
 
 COPY prisma ./prisma/
-
-# Install dependencies
-RUN npm install
 
 RUN npx prisma generate
 
@@ -18,6 +16,8 @@ COPY . .
 
 # Build the application
 RUN npx nest build
+
+RUN rm -rf dist/generated && cp -r generated dist/generated
 
 # Run the application
 CMD ["node", "dist/src/main.js"]
