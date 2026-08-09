@@ -6,15 +6,16 @@ WORKDIR /usr/src/app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-RUN npx prisma generate
+COPY prisma ./prisma/
 
 # Install dependencies
 RUN npm install
 
+RUN npx prisma generate
+
 # Copy the rest of the application code
 COPY . .
 
-# RUN npx prisma generate
 # Build the application
 RUN npx nest build
 
