@@ -2,74 +2,86 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
 let csrfToken = "";
 
+const BACKEND_URL = (
+  process.env.BACKEND_URL || "http://localhost:3001"
+).replace(/\/+$/, "");
+
 export const api = axios.create({
-  baseURL: "/api",
+  baseURL: `/api`,
   withCredentials: true,
 });
 
-function readCsrfFromCookie(): string{
+function readCsrfFromCookie(): string {
   const match = document.cookie.match(/csrf-token=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : "";
 }
 
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    if(config.method && config.method.toLowerCase() !== "get"){
+    if (config.method && config.method.toLowerCase() !== "get") {
       const fromCookie = readCsrfFromCookie();
-      if(fromCookie && fromCookie !== csrfToken){
+      if (fromCookie && fromCookie !== csrfToken) {
         csrfToken = fromCookie;
-      } else if(!fromCookie && csrfToken){
+      } else if (!fromCookie && csrfToken) {
         // Cookie expired or was cleared; stale memory value must be discarded
         csrfToken = "";
       }
-      if(!csrfToken && config.url !== "/auth/csrf"){
-        try{
+      if (!csrfToken && config.url !== "/auth/csrf") {
+        try {
           await fetchCsrfToken();
-        } catch{
+        } catch {
           // silent fail
         }
       }
-      if(csrfToken){
+      if (csrfToken) {
         config.headers.set("X-CSRF-Token", csrfToken);
       }
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 api.interceptors.response.use(
   (response) => response,
-  async(error: AxiosError) => {
+  async (error: AxiosError) => {
     const status = error.response?.status;
-    const originalConfig = error.config as InternalAxiosRequestConfig & { _csrfRetry?: boolean; _logoutFired?: boolean };
+    const originalConfig = error.config as InternalAxiosRequestConfig & {
+      _csrfRetry?: boolean;
+      _logoutFired?: boolean;
+    };
 
-    if((status === 401 || status === 403) && !originalConfig._csrfRetry){
+    if ((status === 401 || status === 403) && !originalConfig._csrfRetry) {
       csrfToken = "";
       const fromCookie = readCsrfFromCookie();
-      if(fromCookie) csrfToken = fromCookie;
+      if (fromCookie) csrfToken = fromCookie;
 
-      if(!csrfToken && originalConfig.url !== "/auth/csrf"){
-        try{
+      if (!csrfToken && originalConfig.url !== "/auth/csrf") {
+        try {
           await fetchCsrfToken();
           const afterFetch = readCsrfFromCookie();
-          if(afterFetch) csrfToken = afterFetch;
-        } catch{
+          if (afterFetch) csrfToken = afterFetch;
+        } catch {
           // silent fail
         }
       }
 
-      if(csrfToken && originalConfig.headers){
+      if (csrfToken && originalConfig.headers) {
         originalConfig._csrfRetry = true;
         originalConfig.headers.set("X-CSRF-Token", csrfToken);
         return api(originalConfig);
       }
     }
 
-    if(status === 401 || status === 403){
+    if (status === 401 || status === 403) {
       csrfToken = "";
-      if(status === 401 && originalConfig.url !== "/auth/csrf" && originalConfig.url !== "/email" && !originalConfig._logoutFired){
-        if(typeof window !== "undefined"){
+      if (
+        status === 401 &&
+        originalConfig.url !== "/auth/csrf" &&
+        originalConfig.url !== "/email" &&
+        !originalConfig._logoutFired
+      ) {
+        if (typeof window !== "undefined") {
           originalConfig._logoutFired = true;
           import("@/store/useAuthStore").then(({ useAuthStore }) => {
             useAuthStore.getState().logout();
@@ -79,25 +91,28 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
-export async function fetchCsrfToken(){
-  try{
+export async function fetchCsrfToken() {
+  try {
     const { data } = await api.get<{ csrfToken: string }>("/auth/csrf");
-    if(data?.csrfToken){
+    if (data?.csrfToken) {
       csrfToken = data.csrfToken;
     }
-  } catch{
+  } catch {
     // silent fail — protected routes will redirect if truly unauthorized
   }
 }
 
-export function setCsrfToken(token: string){
+export function setCsrfToken(token: string) {
   csrfToken = token;
 }
 
-export function extractApiError(err: unknown, fallback = "Failed to complete the request. Please try again."): string{
+export function extractApiError(
+  err: unknown,
+  fallback = "Failed to complete the request. Please try again.",
+): string {
   const axiosErr = err as AxiosError<{ message?: string }>;
   return axiosErr.response?.data?.message || fallback;
 }
@@ -106,11 +121,19 @@ export function get<T>(url: string, config?: Parameters<typeof api.get>[1]) {
   return api.get<T>(url, config).then((r) => r.data);
 }
 
-export function post<T>(url: string, data?: unknown, config?: Parameters<typeof api.post>[2]) {
+export function post<T>(
+  url: string,
+  data?: unknown,
+  config?: Parameters<typeof api.post>[2],
+) {
   return api.post<T>(url, data, config).then((r) => r.data);
 }
 
-export function put<T>(url: string, data?: unknown, config?: Parameters<typeof api.put>[2]) {
+export function put<T>(
+  url: string,
+  data?: unknown,
+  config?: Parameters<typeof api.put>[2],
+) {
   return api.put<T>(url, data, config).then((r) => r.data);
 }
 
@@ -118,6 +141,10 @@ export function del<T>(url: string, config?: Parameters<typeof api.delete>[1]) {
   return api.delete<T>(url, config).then((r) => r.data);
 }
 
-export function patch<T>(url: string, data?: unknown, config?: Parameters<typeof api.patch>[2]) {
+export function patch<T>(
+  url: string,
+  data?: unknown,
+  config?: Parameters<typeof api.patch>[2],
+) {
   return api.patch<T>(url, data, config).then((r) => r.data);
 }

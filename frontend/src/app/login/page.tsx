@@ -17,14 +17,14 @@ const VALUE_PROPS = [
   { icon: Shield, text: "Secure OAuth login" },
 ];
 
-export default function LoginPage(){
+export default function LoginPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const hasRedirected = useRef(false);
 
   useEffect(() => {
-    if(user && !authLoading && !hasRedirected.current){
+    if (user && !authLoading && !hasRedirected.current) {
       hasRedirected.current = true;
       router.replace("/dashboard");
     }
@@ -32,10 +32,14 @@ export default function LoginPage(){
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
-    window.location.href = "/api/auth/google?returnTo=/dashboard";
+    const BACKEND_URL = (
+      process.env.BACKEND_URL || "http://localhost:3001"
+    ).replace(/\/+$/, "");
+
+    window.location.href = `${BACKEND_URL}/api/auth/google?returnTo=/dashboard`;
   };
 
-  if(authLoading || !!user){
+  if (authLoading || !!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -57,7 +61,8 @@ export default function LoginPage(){
               Take control of your finances
             </h2>
             <p className="text-muted-foreground text-base leading-relaxed">
-              Track spending, set budgets, monitor investments, and achieve your savings goals — all in one place.
+              Track spending, set budgets, monitor investments, and achieve your
+              savings goals — all in one place.
             </p>
           </motion.div>
 
@@ -73,7 +78,9 @@ export default function LoginPage(){
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                   <prop.icon className="w-4 h-4 text-primary" />
                 </div>
-                <span className="text-sm text-muted-foreground font-medium leading-tight">{prop.text}</span>
+                <span className="text-sm text-muted-foreground font-medium leading-tight">
+                  {prop.text}
+                </span>
               </motion.div>
             ))}
           </div>
@@ -107,14 +114,26 @@ export default function LoginPage(){
           {/* Mobile-only logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
             <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-              <Image src="/logo.webp" alt="" width={72} height={72} loading="eager" />
+              <Image
+                src="/logo.webp"
+                alt=""
+                width={72}
+                height={72}
+                loading="eager"
+              />
             </div>
-            <span className="font-bold text-4xl tracking-tight text-foreground">FinPro</span>
+            <span className="font-bold text-4xl tracking-tight text-foreground">
+              FinPro
+            </span>
           </div>
 
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-foreground mb-2">Welcome back</h1>
-            <p className="text-base text-muted-foreground">Sign in to manage your personal finances.</p>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              Welcome back
+            </h1>
+            <p className="text-base text-muted-foreground">
+              Sign in to manage your personal finances.
+            </p>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-8 shadow-xl">
@@ -128,7 +147,7 @@ export default function LoginPage(){
                 "hover:bg-gray-100 transition-all",
                 "active:scale-[0.98]",
                 "disabled:opacity-60 disabled:cursor-not-allowed",
-                "shadow-lg shadow-white/10"
+                "shadow-lg shadow-white/10",
               )}
             >
               {isLoading ? (
@@ -143,11 +162,17 @@ export default function LoginPage(){
 
             <p className="mt-6 pt-5 border-t border-border text-xs text-center text-muted-foreground/70 leading-relaxed">
               By signing in, you agree to our{" "}
-              <Link href="/legal" className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
+              <Link
+                href="/legal"
+                className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+              >
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="/legal" className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
+              <Link
+                href="/legal"
+                className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+              >
                 Privacy Policy
               </Link>
               .
@@ -167,7 +192,9 @@ export default function LoginPage(){
                 <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                   <prop.icon className="w-4 h-4 text-primary" />
                 </div>
-                <span className="text-sm text-muted-foreground font-medium leading-tight">{prop.text}</span>
+                <span className="text-sm text-muted-foreground font-medium leading-tight">
+                  {prop.text}
+                </span>
               </motion.div>
             ))}
           </div>
