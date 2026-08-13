@@ -232,6 +232,7 @@ export class TransactionService {
     }
 
     const cursorId = filters?.cursorId;
+    const prevCursorId = filters?.prevCursorId;
     const limit = filters?.limit ? Number(filters.limit) : undefined;
 
     if (!limit) {
@@ -243,18 +244,24 @@ export class TransactionService {
       return { allData, cursor: undefined };
     }
 
+    const activeCursor = prevCursorId || cursorId;
+    const take = prevCursorId ? -limit : limit;
     const data = await this.prisma.transaction.findMany({
       where,
-      take: limit,
+      take: take,
       include: { category: true },
-      ...(cursorId && { skip: 1, cursor: { id: cursorId } }),
+      ...(activeCursor && { skip: 1, cursor: { id: activeCursor } }),
       orderBy: { date: 'desc' },
     });
 
-    const nextCursor = data.length === limit ? data[data.length - 1].id : null;
+    const nextCursor =
+      data.length === limit ? data[data.length - 1].id : undefined;
+    const hasPrevious = !!activeCursor;
     return {
       data: data,
       cursor: nextCursor,
+      prevCursor: prevCursorId,
+      hasPrevious: hasPrevious,
     };
   }
 

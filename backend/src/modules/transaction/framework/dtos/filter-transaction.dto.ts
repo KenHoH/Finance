@@ -51,6 +51,14 @@ export class FilterTransactionDto {
   cursorId?: string;
 
   @ApiPropertyOptional({
+    description: 'The ID for previous page',
+    example: 'txn_987xyz',
+  })
+  @IsOptional()
+  @IsString()
+  prevCursorId?: string;
+
+  @ApiPropertyOptional({
     description: 'Maximum number of transactions to return per page',
     example: '10',
   })
