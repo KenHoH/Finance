@@ -31,12 +31,13 @@ export default function LoginPage() {
   }, [user, authLoading, router]);
 
   const handleGoogleLogin = () => {
+    console.log("testing");
     setIsLoading(true);
     const BACKEND_URL = (
       process.env.BACKEND_URL || "http://localhost:3001"
     ).replace(/\/+$/, "");
 
-    window.location.href = `${BACKEND_URL}/api/auth/google?returnTo=/dashboard`;
+    window.location.href = `${BACKEND_URL}/auth/google?returnTo=/dashboard`;
   };
 
   if (authLoading || !!user) {
