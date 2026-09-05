@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   BarChart,
   Bar,
@@ -17,45 +17,20 @@ import {
 } from "recharts";
 import {
   CreditCard,
-  ArrowDownRight,
-  X,
-  Pencil,
-  Trash2,
   Plus,
   TrendingUp,
-  MoreVertical,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
-import {
-  format,
-  isWithinInterval,
-  startOfMonth,
-  endOfMonth,
-  startOfYear,
-  endOfYear,
-  subMonths,
-} from "date-fns";
+import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { get, del, put, api, extractApiError } from "@/lib/api";
+import { get, api, extractApiError } from "@/lib/api";
 import { useToastStore } from "@/store/useToastStore";
-import {
-  cn,
-  formatCurrency,
-  unwrapArray,
-  dateToApiISO,
-  apiDateToInput,
-} from "@/lib/utils";
-import {
-  optimisticCreate,
-  optimisticUpdate,
-  optimisticDelete,
-  rollbackOnError,
-} from "@/lib/optimistic";
+import { cn, formatCurrency, dateToApiISO } from "@/lib/utils";
+import { optimisticCreate, rollbackOnError } from "@/lib/optimistic";
 import {
   validateString,
   validateNumber,
@@ -63,10 +38,17 @@ import {
 } from "@/lib/validation";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { getLucideIcon } from "@/lib/category-lucide-icons";
 import type { Category, Transaction } from "@/lib/types";
+import {
+  getThisMonthRange,
+  getLastMonthRange,
+  getThisYearRange,
+  getLastYearRange,
+} from "./helper/date.helper";
+import { TransactionDetailModal } from "./components/detail-modal";
+import { loadingExpensesScreen } from "./components/loading.component";
 
 const COLORS = ["#60a5fa", "#fbbf24", "#34d399", "#22d3ee", "#f472b6"];
 
@@ -75,21 +57,38 @@ interface PaginatedTransactions {
   cursor?: string;
 }
 
+enum TimeFilter {
+  thisMonth = "thisMonth",
+  lastMonth = "lastMonth",
+  thisYear = "thisYear",
+  lastYear = "lastYear",
+  allTime = "allTime",
+}
+
 export default function ExpensesPage() {
   const queryClient = useQueryClient();
   const currentDate = useMemo(() => new Date(), []);
   const addToast = useToastStore((s) => s.addToast);
 
-  const [timeFilter, setTimeFilter] = useState<
-    "thisMonth" | "lastMonth" | "thisYear" | "allTime"
-  >("thisMonth");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter | null>(
+    TimeFilter.thisMonth,
+  );
+  const TimeFilterLabels: Record<TimeFilter, string> = {
+    [TimeFilter.thisMonth]: "This Month",
+    [TimeFilter.lastMonth]: "Last Month",
+    [TimeFilter.thisYear]: "This Year",
+    [TimeFilter.lastYear]: "Last Year",
+    [TimeFilter.allTime]: "All Time",
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // --- NEW BULLETPROOF PAGINATION STATE ---
-  const [cursors, setCursors] = useState<string[]>([""]); // Array holding history of cursors. Index 0 is Page 1 (no cursor).
-  const [pageIndex, setPageIndex] = useState(0); // 0-indexed page number
-  const activeCursor = cursors[pageIndex]; // The cursor for the current page
+  const [cursors, setCursors] = useState<string[]>([""]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const activeCursor = cursors[pageIndex];
   // ----------------------------------------
 
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -112,14 +111,41 @@ export default function ExpensesPage() {
     setPageIndex(0);
   };
 
+  const effectiveDates = useMemo(() => {
+    if (timeFilter) {
+      switch (timeFilter) {
+        case TimeFilter.thisMonth:
+          return getThisMonthRange(currentDate);
+        case TimeFilter.lastMonth:
+          return getLastMonthRange(currentDate);
+        case TimeFilter.thisYear:
+          return getThisYearRange(currentDate);
+        case TimeFilter.lastYear:
+          return getLastYearRange(currentDate);
+        case TimeFilter.allTime:
+          return { startDate: "", endDate: "" };
+      }
+    }
+    return { startDate, endDate };
+  }, [timeFilter, startDate, endDate, currentDate]);
+
   const { data: queryResult, isLoading } = useQuery<PaginatedTransactions>({
-    queryKey: ["transactions", "EXPENSE", itemsPerPage, activeCursor], // Watch activeCursor
+    queryKey: [
+      "transactions",
+      "EXPENSE",
+      itemsPerPage,
+      activeCursor,
+      effectiveDates.startDate,
+      effectiveDates.endDate,
+    ],
     queryFn: async () => {
-      // We no longer need prevCursorId because our array stack handles backwards travel perfectly
-      const res = await get<PaginatedTransactions>(
-        `/transactions?type=EXPENSE&limit=${itemsPerPage}&cursorId=${activeCursor}`,
+      const extra =
+        effectiveDates.startDate !== "" && effectiveDates.endDate !== ""
+          ? `&startDate=${effectiveDates.startDate}&endDate=${effectiveDates.endDate}`
+          : "";
+      return get<PaginatedTransactions>(
+        `/transactions?type=EXPENSE&limit=${itemsPerPage}&cursorId=${activeCursor}${extra}`,
       );
-      return res;
     },
   });
 
@@ -217,31 +243,6 @@ export default function ExpensesPage() {
 
   const filteredData = useMemo(() => {
     let filtered = parsedData.filter((t) => t.type === "EXPENSE");
-
-    if (timeFilter === "thisMonth") {
-      filtered = filtered.filter((t) =>
-        isWithinInterval(t.parsedDate, {
-          start: startOfMonth(currentDate),
-          end: endOfMonth(currentDate),
-        }),
-      );
-    } else if (timeFilter === "lastMonth") {
-      const lastMonth = subMonths(currentDate, 1);
-      filtered = filtered.filter((t) =>
-        isWithinInterval(t.parsedDate, {
-          start: startOfMonth(lastMonth),
-          end: endOfMonth(lastMonth),
-        }),
-      );
-    } else if (timeFilter === "thisYear") {
-      filtered = filtered.filter((t) =>
-        isWithinInterval(t.parsedDate, {
-          start: startOfYear(currentDate),
-          end: endOfYear(currentDate),
-        }),
-      );
-    }
-
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -253,7 +254,7 @@ export default function ExpensesPage() {
 
     filtered.sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
     return filtered;
-  }, [parsedData, timeFilter, searchQuery, currentDate]);
+  }, [parsedData, searchQuery, currentDate]);
 
   const totalExpenses = filteredData.reduce(
     (acc, curr) => acc + Number(curr.amount),
@@ -268,7 +269,7 @@ export default function ExpensesPage() {
 
     chronological.forEach((t) => {
       const key =
-        timeFilter === "thisYear" || timeFilter === "allTime"
+        timeFilter === TimeFilter.thisYear || timeFilter === TimeFilter.allTime
           ? format(t.parsedDate, "MMM yyyy")
           : format(t.parsedDate, "dd MMM");
       agg[key] = (agg[key] || 0) + Number(t.amount);
@@ -287,20 +288,7 @@ export default function ExpensesPage() {
   }, [filteredData]);
 
   if (isLoading) {
-    return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-24">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-10 w-36" />
-        </div>
-        <Skeleton className="h-24" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Skeleton className="h-[320px]" />
-          <Skeleton className="h-[320px]" />
-        </div>
-        <Skeleton className="h-80" />
-      </div>
-    );
+    return loadingExpensesScreen();
   }
 
   return (
@@ -320,29 +308,50 @@ export default function ExpensesPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-card p-1 rounded-xl border border-border overflow-x-auto">
-            {(["thisMonth", "lastMonth", "thisYear", "allTime"] as const).map(
-              (filter) => (
-                <button
-                  key={filter}
-                  onClick={() => {
-                    setTimeFilter(filter);
-                    resetPagination(); // <-- Reset stack
-                  }}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
-                    timeFilter === filter
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-sky-500/[0.03]",
-                  )}
-                >
-                  {filter === "thisMonth" && "This Month"}
-                  {filter === "lastMonth" && "Last Month"}
-                  {filter === "thisYear" && "This Year"}
-                  {filter === "allTime" && "All Time"}
-                </button>
-              ),
-            )}
+          <div className="flex items-center gap-1 bg-card p-1 rounded-xl border border-border">
+            {(Object.values(TimeFilter) as TimeFilter[]).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => {
+                  setTimeFilter(filter);
+                  resetPagination();
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+                  timeFilter === filter
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-sky-500/[0.03]",
+                )}
+              >
+                {TimeFilterLabels[filter]}
+              </button>
+            ))}
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1 block">
+              Date
+            </label>
+            <DatePicker
+              value={startDate}
+              onChange={(val) => {
+                setStartDate(val);
+                setTimeFilter(null);
+                resetPagination();
+              }}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1 block">
+              Date
+            </label>
+            <DatePicker
+              value={endDate}
+              onChange={(val) => {
+                setEndDate(val);
+                setTimeFilter(null);
+                resetPagination();
+              }}
+            />
           </div>
           <button
             onClick={() => setIsAddOpen(true)}
@@ -352,8 +361,6 @@ export default function ExpensesPage() {
           </button>
         </div>
       </header>
-
-      {/* Summary (Kept exactly same) */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -388,9 +395,7 @@ export default function ExpensesPage() {
         </div>
       </motion.div>
 
-      {/* Charts (Kept exactly same) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Trend Chart Omitted for Brevity (keep your original code here) */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -447,7 +452,6 @@ export default function ExpensesPage() {
           </div>
         </motion.div>
 
-        {/* Category Pie Chart Omitted for Brevity (keep your original code here) */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -518,7 +522,7 @@ export default function ExpensesPage() {
                   key={limit}
                   onClick={() => {
                     setItemsPerPage(limit);
-                    resetPagination(); // <-- Reset stack
+                    resetPagination(); //
                   }}
                   className={cn(
                     "px-2.5 py-1 rounded-lg text-xs font-medium transition-all",
@@ -563,7 +567,7 @@ export default function ExpensesPage() {
               value={searchQuery}
               onChange={(v) => {
                 setSearchQuery(v);
-                resetPagination(); // <-- Reset stack
+                resetPagination(); //
               }}
               placeholder="Search..."
               className="w-full sm:w-56"
@@ -780,309 +784,5 @@ export default function ExpensesPage() {
         </form>
       </Modal>
     </div>
-  );
-}
-
-function TransactionDetailModal({
-  selectedTx,
-  onClose,
-  onDelete,
-  categories,
-  queryClient,
-}: {
-  selectedTx: Transaction | null;
-  onClose: () => void;
-  onDelete: () => void;
-  categories: Category[];
-  queryClient: ReturnType<typeof useQueryClient>;
-}) {
-  const addToast = useToastStore((s) => s.addToast);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editDesc, setEditDesc] = useState("");
-  const [editAmount, setEditAmount] = useState("");
-  const [editDate, setEditDate] = useState("");
-  const [editCategoryId, setEditCategoryId] = useState("");
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    function handleClickOutside() {
-      setMenuOpen(false);
-    }
-    if (menuOpen) {
-      document.addEventListener("click", handleClickOutside);
-      return () => document.removeEventListener("click", handleClickOutside);
-    }
-  }, [menuOpen]);
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => del(`/transactions/${id}`),
-    onMutate: async (id) => {
-      await optimisticDelete(queryClient, ["transactions", "EXPENSE"], id);
-      await optimisticDelete(queryClient, ["transactions"], id);
-      return {};
-    },
-    onError: (err) => {
-      rollbackOnError(queryClient, ["transactions", "EXPENSE"], undefined);
-      rollbackOnError(queryClient, ["transactions"], undefined);
-      addToast(extractApiError(err, "Failed to delete"), "error");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      onDelete();
-      onClose();
-    },
-    onSuccess: () => {
-      addToast("Transaction deleted", "success");
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (dto: {
-      id: string;
-      description: string;
-      amount: number;
-      date?: string;
-      categoryId?: string;
-    }) =>
-      put(`/transactions/${dto.id}`, {
-        description: dto.description,
-        amount: dto.amount,
-        date: dto.date,
-        categoryId: dto.categoryId,
-      }),
-    onMutate: async (dto) => {
-      const patch = {
-        description: dto.description,
-        amount: dto.amount,
-        date: dto.date,
-        categoryId: dto.categoryId,
-      };
-      await optimisticUpdate(
-        queryClient,
-        ["transactions", "EXPENSE"],
-        dto.id,
-        patch,
-      );
-      await optimisticUpdate(queryClient, ["transactions"], dto.id, patch);
-      return {};
-    },
-    onError: (err) => {
-      rollbackOnError(queryClient, ["transactions", "EXPENSE"], undefined);
-      rollbackOnError(queryClient, ["transactions"], undefined);
-      addToast(extractApiError(err, "Failed to update"), "error");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      onDelete();
-      setIsEditing(false);
-    },
-    onSuccess: () => {
-      onClose();
-      addToast("Transaction updated", "success");
-    },
-  });
-
-  if (!selectedTx) return null;
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        key="backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-      />
-      <motion.div
-        key="modal"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-md bg-card rounded-xl shadow-2xl z-50 p-7 max-h-[85vh] overflow-y-auto"
-      >
-        <div className="flex justify-between items-start mb-6">
-          <div className="p-3 bg-red-500/10 rounded-xl text-red-400">
-            <ArrowDownRight className="w-6 h-6" />
-          </div>
-          <div className="flex items-center gap-1">
-            {!isEditing && (
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(!menuOpen);
-                  }}
-                  className="p-2 hover:bg-sky-500/[0.05] rounded-lg transition-colors"
-                  aria-label="More options"
-                >
-                  <MoreVertical className="w-5 h-5 text-muted-foreground" />
-                </button>
-                {menuOpen && (
-                  <div
-                    className="absolute right-0 top-10 z-20 w-40 rounded-xl border border-border bg-card shadow-xl py-1.5"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={() => {
-                        setIsEditing(true);
-                        setEditDesc(selectedTx.description || "");
-                        setEditAmount(String(selectedTx.amount));
-                        setEditDate(apiDateToInput(selectedTx.date));
-                        setEditCategoryId(selectedTx.categoryId || "");
-                        setMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-sky-500/[0.05] transition-colors"
-                    >
-                      <Pencil className="w-4 h-4 text-sky-400" /> Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowDeleteConfirm(true);
-                        setMenuOpen(false);
-                      }}
-                      disabled={deleteMutation.isPending}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" /> Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-sky-500/[0.05] rounded-lg transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {isEditing ? (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">
-                Description
-              </label>
-              <input
-                type="text"
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">
-                Amount
-              </label>
-              <CurrencyInput value={editAmount} onChange={setEditAmount} />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">
-                Date
-              </label>
-              <DatePicker
-                value={editDate}
-                onChange={(val) => setEditDate(val)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">
-                Category
-              </label>
-              <select
-                value={editCategoryId}
-                onChange={(e) => setEditCategoryId(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
-              >
-                <option value="">Select category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sky-500/[0.03] transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const err = validateNumber(editAmount, "Amount", {
-                    min: 0.01,
-                  });
-                  if (err) {
-                    addToast(err.message, "error");
-                    return;
-                  }
-                  updateMutation.mutate({
-                    id: selectedTx.id,
-                    description: editDesc.trim(),
-                    amount: Number(editAmount),
-                    date: editDate ? dateToApiISO(editDate) : undefined,
-                    categoryId: editCategoryId || undefined,
-                  });
-                }}
-                disabled={updateMutation.isPending}
-                className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-red-400 mb-2">
-                -{formatCurrency(Number(selectedTx.amount))}
-              </h3>
-              <p className="text-xl font-bold">
-                {selectedTx.description || "-"}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {format(new Date(selectedTx.date), "dd MMMM yyyy, HH:mm")}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-5">
-              <div className="bg-background p-4 rounded-xl border border-border">
-                <p className="text-sm text-muted-foreground mb-1 uppercase font-bold">
-                  Category
-                </p>
-                <p className="font-bold">
-                  {selectedTx.category?.name || "Uncategorized"}
-                </p>
-              </div>
-              <div className="bg-background p-4 rounded-xl border border-border">
-                <p className="text-sm text-muted-foreground mb-1 uppercase font-bold">
-                  Source
-                </p>
-                <p className="font-bold capitalize">
-                  {selectedTx.source || "Manual"}
-                </p>
-              </div>
-            </div>
-          </>
-        )}
-
-        <ConfirmDialog
-          isOpen={showDeleteConfirm}
-          onConfirm={() => {
-            if (selectedTx) deleteMutation.mutate(selectedTx.id);
-          }}
-          onCancel={() => setShowDeleteConfirm(false)}
-          title="Delete transaction?"
-          description={`Are you sure you want to delete ${selectedTx?.description || "this transaction"}? This action cannot be undone.`}
-          confirmLabel={deleteMutation.isPending ? "Deleting..." : "Delete"}
-          variant="danger"
-        />
-      </motion.div>
-    </AnimatePresence>
   );
 }
