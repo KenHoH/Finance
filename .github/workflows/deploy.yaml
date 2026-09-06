@@ -26,7 +26,7 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: kenhoh/backend-dev:latest
+          tags: kenhoh/backend:latest
 
       - name: Build and push to dockerhub
         uses: docker/build-push-action@v5
@@ -34,7 +34,7 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: kenhoh/frontend-dev:latest
+          tags: kenhoh/frontend:latest
   deploy:
     needs: build
     name: Deploy image on OCI compute instance
@@ -47,6 +47,6 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
       - name: connect and pull
-        run: ssh centos@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && docker compose down backend-app && docker compose pull && docker compose up backend-app -d && exit"
+        run: ssh centos@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && docker compose down && docker compose pull && docker compose up -d && exit"
       - name: cleanup
         run: rm -rf ~/.ssh
