@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
-import { connectToImap } from '../../../../infrastructure/imap/imap.services.js';
 import { GoogleOauthService } from '../../../auth/core/app/google-oauth.service.js';
-import { google } from 'googleapis';
+import { google, type gmail_v1 } from 'googleapis';
 import { Cron } from '@nestjs/schedule';
 import { extractInfo } from '../../../../infrastructure/imap/helper/extractInfo.js';
 import { isEmailAllowedForProcessing } from '../../../../infrastructure/imap/helper/email-validator.helper.js';
 import { TransactionService } from '../../../transaction/core/app/transaction.service.js';
+import { extractEmailBody, extractPart } from '../helper/email-helper.js';
 
 @Injectable()
 export class EmailService {
@@ -130,6 +130,8 @@ export class EmailService {
         return;
       }
 
+      await this.catchUpHistoryGap(gmail, emailAddress, historyId);
+
       await this.updateEmailHistoryId(emailAddress, historyId);
     } catch (error) {
       this.logger.error(
@@ -184,154 +186,19 @@ export class EmailService {
         return;
       }
 
-      const historyResponse = await gmail.users.history.list({
-        userId: 'me',
-        startHistoryId: previousHistoryId,
-        historyTypes: ['messageAdded'],
-      });
+      const newMessages = await this.fetchGapMessageIds(
+        gmail,
+        previousHistoryId,
+        newHistoryId,
+      );
 
-      const history = historyResponse.data.history;
-      if (!history || history.length === 0) {
+      if (newMessages.length === 0) {
         this.logger.log('No new messages found in history.');
         await this.updateEmailHistoryId(emailAddress, newHistoryId);
         return;
       }
 
-      let newMessages: string[] = [];
-      history.forEach((record) => {
-        if (record.messagesAdded) {
-          record.messagesAdded.forEach((msgAdded) => {
-            if (msgAdded.message && msgAdded.message.id) {
-              newMessages.push(msgAdded.message.id);
-            }
-          });
-        }
-      });
-
-      if (newMessages.length === 0) {
-        this.logger.warn(
-          'History was found, but no messagesAdded events were in it.',
-        );
-        await this.updateEmailHistoryId(emailAddress, newHistoryId);
-        return;
-      }
-
-      for (const messageId of newMessages) {
-        try {
-          const metadataResponse = await gmail.users.messages.get({
-            userId: 'me',
-            id: messageId,
-            format: 'metadata',
-            metadataHeaders: ['From', 'Subject'],
-          });
-
-          const metaHeaders = metadataResponse.data.payload?.headers || [];
-          const getMetaHeader = (name: string) =>
-            metaHeaders.find(
-              (h) => h.name?.toLowerCase() === name.toLowerCase(),
-            )?.value || '';
-
-          const metaFrom = getMetaHeader('from');
-          const metaSubject = getMetaHeader('subject');
-
-          if (!isEmailAllowedForProcessing(metaFrom, metaSubject)) {
-            this.logger.log(
-              `Skipping unrelated email. From: ${metaFrom} | Subject: ${metaSubject}`,
-            );
-            continue;
-          }
-
-          const emailResponse = await gmail.users.messages.get({
-            userId: 'me',
-            id: messageId,
-            format: 'full',
-          });
-
-          const payload = emailResponse.data.payload;
-          const emailBody = this.extractEmailBody(payload);
-          if (!payload) continue;
-
-          const headers = payload.headers || [];
-          const getHeader = (name: string) =>
-            headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())
-              ?.value || '';
-
-          const subject = getHeader('subject');
-          const from = getHeader('from');
-          const html =
-            this.extractPart(payload, 'text/html') ||
-            this.extractPart(payload, 'text/plain') ||
-            '';
-
-          this.logger.log(
-            `Successfully fetched email (${messageId}): ${subject} from ${from}`,
-          );
-          this.logger.log(`Email Body: ${emailBody}`);
-
-          const extracted = extractInfo(subject, from, html, messageId);
-
-          if (extracted.status) {
-            this.logger.log(
-              `Extracted transaction info: ${JSON.stringify(extracted)}`,
-            );
-            const amount = Number(extracted.amount);
-            const date = new Date(getHeader('date'));
-            const receipient = extracted.recipient || 'Recipient not found';
-            const source = extracted.source || 'UNKNOWN';
-            const transactionType =
-              extracted.expenses === false ? 'INCOME' : 'EXPENSE';
-
-            this.logger.log(
-              `Creating ${transactionType} transaction for user ${userId} from email ${messageId} with amount ${amount}, date ${date}, recipient ${receipient}`,
-            );
-            const description = `${extracted.date} - ${receipient} - ${subject} - ${amount}`;
-
-            const existing = await this.prisma.transaction.findFirst({
-              where: { userId, source: source, sourceId: messageId },
-            });
-
-            if (existing) {
-              this.logger.log(
-                `Transaction for email ${messageId} already exists. Skipping.`,
-              );
-              continue;
-            }
-
-            const transaction = await this.transactionService.create(userId, {
-              amount,
-              type: transactionType,
-              description,
-              date: date.toISOString(),
-              source: source,
-              sourceId: messageId,
-              isAutoTracked: true,
-            });
-
-            await this.activityLogService.logActivity(
-              userId,
-              'CREATE',
-              'Transaction',
-              transaction.id,
-              {
-                amount: extracted.amount,
-                source: source,
-                description: extracted.recipient,
-                type: transactionType,
-              },
-            );
-          } else {
-            this.logger.log(
-              `No transaction info matched for email (${messageId}).`,
-            );
-          }
-        } catch (msgError) {
-          this.logger.error(
-            `Failed to process message ${messageId}: ${msgError.message}`,
-          );
-          continue;
-        }
-      }
-
+      await this.processMessageList(gmail, userId, newMessages);
       await this.updateEmailHistoryId(emailAddress, newHistoryId);
     } catch (error) {
       this.logger.error(`Gmail API Error: ${error.message}`);
@@ -339,63 +206,223 @@ export class EmailService {
     }
   }
 
-  private extractEmailBody(payload: any): string {
-    let encodedBody = '';
+  private async catchUpHistoryGap(
+    gmail: gmail_v1.Gmail,
+    emailAddress: string,
+    newHistoryId: string,
+  ): Promise<void> {
+    const previousHistoryId = await this.getLastHistoryId(emailAddress);
 
-    const findBody = (part: any): string | null => {
-      if (part.body && part.body.data) {
-        return part.body.data;
+    if (!previousHistoryId) {
+      this.logger.log('New user no history ID');
+      return;
+    }
+
+    try {
+      if (BigInt(previousHistoryId) >= BigInt(newHistoryId)) {
+        this.logger.log('Previous historyId > newHistoryId');
+        return;
       }
+    } catch {
+      this.logger.log('Something went wrong parsing BigInt');
+      return;
+    }
 
-      if (part.parts) {
-        const textPart = part.parts.find(
-          (p: any) => p.mimeType === 'text/plain',
+    this.logger.log(
+      `Catching up emails for ${emailAddress} from historyId ${previousHistoryId} to ${newHistoryId}`,
+    );
+
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email: emailAddress },
+        select: { id: true },
+      });
+
+      if (!user) {
+        this.logger.error(
+          `User with email ${emailAddress} not found in database during catch-up.`,
         );
-        if (textPart) {
-          const body = findBody(textPart);
-          if (body) return body;
-        }
-
-        for (const subPart of part.parts) {
-          const body = findBody(subPart);
-          if (body) return body;
-        }
+        return;
       }
 
-      return null;
-    };
+      const gapMessageIds = await this.fetchGapMessageIds(
+        gmail,
+        previousHistoryId,
+        newHistoryId,
+      );
 
-    encodedBody = findBody(payload) || '';
+      if (gapMessageIds.length === 0) {
+        this.logger.log(`No messages to catch up for ${emailAddress}.`);
+        return;
+      }
 
-    if (encodedBody) {
-      const base64 = encodedBody.replace(/-/g, '+').replace(/_/g, '/');
-      return Buffer.from(base64, 'base64').toString('utf-8');
+      this.logger.log(
+        `Found ${gapMessageIds.length} message(s) to catch up for ${emailAddress}.`,
+      );
+
+      await this.processMessageList(gmail, user.id, gapMessageIds);
+    } catch (error) {
+      this.logger.error(
+        `Failed to catch up emails for ${emailAddress}: ${error.message}. Continuing with new historyId.`,
+      );
     }
-
-    return 'No readable text found';
   }
 
-  /**
-   * Generic helper to extract a specific mime-type part from Gmail payload
-   */
-  private extractPart(part: any, mimeType: string): string | null {
-    if (part.mimeType === mimeType && part.body && part.body.data) {
-      return this.decodeBase64(part.body.data);
-    }
+  private async fetchGapMessageIds(
+    gmail: gmail_v1.Gmail,
+    startHistoryId: string,
+    endHistoryId: string,
+  ): Promise<string[]> {
+    const messageIds: string[] = [];
+    let pageToken: string | undefined;
 
-    if (part.parts) {
-      for (const subPart of part.parts) {
-        const body = this.extractPart(subPart, mimeType);
-        if (body) return body;
+    do {
+      const historyResponse = await gmail.users.history.list({
+        userId: 'me',
+        startHistoryId,
+        endHistoryId,
+        historyTypes: ['messageAdded'],
+        pageToken,
+      } as gmail_v1.Params$Resource$Users$History$List);
+
+      const history = historyResponse.data.history;
+      if (history && history.length > 0) {
+        history.forEach((record) => {
+          if (record.messagesAdded) {
+            record.messagesAdded.forEach((msgAdded) => {
+              if (msgAdded.message && msgAdded.message.id) {
+                messageIds.push(msgAdded.message.id);
+              }
+            });
+          }
+        });
+      }
+
+      pageToken = historyResponse.data.nextPageToken || undefined;
+    } while (pageToken);
+
+    return messageIds;
+  }
+
+  private async processMessageList(
+    gmail: gmail_v1.Gmail,
+    userId: string,
+    messageIds: string[],
+  ): Promise<void> {
+    for (const messageId of messageIds) {
+      try {
+        const metadataResponse = await gmail.users.messages.get({
+          userId: 'me',
+          id: messageId,
+          format: 'metadata',
+          metadataHeaders: ['From', 'Subject'],
+        });
+
+        const metaHeaders = metadataResponse.data.payload?.headers || [];
+        const getMetaHeader = (name: string) =>
+          metaHeaders.find((h) => h.name?.toLowerCase() === name.toLowerCase())
+            ?.value || '';
+
+        const metaFrom = getMetaHeader('from');
+        const metaSubject = getMetaHeader('subject');
+
+        if (!isEmailAllowedForProcessing(metaFrom, metaSubject)) {
+          this.logger.log(
+            `Skipping unrelated email. From: ${metaFrom} | Subject: ${metaSubject}`,
+          );
+          continue;
+        }
+
+        const emailResponse = await gmail.users.messages.get({
+          userId: 'me',
+          id: messageId,
+          format: 'full',
+        });
+
+        const payload = emailResponse.data.payload;
+        if (!payload) continue;
+        const emailBody = extractEmailBody(payload);
+
+        const headers = payload.headers || [];
+        const getHeader = (name: string) =>
+          headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())
+            ?.value || '';
+
+        const subject = getHeader('subject');
+        const from = getHeader('from');
+        const html =
+          extractPart(payload, 'text/html') ||
+          extractPart(payload, 'text/plain') ||
+          '';
+
+        this.logger.log(
+          `Successfully fetched email (${messageId}): ${subject} from ${from}`,
+        );
+        this.logger.log(`Email Body: ${emailBody}`);
+
+        const extracted = extractInfo(subject, from, html, messageId);
+
+        if (extracted.status) {
+          this.logger.log(
+            `Extracted transaction info: ${JSON.stringify(extracted)}`,
+          );
+          const amount = Number(extracted.amount);
+          const date = new Date(getHeader('date'));
+          const receipient = extracted.recipient || 'Recipient not found';
+          const source = extracted.source || 'UNKNOWN';
+          const transactionType =
+            extracted.expenses === false ? 'INCOME' : 'EXPENSE';
+
+          this.logger.log(
+            `Creating ${transactionType} transaction for user ${userId} from email ${messageId} with amount ${amount}, date ${date}, recipient ${receipient}`,
+          );
+          const description = `${extracted.date} - ${receipient} - ${subject} - ${amount}`;
+
+          const existing = await this.prisma.transaction.findFirst({
+            where: { userId, source: source, sourceId: messageId },
+          });
+
+          if (existing) {
+            this.logger.log(
+              `Transaction for email ${messageId} already exists. Skipping.`,
+            );
+            continue;
+          }
+
+          const transaction = await this.transactionService.create(userId, {
+            amount,
+            type: transactionType,
+            description,
+            date: date.toISOString(),
+            source: source,
+            sourceId: messageId,
+            isAutoTracked: true,
+          });
+
+          await this.activityLogService.logActivity(
+            userId,
+            'CREATE',
+            'Transaction',
+            transaction.id,
+            {
+              amount: extracted.amount,
+              source: source,
+              description: extracted.recipient,
+              type: transactionType,
+            },
+          );
+        } else {
+          this.logger.log(
+            `No transaction info matched for email (${messageId}).`,
+          );
+        }
+      } catch (msgError) {
+        this.logger.error(
+          `Failed to process message ${messageId}: ${msgError.message}`,
+        );
+        continue;
       }
     }
-
-    return null;
-  }
-
-  private decodeBase64(data: string): string {
-    const base64 = data.replace(/-/g, '+').replace(/_/g, '/');
-    return Buffer.from(base64, 'base64').toString('utf-8');
   }
 
   @Cron('0 0 * * *')
