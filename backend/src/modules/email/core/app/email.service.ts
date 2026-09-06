@@ -46,7 +46,7 @@ export class EmailService {
         `No previous historyId found for ${emailAddress}. Initializing watch function.`,
       );
 
-      await this.watchGmail(emailAddress);
+      // await this.watchGmail(emailAddress);
       return null;
     }
 
@@ -131,7 +131,6 @@ export class EmailService {
       }
 
       await this.catchUpHistoryGap(gmail, emailAddress, historyId);
-
       await this.updateEmailHistoryId(emailAddress, historyId);
     } catch (error) {
       this.logger.error(
@@ -183,6 +182,7 @@ export class EmailService {
         this.logger.error(
           `Failed to set up watch for ${emailAddress}, cannot process emails without historyId, make sure the user have initial historyId.`,
         );
+        await this.watchGmail(emailAddress);
         return;
       }
 
@@ -275,7 +275,6 @@ export class EmailService {
   ): Promise<string[]> {
     const messageIds: string[] = [];
     let pageToken: string | undefined;
-
     do {
       const historyResponse = await gmail.users.history.list({
         userId: 'me',

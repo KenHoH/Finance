@@ -37,12 +37,12 @@ export function extractEmailBody(payload: any): string {
  */
 export function extractPart(part: any, mimeType: string): string | null {
   if (part.mimeType === mimeType && part.body && part.body.data) {
-    return this.decodeBase64(part.body.data);
+    return decodeBase64(part.body.data);
   }
 
   if (part.parts) {
     for (const subPart of part.parts) {
-      const body = this.extractPart(subPart, mimeType);
+      const body = extractPart(subPart, mimeType);
       if (body) return body;
     }
   }
