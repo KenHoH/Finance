@@ -11,12 +11,13 @@ export class EmailController {
 
   private readonly logger = new Logger(EmailController.name);
 
-  @Get()
-  async getMailBoxes(@Req() request: Request) {
-    const userId = request.user.sub;
-    const email = request.user.email;
-    return this.emailService.getMailboxs(userId, email);
-  }
+  /* DEPRECATED AND NOT USED IMAP RELATED */
+  // @Get()
+  // async getMailBoxes(@Req() request: Request) {
+  //   const userId = request.user.sub;
+  //   const email = request.user.email;
+  //   return this.emailService.getMailboxs(userId, email);
+  // }
 
   @Public()
   @Post()
