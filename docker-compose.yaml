@@ -4,22 +4,25 @@ services:
     ports:
       - "6379:6379"
 
-  nestjs-app:
-    build: ./backend
-    ports:
-      - "3001:3001"
+  backend-app:
+    image: backend-app:latest
+    env_file:
+      - "./backend/.env"
     depends_on:
       - redis
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
 
-  next-app:
-    build: ./frontend
+  frontend-app:
+    image: frontend-app:latest
+    env_file:
+      - "./frontend/.env"
     ports:
       - "3000:3000"
     depends_on:
-      - nestjs-app
+      - backend-app
     environment:
-      - BACKEND_URL=http://nestjs-app:3001
-      - FRONTEND_URL=https://footsore-uptake-autopilot.ngrok-free.dev
+      - BACKEND_URL=http://backend-app:3001
+      - NEXT_PUBLIC_BACKEND_URL=https://footsore-uptake-autopilot.ngrok-free.dev
+      - NEXT_PUBLIC_FRONTEND_URL=https://footsore-uptake-autopilot.ngrok-free.dev
