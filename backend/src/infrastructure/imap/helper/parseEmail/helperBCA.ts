@@ -1,46 +1,44 @@
-import * as cheerio from 'cheerio'
+import * as cheerio from 'cheerio';
 import { parseIDRCurrency } from '../parseCurrency/parseIDR.js';
 import { ExtractedInfo } from '../extractInfo.js';
+import {
+  containsTransactionDate,
+  findTableRowValue,
+} from './htmlExtraction.js';
+
+const RECIPIENT_LABELS = [
+  /^nama\s+penerima$/i,
+  /^pembayaran\s+ke$/i,
+  /^nama\s+perusahaan\s*\/\s*produk$/i,
+];
+
+const AMOUNT_LABELS = [
+  /^nominal(?:\s+(?:transaksi|tujuan))?$/i,
+  /^total\s+(?:bayar|pembayaran)$/i,
+];
+
+const DATE_LABELS = [
+  /^(?:tanggal|tgl\.?)(?:\s*(?:&|dan)\s*(?:jam|waktu))?\s+transaksi$/i,
+];
 
 export function extractInfoFromHTMLBCA(html: string): ExtractedInfo {
-    const $ = cheerio.load(html);
+  const $ = cheerio.load(html);
 
-    const findValue = (labels: string[]) =>
-        $('td')
-            .filter((_, el) => labels.includes($(el).text().trim()))
-            .first()
-            .next('td')
-            .next('td')
-            .text()
-            .trim();
+  const recipientName = findTableRowValue($, RECIPIENT_LABELS);
+  const totalAmountRaw = findTableRowValue(
+    $,
+    AMOUNT_LABELS,
+    (value) => parseIDRCurrency(value) > 0,
+  );
+  const dateRaw = findTableRowValue($, DATE_LABELS, containsTransactionDate);
+  const totalAmount = parseIDRCurrency(totalAmountRaw);
 
-    const recipientName = findValue([
-        'Nama Penerima',
-        'Pembayaran Ke',
-        'Nama Perusahaan/Produk',
-    ]);
-
-    const totalAmountRaw = findValue([
-        'Nominal',           // ← this email uses "Nominal"
-        'Total Bayar',
-        'Nominal Tujuan',
-    ]);
-
-    const dateRaw = findValue(['Tanggal Transaksi']);
-
-    const totalAmount = parseIDRCurrency(totalAmountRaw);
-
-    console.log("BCA TRANSACTION DETAILS:");
-    console.log(`Recipient:  ${recipientName}`);
-    console.log(`Date:       ${dateRaw}`);
-    console.log(`Total:      ${totalAmount.toFixed(2)}`);
-
-    return {
-        expenses: true,
-        status: !!(recipientName || totalAmount > 0 || dateRaw),
-        amount: totalAmount,
-        date: dateRaw,
-        recipient: recipientName,
-        source: 'BCA'
-    };
+  return {
+    expenses: true,
+    status: Number.isFinite(totalAmount) && totalAmount > 0 && Boolean(dateRaw),
+    amount: totalAmount,
+    date: dateRaw,
+    recipient: recipientName,
+    source: 'BCA',
+  };
 }

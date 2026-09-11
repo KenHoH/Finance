@@ -1,101 +1,101 @@
 import * as cheerio from 'cheerio';
 import { parseIDRCurrency } from '../parseCurrency/parseIDR.js';
 import { ExtractedInfo } from '../extractInfo.js';
+import {
+  containsTransactionDate,
+  findNearbyValue,
+  findTableRowValue,
+  findTextElements,
+  matchesText,
+  normalizeText,
+} from './htmlExtraction.js';
 
-export function extractInfoFromHTMLBLU(html: string) : ExtractedInfo {
-    const $ = cheerio.load(html);
+const ACCOUNT_LABELS = [/^blu\s*account$/i];
+const AMOUNT_LABELS = [
+  /^total(?:\s+(?:bayar|pembayaran))?$/i,
+  /^nominal(?:\s+(?:tagihan|transaksi))?$/i,
+  /^jumlah$/i,
+];
+const DATE_LABELS = [
+  /^(?:tgl\.?|tanggal)\s*(?:&|dan)\s*(?:jam|waktu)\s+transaksi$/i,
+  /^waktu\s+transaksi$/i,
+];
+const RECIPIENT_LABELS = [
+  /^nama\s+penerima$/i,
+  /^nama\s+merchant$/i,
+  /^pembayaran\s+ke$/i,
+];
 
-    const allNames = $('span[style*="padding-top:8px"]')
-    .map((i, el) => $(el).text().trim())
-    .get();
+function containsIDRCurrency(value: string): boolean {
+  return /(?:IDR|RP)\s*[+-]?\d[\d.,]*-?/i.test(normalizeText(value));
+}
 
-    const receipentName = allNames[1] || "Name not found";
+function findCounterparty($: cheerio.CheerioAPI): string {
+  const accountLabel = findTextElements($, ACCOUNT_LABELS).first();
+  const accountCell = accountLabel.closest('td, th').first();
+  const accountCellElement = accountCell.get(0);
 
-    const labelDate = $('div').filter((i, el) => $(el).text().trim() === 'Tgl & Jam Transaksi');
-    const dateTimeRaw = labelDate.closest('div[class*="mj-column"]').next('div[class*="mj-column"]').text().trim();
+  if (accountCellElement) {
+    const otherCells = accountCell
+      .closest('tr')
+      .children('td, th')
+      .toArray()
+      .filter((cell) => cell !== accountCellElement);
 
-    const labelTotal = $('div').filter((i, el) => $(el).text().trim() === 'Total');
-    let totalAmountRaw = labelTotal.closest('div[class*="mj-column"]').next('div[class*="mj-column"]').text().trim();
-    totalAmountRaw = totalAmountRaw.replace(/^Rp/, '').trim();
-    const totalAmount = parseIDRCurrency(totalAmountRaw);
+    for (const cell of otherCells) {
+      const textElements = $(cell)
+        .find('span, p, div, strong, b')
+        .filter((_, element) => {
+          const value = normalizeText($(element).text());
+          if (!value) return false;
 
-    console.log("TRANSACTION DETAILS:");
-    console.log(`Recipient: ${receipentName}`);
-    console.log(`Date:      ${dateTimeRaw}`);
-    console.log(`Total:     ${totalAmount.toFixed(2)}`);
+          return !$(element)
+            .find('span, p, div, strong, b')
+            .toArray()
+            .some((child) => normalizeText($(child).text()) === value);
+        })
+        .toArray();
 
-    return {
-        expenses: true,
-        status: receipentName || totalAmount > 0 || dateTimeRaw ? true : false,
-        amount: totalAmount,
-        date: dateTimeRaw,
-        recipient: receipentName,
-        source: 'BLU'
-    };
+      const values = textElements.length
+        ? textElements.map((element) => normalizeText($(element).text()))
+        : [normalizeText($(cell).text())];
+
+      const counterparty = values.find(
+        (value) =>
+          value &&
+          !matchesText(value, ACCOUNT_LABELS) &&
+          !containsIDRCurrency(value) &&
+          !containsTransactionDate(value),
+      );
+
+      if (counterparty) return counterparty;
+    }
+  }
+
+  return findTableRowValue($, RECIPIENT_LABELS);
+}
+
+function extractBluTransaction(html: string, expenses: boolean): ExtractedInfo {
+  const $ = cheerio.load(html);
+  const recipient = findCounterparty($);
+  const totalAmountRaw = findNearbyValue($, AMOUNT_LABELS, containsIDRCurrency);
+  const dateRaw = findNearbyValue($, DATE_LABELS, containsTransactionDate);
+  const totalAmount = parseIDRCurrency(totalAmountRaw);
+
+  return {
+    expenses,
+    status: Number.isFinite(totalAmount) && totalAmount > 0 && Boolean(dateRaw),
+    amount: totalAmount,
+    date: dateRaw,
+    recipient,
+    source: 'BLU',
+  };
+}
+
+export function extractInfoFromHTMLBLU(html: string): ExtractedInfo {
+  return extractBluTransaction(html, true);
 }
 
 export function extractInfoFromHTMLBluIncome(html: string): ExtractedInfo {
-    const $ = cheerio.load(html);
-
-    const amountIntRaw = $('span:contains("10.")').filter((_, el) => {
-        const text = $(el).text().trim();
-        return /^[\d.,]+$/.test(text);
-    }).first().text().trim();
-
-    const amountSection = $('div').filter((_, el) => {
-        const style = $(el).attr('style') || '';
-        return style.includes('font-size:20px') && style.includes('font-weight:600');
-    }).first();
-
-    const integerPart = amountSection.find('span span').first().text().trim(); 
-    const decimalPart = amountSection.find('span').last().text().trim();       
-
-    const amountRaw = integerPart.replace(/\./g, '') + '.' + decimalPart.replace(',', '');
-    const totalAmount = parseFloat(amountRaw) || 0;
-
-    const transferRow = $('table').filter((_, el) => {
-        return $(el).text().includes('bluAccount');
-    }).first();
-
-    const cells = transferRow.find('td[style*="width:50%"]');
-    const senderName = $('span').filter((_, el) => {
-        const style = $(el).attr('style') || '';
-        return (
-            style.includes('font-size:14px') &&
-            style.includes('font-weight:600') &&
-            style.includes('padding-top:8px')
-        );
-    }).first().text().trim();
-
-    const senderBank = $('span').filter((_, el) => {
-        const style = $(el).attr('style') || '';
-        return (
-            style.includes('font-size:12px') &&
-            style.includes('font-weight:400') &&
-            style.includes('color:#8993A4')
-        );
-    }).first().text().trim();
-
-    const dateRaw = $('div').filter((_, el) => {
-        const style = $(el).attr('style') || '';
-        return (
-            style.includes('font-size:14px') &&
-            style.includes('font-weight:600') &&
-            style.includes('text-align:right')
-        );
-    }).first().find('span').first().text().trim(); 
-
-    console.log("BLU TRANSACTION DETAILS:");
-    console.log(`Sender:  ${senderName} (${senderBank})`);
-    console.log(`Date:    ${dateRaw}`);
-    console.log(`Amount:  ${totalAmount.toFixed(2)}`);
-
-    return {
-        expenses: false,
-        status: !!(senderName || totalAmount > 0 || dateRaw),
-        amount: totalAmount,
-        date: dateRaw,
-        recipient: senderName,  
-        source: 'BLU'
-    };
+  return extractBluTransaction(html, false);
 }
