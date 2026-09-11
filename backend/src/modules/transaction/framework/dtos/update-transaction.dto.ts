@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsDateString,
+  IsBoolean,
 } from 'class-validator';
 
 export class UpdateTransactionDto {
@@ -32,6 +33,14 @@ export class UpdateTransactionDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({
+    description: 'Needs to be review validation',
+    example: 'false',
+  })
+  @IsOptional()
+  @IsBoolean()
+  review?: boolean;
 
   @ApiPropertyOptional({
     description: 'The date of the transaction (ISO 8601 format)',

@@ -285,6 +285,7 @@ export class TransactionService {
         amount: dto.amount,
         type: dto.type,
         description: dto.description,
+        reviewed: dto.review ? dto.review : false,
         date: dto.date ? new Date(dto.date) : undefined,
         categoryId: dto.categoryId,
       },

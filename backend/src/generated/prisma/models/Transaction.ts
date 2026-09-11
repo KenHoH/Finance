@@ -42,6 +42,7 @@ export type TransactionMinAggregateOutputType = {
   type: $Enums.TransactionType | null
   description: string | null
   date: Date | null
+  reviewed: boolean | null
   isAutoTracked: boolean | null
   source: string | null
   sourceId: string | null
@@ -59,6 +60,7 @@ export type TransactionMaxAggregateOutputType = {
   type: $Enums.TransactionType | null
   description: string | null
   date: Date | null
+  reviewed: boolean | null
   isAutoTracked: boolean | null
   source: string | null
   sourceId: string | null
@@ -76,6 +78,7 @@ export type TransactionCountAggregateOutputType = {
   type: number
   description: number
   date: number
+  reviewed: number
   isAutoTracked: number
   source: number
   sourceId: number
@@ -103,6 +106,7 @@ export type TransactionMinAggregateInputType = {
   type?: true
   description?: true
   date?: true
+  reviewed?: true
   isAutoTracked?: true
   source?: true
   sourceId?: true
@@ -120,6 +124,7 @@ export type TransactionMaxAggregateInputType = {
   type?: true
   description?: true
   date?: true
+  reviewed?: true
   isAutoTracked?: true
   source?: true
   sourceId?: true
@@ -137,6 +142,7 @@ export type TransactionCountAggregateInputType = {
   type?: true
   description?: true
   date?: true
+  reviewed?: true
   isAutoTracked?: true
   source?: true
   sourceId?: true
@@ -241,6 +247,7 @@ export type TransactionGroupByOutputType = {
   type: $Enums.TransactionType
   description: string | null
   date: Date
+  reviewed: boolean
   isAutoTracked: boolean
   source: string | null
   sourceId: string | null
@@ -281,6 +288,7 @@ export type TransactionWhereInput = {
   type?: Prisma.EnumTransactionTypeFilter<"Transaction"> | $Enums.TransactionType
   description?: Prisma.StringNullableFilter<"Transaction"> | string | null
   date?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+  reviewed?: Prisma.BoolFilter<"Transaction"> | boolean
   isAutoTracked?: Prisma.BoolFilter<"Transaction"> | boolean
   source?: Prisma.StringNullableFilter<"Transaction"> | string | null
   sourceId?: Prisma.StringNullableFilter<"Transaction"> | string | null
@@ -302,6 +310,7 @@ export type TransactionOrderByWithRelationInput = {
   type?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   date?: Prisma.SortOrder
+  reviewed?: Prisma.SortOrder
   isAutoTracked?: Prisma.SortOrder
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   sourceId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -326,6 +335,7 @@ export type TransactionWhereUniqueInput = Prisma.AtLeast<{
   type?: Prisma.EnumTransactionTypeFilter<"Transaction"> | $Enums.TransactionType
   description?: Prisma.StringNullableFilter<"Transaction"> | string | null
   date?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+  reviewed?: Prisma.BoolFilter<"Transaction"> | boolean
   isAutoTracked?: Prisma.BoolFilter<"Transaction"> | boolean
   source?: Prisma.StringNullableFilter<"Transaction"> | string | null
   sourceId?: Prisma.StringNullableFilter<"Transaction"> | string | null
@@ -347,6 +357,7 @@ export type TransactionOrderByWithAggregationInput = {
   type?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   date?: Prisma.SortOrder
+  reviewed?: Prisma.SortOrder
   isAutoTracked?: Prisma.SortOrder
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   sourceId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -372,6 +383,7 @@ export type TransactionScalarWhereWithAggregatesInput = {
   type?: Prisma.EnumTransactionTypeWithAggregatesFilter<"Transaction"> | $Enums.TransactionType
   description?: Prisma.StringNullableWithAggregatesFilter<"Transaction"> | string | null
   date?: Prisma.DateTimeWithAggregatesFilter<"Transaction"> | Date | string
+  reviewed?: Prisma.BoolWithAggregatesFilter<"Transaction"> | boolean
   isAutoTracked?: Prisma.BoolWithAggregatesFilter<"Transaction"> | boolean
   source?: Prisma.StringNullableWithAggregatesFilter<"Transaction"> | string | null
   sourceId?: Prisma.StringNullableWithAggregatesFilter<"Transaction"> | string | null
@@ -387,6 +399,7 @@ export type TransactionCreateInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -406,6 +419,7 @@ export type TransactionUncheckedCreateInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -421,6 +435,7 @@ export type TransactionUpdateInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -440,6 +455,7 @@ export type TransactionUncheckedUpdateInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -457,6 +473,7 @@ export type TransactionCreateManyInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -472,6 +489,7 @@ export type TransactionUpdateManyMutationInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -487,6 +505,7 @@ export type TransactionUncheckedUpdateManyInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -514,6 +533,7 @@ export type TransactionCountOrderByAggregateInput = {
   type?: Prisma.SortOrder
   description?: Prisma.SortOrder
   date?: Prisma.SortOrder
+  reviewed?: Prisma.SortOrder
   isAutoTracked?: Prisma.SortOrder
   source?: Prisma.SortOrder
   sourceId?: Prisma.SortOrder
@@ -535,6 +555,7 @@ export type TransactionMaxOrderByAggregateInput = {
   type?: Prisma.SortOrder
   description?: Prisma.SortOrder
   date?: Prisma.SortOrder
+  reviewed?: Prisma.SortOrder
   isAutoTracked?: Prisma.SortOrder
   source?: Prisma.SortOrder
   sourceId?: Prisma.SortOrder
@@ -552,6 +573,7 @@ export type TransactionMinOrderByAggregateInput = {
   type?: Prisma.SortOrder
   description?: Prisma.SortOrder
   date?: Prisma.SortOrder
+  reviewed?: Prisma.SortOrder
   isAutoTracked?: Prisma.SortOrder
   source?: Prisma.SortOrder
   sourceId?: Prisma.SortOrder
@@ -755,6 +777,7 @@ export type TransactionCreateWithoutUserInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -772,6 +795,7 @@ export type TransactionUncheckedCreateWithoutUserInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -818,6 +842,7 @@ export type TransactionScalarWhereInput = {
   type?: Prisma.EnumTransactionTypeFilter<"Transaction"> | $Enums.TransactionType
   description?: Prisma.StringNullableFilter<"Transaction"> | string | null
   date?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+  reviewed?: Prisma.BoolFilter<"Transaction"> | boolean
   isAutoTracked?: Prisma.BoolFilter<"Transaction"> | boolean
   source?: Prisma.StringNullableFilter<"Transaction"> | string | null
   sourceId?: Prisma.StringNullableFilter<"Transaction"> | string | null
@@ -833,6 +858,7 @@ export type TransactionCreateWithoutCategoryInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -850,6 +876,7 @@ export type TransactionUncheckedCreateWithoutCategoryInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -891,6 +918,7 @@ export type TransactionCreateWithoutGoalInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -909,6 +937,7 @@ export type TransactionUncheckedCreateWithoutGoalInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -949,6 +978,7 @@ export type TransactionCreateWithoutBillInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -967,6 +997,7 @@ export type TransactionUncheckedCreateWithoutBillInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -1008,6 +1039,7 @@ export type TransactionCreateManyUserInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -1023,6 +1055,7 @@ export type TransactionUpdateWithoutUserInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1040,6 +1073,7 @@ export type TransactionUncheckedUpdateWithoutUserInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1056,6 +1090,7 @@ export type TransactionUncheckedUpdateManyWithoutUserInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1072,6 +1107,7 @@ export type TransactionCreateManyCategoryInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -1087,6 +1123,7 @@ export type TransactionUpdateWithoutCategoryInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1104,6 +1141,7 @@ export type TransactionUncheckedUpdateWithoutCategoryInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1120,6 +1158,7 @@ export type TransactionUncheckedUpdateManyWithoutCategoryInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1137,6 +1176,7 @@ export type TransactionCreateManyGoalInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -1151,6 +1191,7 @@ export type TransactionUpdateWithoutGoalInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1169,6 +1210,7 @@ export type TransactionUncheckedUpdateWithoutGoalInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1185,6 +1227,7 @@ export type TransactionUncheckedUpdateManyWithoutGoalInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1201,6 +1244,7 @@ export type TransactionCreateManyBillInput = {
   type: $Enums.TransactionType
   description?: string | null
   date: Date | string
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: string | null
   sourceId?: string | null
@@ -1215,6 +1259,7 @@ export type TransactionUpdateWithoutBillInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1233,6 +1278,7 @@ export type TransactionUncheckedUpdateWithoutBillInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1249,6 +1295,7 @@ export type TransactionUncheckedUpdateManyWithoutBillInput = {
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviewed?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isAutoTracked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1267,6 +1314,7 @@ export type TransactionSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   type?: boolean
   description?: boolean
   date?: boolean
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: boolean
   sourceId?: boolean
@@ -1288,6 +1336,7 @@ export type TransactionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   type?: boolean
   description?: boolean
   date?: boolean
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: boolean
   sourceId?: boolean
@@ -1309,6 +1358,7 @@ export type TransactionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   type?: boolean
   description?: boolean
   date?: boolean
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: boolean
   sourceId?: boolean
@@ -1330,6 +1380,7 @@ export type TransactionSelectScalar = {
   type?: boolean
   description?: boolean
   date?: boolean
+  reviewed?: boolean
   isAutoTracked?: boolean
   source?: boolean
   sourceId?: boolean
@@ -1339,7 +1390,7 @@ export type TransactionSelectScalar = {
   updatedAt?: boolean
 }
 
-export type TransactionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "categoryId" | "amount" | "type" | "description" | "date" | "isAutoTracked" | "source" | "sourceId" | "goalId" | "billId" | "createdAt" | "updatedAt", ExtArgs["result"]["transaction"]>
+export type TransactionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "categoryId" | "amount" | "type" | "description" | "date" | "reviewed" | "isAutoTracked" | "source" | "sourceId" | "goalId" | "billId" | "createdAt" | "updatedAt", ExtArgs["result"]["transaction"]>
 export type TransactionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   category?: boolean | Prisma.Transaction$categoryArgs<ExtArgs>
@@ -1375,6 +1426,7 @@ export type $TransactionPayload<ExtArgs extends runtime.Types.Extensions.Interna
     type: $Enums.TransactionType
     description: string | null
     date: Date
+    reviewed: boolean
     isAutoTracked: boolean
     source: string | null
     sourceId: string | null
@@ -1816,6 +1868,7 @@ export interface TransactionFieldRefs {
   readonly type: Prisma.FieldRef<"Transaction", 'TransactionType'>
   readonly description: Prisma.FieldRef<"Transaction", 'String'>
   readonly date: Prisma.FieldRef<"Transaction", 'DateTime'>
+  readonly reviewed: Prisma.FieldRef<"Transaction", 'Boolean'>
   readonly isAutoTracked: Prisma.FieldRef<"Transaction", 'Boolean'>
   readonly source: Prisma.FieldRef<"Transaction", 'String'>
   readonly sourceId: Prisma.FieldRef<"Transaction", 'String'>

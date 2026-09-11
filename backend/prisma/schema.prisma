@@ -160,6 +160,7 @@ model Transaction {
   type          TransactionType
   description   String?
   date          DateTime
+  reviewed      Boolean         @default(false)
   isAutoTracked Boolean         @default(false)
   source        String? // 'GMAIL_PARSER', 'MANUAL', 'BANK_API'
   sourceId      String? // email messageId, receipt hash, etc. for deduplication

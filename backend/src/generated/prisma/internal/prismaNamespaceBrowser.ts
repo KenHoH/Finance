@@ -152,6 +152,7 @@ export const TransactionScalarFieldEnum = {
   type: 'type',
   description: 'description',
   date: 'date',
+  reviewed: 'reviewed',
   isAutoTracked: 'isAutoTracked',
   source: 'source',
   sourceId: 'sourceId',
