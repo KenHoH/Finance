@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -43,6 +43,11 @@ import {
 } from "../helper/date.helper";
 import { TransactionDetailModal } from "./components/detail-modal";
 import { loadingIncomeScreen } from "./components/loading-component";
+import {
+  EditableTransactionCell,
+  TransactionFieldEditModal,
+  type EditableTransactionField,
+} from "@/components/common/TransactionFieldEditModal";
 
 const COLORS = ["#60a5fa", "#fbbf24", "#34d399", "#22d3ee", "#f472b6"];
 
@@ -86,6 +91,10 @@ export default function IncomePage() {
   // ----------------------------------------
 
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [fieldEdit, setFieldEdit] = useState<{
+    transaction: Transaction;
+    field: EditableTransactionField;
+  } | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [addDesc, setAddDesc] = useState("");
   const [addAmount, setAddAmount] = useState("");
@@ -247,7 +256,7 @@ export default function IncomePage() {
 
     filtered.sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
     return filtered;
-  }, [parsedData, searchQuery, currentDate]);
+  }, [parsedData, searchQuery]);
 
   const totalIncome = filteredData.reduce(
     (acc, curr) => acc + Number(curr.amount),
@@ -585,13 +594,31 @@ export default function IncomePage() {
                   onClick={() => setSelectedTx(t)}
                   className="hover:bg-muted/50 transition-colors cursor-pointer group"
                 >
-                  <td className="px-7 py-5 whitespace-nowrap font-medium">
+                  <EditableTransactionCell
+                    label="date"
+                    onEdit={() =>
+                      setFieldEdit({ transaction: t, field: "date" })
+                    }
+                    contentClassName="whitespace-nowrap font-medium"
+                  >
                     {format(t.parsedDate, "dd MMM yyyy")}
-                  </td>
-                  <td className="px-7 py-5 font-bold">
+                  </EditableTransactionCell>
+                  <EditableTransactionCell
+                    label="description"
+                    onEdit={() =>
+                      setFieldEdit({ transaction: t, field: "description" })
+                    }
+                    contentClassName="font-bold"
+                  >
                     {t.description || "-"}
-                  </td>
-                  <td className="px-6 py-5">
+                  </EditableTransactionCell>
+                  <EditableTransactionCell
+                    label="category"
+                    onEdit={() =>
+                      setFieldEdit({ transaction: t, field: "categoryId" })
+                    }
+                    contentClassName="px-6"
+                  >
                     <span className="inline-flex items-center justify-center gap-2 px-4 h-10 w-[160px] bg-accent text-foreground rounded-full text-sm font-bold border border-border">
                       {(() => {
                         const LucideIcon = getLucideIcon(t.category?.icon);
@@ -617,13 +644,19 @@ export default function IncomePage() {
                         {t.category?.name || "Uncategorized"}
                       </span>
                     </span>
-                  </td>
+                  </EditableTransactionCell>
                   <td className="px-7 py-5 text-muted-foreground font-medium capitalize">
                     {t.source || "manual"}
                   </td>
-                  <td className="px-7 py-5 text-right font-bold text-sky-500">
+                  <EditableTransactionCell
+                    label="amount"
+                    onEdit={() =>
+                      setFieldEdit({ transaction: t, field: "amount" })
+                    }
+                    contentClassName="text-right font-bold text-sky-500"
+                  >
                     +{formatCurrency(Number(t.amount))}
-                  </td>
+                  </EditableTransactionCell>
                 </tr>
               ))}
               {filteredData.length === 0 && (
@@ -651,7 +684,13 @@ export default function IncomePage() {
             queryKey: ["transactions", "INCOME"],
           })
         }
+      />
+
+      <TransactionFieldEditModal
+        transaction={fieldEdit?.transaction ?? null}
+        field={fieldEdit?.field ?? null}
         categories={incomeCategories}
+        onClose={() => setFieldEdit(null)}
       />
 
       {/* Add Income Modal */}
