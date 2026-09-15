@@ -73,7 +73,7 @@ export default function FormExpenses({
       }, 1500);
     },
   });
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const err = runValidators(
       validateString(addDesc, "Description", { min: 1, max: 100 }),
