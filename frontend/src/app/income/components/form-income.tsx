@@ -1,8 +1,13 @@
+"use client";
+
+import type { Dispatch, FormEvent, SetStateAction } from "react";
+import { useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { api, extractApiError, get } from "@/lib/api";
 import { optimisticCreate, rollbackOnError } from "@/lib/optimistic";
-import { Category, Transaction } from "@/lib/types";
+import type { Category, Transaction } from "@/lib/types";
 import { dateToApiISO } from "@/lib/utils";
 import {
   runValidators,
@@ -10,26 +15,37 @@ import {
   validateString,
 } from "@/lib/validation";
 import { useToastStore } from "@/store/useToastStore";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Dispatch, SetStateAction, useRef, useState } from "react";
 
-export default function FormExpenses({
-  setIsAddOpen,
-  setIsAddSuccess,
-}: {
+interface FormIncomeProps {
   setIsAddOpen: Dispatch<SetStateAction<boolean>>;
   setIsAddSuccess: Dispatch<SetStateAction<boolean>>;
-}) {
+}
+
+export default function FormIncome({
+  setIsAddOpen,
+  setIsAddSuccess,
+}: FormIncomeProps) {
   const queryClient = useQueryClient();
+  const addToast = useToastStore((state) => state.addToast);
   const optimisticIdRef = useRef(0);
   const addSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const [addDesc, setAddDesc] = useState("");
+  const [addAmount, setAddAmount] = useState("");
+  const [addDate, setAddDate] = useState("");
+  const [addCategoryId, setAddCategoryId] = useState("");
+
+  const { data: incomeCategories = [] } = useQuery<Category[]>({
+    queryKey: ["categories", "INCOME"],
+    queryFn: () => get<Category[]>("/categories?type=INCOME"),
+  });
+
   const createMutation = useMutation({
     mutationFn: (dto: {
       description: string;
       amount: number;
-      type: "EXPENSE";
+      type: "INCOME";
       date: string;
       categoryId?: string;
       interval?: string;
@@ -40,23 +56,24 @@ export default function FormExpenses({
         id: `opt-${optimisticIdRef.current}`,
         description: dto.description,
         amount: dto.amount,
-        type: "EXPENSE",
+        type: "INCOME",
         date: dto.date,
         categoryId: dto.categoryId || null,
         category:
-          expenseCategories.find((c) => c.id === dto.categoryId) || null,
+          incomeCategories.find((category) => category.id === dto.categoryId) ||
+          null,
         source: "manual",
         isAutoTracked: false,
         createdAt: new Date().toISOString(),
       };
-      await optimisticCreate(queryClient, ["transactions", "EXPENSE"], temp);
+      await optimisticCreate(queryClient, ["transactions", "INCOME"], temp);
       await optimisticCreate(queryClient, ["transactions"], temp);
       return {};
     },
-    onError: (err) => {
-      rollbackOnError(queryClient, ["transactions", "EXPENSE"], undefined);
+    onError: (error) => {
+      rollbackOnError(queryClient, ["transactions", "INCOME"], undefined);
       rollbackOnError(queryClient, ["transactions"], undefined);
-      addToast(extractApiError(err, "Failed to add expense"), "error");
+      addToast(extractApiError(error, "Failed to add income"), "error");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -73,34 +90,25 @@ export default function FormExpenses({
       }, 1500);
     },
   });
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const err = runValidators(
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const errors = runValidators(
       validateString(addDesc, "Description", { min: 1, max: 100 }),
       validateNumber(addAmount, "Amount", { min: 0.01 }),
     );
-    if (err.length > 0) {
-      addToast(err[0].message, "error");
+    if (errors.length > 0) {
+      addToast(errors[0].message, "error");
       return;
     }
     createMutation.mutate({
       description: addDesc.trim(),
       amount: Number(addAmount),
-      type: "EXPENSE",
+      type: "INCOME",
       date: addDate ? dateToApiISO(addDate) : new Date().toISOString(),
       categoryId: addCategoryId || undefined,
     });
   };
-  const addToast = useToastStore((s) => s.addToast);
-  const [addDesc, setAddDesc] = useState("");
-  const [addAmount, setAddAmount] = useState("");
-  const [addDate, setAddDate] = useState("");
-  const [addCategoryId, setAddCategoryId] = useState("");
-
-  const { data: expenseCategories = [] } = useQuery<Category[]>({
-    queryKey: ["categories", "EXPENSE"],
-    queryFn: () => get<Category[]>("/categories?type=EXPENSE"),
-  });
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
@@ -111,8 +119,8 @@ export default function FormExpenses({
         <input
           type="text"
           value={addDesc}
-          onChange={(e) => setAddDesc(e.target.value)}
-          placeholder="e.g. Grocery shopping"
+          onChange={(event) => setAddDesc(event.target.value)}
+          placeholder="e.g. Freelance payment"
           className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
           required
         />
@@ -140,13 +148,13 @@ export default function FormExpenses({
         </label>
         <select
           value={addCategoryId}
-          onChange={(e) => setAddCategoryId(e.target.value)}
+          onChange={(event) => setAddCategoryId(event.target.value)}
           className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
         >
           <option value="">Select category</option>
-          {expenseCategories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
+          {incomeCategories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
             </option>
           ))}
         </select>
@@ -165,7 +173,7 @@ export default function FormExpenses({
           disabled={createMutation.isPending}
           className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50"
         >
-          {createMutation.isPending ? "Adding..." : "Add Expense"}
+          {createMutation.isPending ? "Adding..." : "Add Income"}
         </button>
       </div>
     </form>
