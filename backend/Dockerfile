@@ -1,19 +1,15 @@
-FROM node:20
+FROM node:24-alpine
 
-# Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy the rest of the application code
 COPY . .
 
-# Build the application
+RUN DATABASE_URL="postgresql://dummy:5432/db" npx prisma generate
+
 RUN npx nest build
 
-# Run the application
 CMD ["node", "dist/src/main.js"]
+# CMD ["sleep", "infinity"]

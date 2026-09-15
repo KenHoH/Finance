@@ -1,6 +1,6 @@
-import { PrismaClient } from '../generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import 'dotenv/config';
+import { PrismaClient } from 'src/generated/prisma/client.js';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -33,10 +33,10 @@ const defaultInvestmentCategories = [
   { name: 'Other Investment', icon: 'briefcase' },
 ];
 
-async function main(){
+async function main() {
   console.log('Seeding default categories...');
 
-  for(const cat of defaultCategories){
+  for (const cat of defaultCategories) {
     await prisma.category.upsert({
       where: {
         id: `default-${cat.name.toLowerCase().replace(/\s+/g, '-')}`,
@@ -80,6 +80,6 @@ main()
     console.error(e);
     process.exit(1);
   })
-  .finally(async() => {
+  .finally(async () => {
     // await prisma.$disconnect();
   });

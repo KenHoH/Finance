@@ -3,7 +3,7 @@ import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateCategoryDto } from '../../framework/dtos/create-category.dto.js';
 import { UpdateCategoryDto } from '../../framework/dtos/update-category.dto.js';
 import { ActivityLogService } from '../../../activity-log/core/app/activity-log.service.js';
-import { CategoryType } from '../../../../../generated/prisma/client.js';
+import { CategoryType } from 'src/generated/prisma/enums.js';
 
 @Injectable()
 export class CategoryService {

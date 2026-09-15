@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { Calendar, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { cn, formatLocalDate } from "@/lib/utils";
 import type { DatePickerProps } from "@/lib/types";
@@ -93,15 +94,19 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
         </div>
 
         {/* Calendar Modal Overlay */}
-        {open && (
-          <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-            onClick={handleCancel}
-          >
+        {open &&
+          createPortal(
             <div
-              className="bg-card border border-border rounded-xl shadow-2xl p-5 w-80 select-none"
-              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Choose date"
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+              onClick={handleCancel}
             >
+              <div
+                className="bg-card border border-border rounded-xl shadow-2xl p-5 w-80 select-none"
+                onClick={(e) => e.stopPropagation()}
+              >
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <button
@@ -205,9 +210,10 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
                   OK
                 </button>
               </div>
-            </div>
-          </div>
-        )}
+              </div>
+            </div>,
+            document.body,
+          )}
       </>
     );
   }

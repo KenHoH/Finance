@@ -28,19 +28,21 @@ const NAV_ITEMS: NavItem[] = [
   { name: "Expenses", href: "/expenses", icon: CreditCard },
   { name: "Budgets", href: "/budgets", icon: PieChart },
   { name: "Saving Points", href: "/saving-points", icon: PiggyBank },
-  { name: "Goals", href: "/goals", icon: Target },
-  { name: "Bills", href: "/bills", icon: FileText },
+  // { name: "Goals", href: "/goals", icon: Target },
+  // { name: "Bills", href: "/bills", icon: FileText },
   { name: "Debts", href: "/debts", icon: Landmark },
-  { name: "Investments", href: "/investments", icon: TrendingUp },
-  { name: "Split Bills", href: "/split-bills", icon: ArrowLeftRight },
+  // { name: "Investments", href: "/investments", icon: TrendingUp },
+  // { name: "Split Bills", href: "/split-bills", icon: ArrowLeftRight },
 ];
 
-export function Sidebar(){
+export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const collapsed = useSidebarStore((s) => s.collapsed);
   const toggleCollapsed = useSidebarStore((s) => s.toggle);
-  const [tooltip, setTooltip] = useState<{ text: string; top: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{ text: string; top: number } | null>(
+    null,
+  );
 
   const showTooltip = useCallback((text: string, el: HTMLElement) => {
     const rect = el.getBoundingClientRect();
@@ -52,24 +54,32 @@ export function Sidebar(){
   }, []);
 
   const renderNavLink = (item: NavItem) => {
-    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+    const isActive =
+      pathname === item.href || pathname.startsWith(`${item.href}/`);
     const Icon = item.icon;
     return (
       <Link
         key={item.name}
         href={item.href}
         onClick={() => setMobileOpen(false)}
-        onMouseEnter={(e) => collapsed && showTooltip(item.name, e.currentTarget)}
+        onMouseEnter={(e) =>
+          collapsed && showTooltip(item.name, e.currentTarget)
+        }
         onMouseLeave={hideTooltip}
         className={cn(
           "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
           isActive
             ? "bg-sky-500/[0.08] text-sky-400"
             : "text-muted-foreground hover:text-foreground hover:bg-sky-500/[0.04]",
-          collapsed && "justify-center px-2"
+          collapsed && "justify-center px-2",
         )}
       >
-        <Icon className={cn("w-[1.15rem] h-[1.15rem] transition-colors shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
+        <Icon
+          className={cn(
+            "w-[1.15rem] h-[1.15rem] transition-colors shrink-0",
+            isActive ? "text-primary" : "text-muted-foreground",
+          )}
+        />
         {!collapsed && <span className="relative z-10">{item.name}</span>}
         {isActive && !collapsed && (
           <motion.div
@@ -86,23 +96,42 @@ export function Sidebar(){
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo + Toggle */}
-      <div className={cn("flex items-center justify-between pt-6 pb-4", collapsed ? "px-2 justify-center" : "px-4")}>
+      <div
+        className={cn(
+          "flex items-center justify-between pt-6 pb-4",
+          collapsed ? "px-2 justify-center" : "px-4",
+        )}
+      >
         {collapsed ? (
           <button
             onClick={toggleCollapsed}
             className="group relative flex items-center justify-center w-12 h-12 rounded-lg transition-colors"
             aria-label="Expand sidebar"
           >
-            <img src="/logo.webp" alt="" className="w-12 h-12 rounded-lg shrink-0 group-hover:hidden" />
+            <img
+              src="/logo.webp"
+              alt=""
+              className="w-12 h-12 rounded-lg shrink-0 group-hover:hidden"
+            />
             <PanelLeft className="w-6 h-6 text-primary hidden group-hover:block" />
             <span className="absolute left-full ml-2 px-2 py-1 rounded-lg bg-slate-800 text-white text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-[60] shadow-lg border border-slate-700">
               Expand sidebar
             </span>
           </button>
         ) : (
-          <Link href="/dashboard" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
-            <img src="/logo.webp" alt="" className="w-14 h-14 rounded-lg shrink-0" />
-            <span className="text-xl font-bold text-foreground tracking-tight">FinPro</span>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3"
+            onClick={() => setMobileOpen(false)}
+          >
+            <img
+              src="/logo.webp"
+              alt=""
+              className="w-14 h-14 rounded-lg shrink-0"
+            />
+            <span className="text-xl font-bold text-foreground tracking-tight">
+              FinPro
+            </span>
           </Link>
         )}
         {!collapsed && (
@@ -117,7 +146,13 @@ export function Sidebar(){
       </div>
 
       {/* Main Nav */}
-      <nav data-tour="sidebar" className={cn("flex-1 overflow-y-auto py-2 space-y-0.5", collapsed ? "px-2" : "px-3")}>
+      <nav
+        data-tour="sidebar"
+        className={cn(
+          "flex-1 overflow-y-auto py-2 space-y-0.5",
+          collapsed ? "px-2" : "px-3",
+        )}
+      >
         {NAV_ITEMS.map(renderNavLink)}
       </nav>
 
@@ -149,7 +184,10 @@ export function Sidebar(){
 
       {/* Desktop sidebar */}
       <aside
-        className={cn("hidden lg:flex flex-col fixed left-0 top-0 h-screen bg-card border-r border-border z-50 transition-all duration-300", collapsed ? "w-[4.5rem]" : "w-[16rem]")}
+        className={cn(
+          "hidden lg:flex flex-col fixed left-0 top-0 h-screen bg-card border-r border-border z-50 transition-all duration-300",
+          collapsed ? "w-[4.5rem]" : "w-[16rem]",
+        )}
       >
         {sidebarContent}
         {/* Fixed tooltip outside nav to avoid overflow clipping */}

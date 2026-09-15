@@ -1,23 +1,27 @@
 import type { NextConfig } from "next";
 
+const BACKEND_INTERNAL = "http://backend-app:3001";
+
 const nextConfig: NextConfig = {
-  // API proxying is handled by src/app/api/[...path]/route.ts
-  // which explicitly forwards cookies and CSRF tokens.
-  async headers(){
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
-      {
-        source: '/api/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'no-store' },
-        ],
-      },
-    ];
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/auth/:path*",
+          destination: `${BACKEND_INTERNAL}/auth/:path*`,
+        },
+        { source: "/email", destination: `${BACKEND_INTERNAL}/email` },
+        { source: "/pubsub", destination: `${BACKEND_INTERNAL}/pubsub` },
+        { source: "/api", destination: `${BACKEND_INTERNAL}/` },
+      ],
+      afterFiles: [
+        {
+          source: "/api/:path*",
+          destination: `${BACKEND_INTERNAL}/:path*`,
+        },
+      ],
+      fallback: [],
+    };
   },
 };
 
