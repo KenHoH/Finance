@@ -133,6 +133,7 @@ model Transaction {
   type          TransactionType
   description   String?
   date          DateTime
+  reviewed      Boolean         @default(false)
   isAutoTracked Boolean         @default(false)
   source        String?         // 'GMAIL_PARSER', 'MANUAL', 'BANK_API'
   goalId        String?         // edge case: user langsung beli barang goal

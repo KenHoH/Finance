@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { NotificationService } from '../../../notification/core/app/notification.service.js';
 import { CreateTransactionDto } from '../../framework/dtos/create-transaction.dto.js';
@@ -279,16 +279,33 @@ export class TransactionService {
 
     if (!transaction) return null;
 
+    if (dto.categoryId) {
+      const category = await this.prisma.category.findFirst({
+        where: {
+          id: dto.categoryId,
+          type: dto.type ?? transaction.type,
+          OR: [{ userId }, { userId: null }],
+        },
+      });
+
+      if (!category) {
+        throw new BadRequestException(
+          'Category is not available for this transaction',
+        );
+      }
+    }
+
     const updated = await this.prisma.transaction.update({
       where: { id },
       data: {
         amount: dto.amount,
         type: dto.type,
         description: dto.description,
-        reviewed: dto.review ? dto.review : false,
+        reviewed: dto.review,
         date: dto.date ? new Date(dto.date) : undefined,
         categoryId: dto.categoryId,
       },
+      include: { category: true },
     });
 
     await this.activityLogService.logActivity(

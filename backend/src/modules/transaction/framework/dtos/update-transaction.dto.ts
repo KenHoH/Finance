@@ -35,8 +35,8 @@ export class UpdateTransactionDto {
   description?: string;
 
   @ApiPropertyOptional({
-    description: 'Needs to be review validation',
-    example: 'false',
+    description: 'Whether the transaction has been reviewed',
+    example: false,
   })
   @IsOptional()
   @IsBoolean()
@@ -53,8 +53,9 @@ export class UpdateTransactionDto {
   @ApiPropertyOptional({
     description: 'The ID of the category this transaction belongs to',
     example: 'default-cat_12345abc',
+    nullable: true,
   })
   @IsOptional()
   @IsString()
-  categoryId?: string;
+  categoryId?: string | null;
 }
