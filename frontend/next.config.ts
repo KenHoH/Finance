@@ -14,7 +14,12 @@ const nextConfig: NextConfig = {
         { source: "/pubsub", destination: `${BACKEND_INTERNAL}/pubsub` },
         { source: "/api", destination: `${BACKEND_INTERNAL}/` },
       ],
-      afterFiles: [],
+      afterFiles: [
+        {
+          source: "/api/:path*",
+          destination: `${BACKEND_INTERNAL}/:path*`,
+        },
+      ],
       fallback: [],
     };
   },
