@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
         },
         { source: "/email", destination: `${BACKEND_INTERNAL}/email` },
         { source: "/pubsub", destination: `${BACKEND_INTERNAL}/pubsub` },
-        { source: "/api", destination: `${BACKEND_INTERNAL}/api` },
+        { source: "/api", destination: `${BACKEND_INTERNAL}/` },
       ],
       afterFiles: [],
       fallback: [],
