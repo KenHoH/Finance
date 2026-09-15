@@ -6,9 +6,13 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return {
       beforeFiles: [
-        { source: "/auth/:path*", destination: `${BACKEND_INTERNAL}/auth/:path*` },
+        {
+          source: "/auth/:path*",
+          destination: `${BACKEND_INTERNAL}/auth/:path*`,
+        },
         { source: "/email", destination: `${BACKEND_INTERNAL}/email` },
         { source: "/pubsub", destination: `${BACKEND_INTERNAL}/pubsub` },
+        { source: "/api", destination: `${BACKEND_INTERNAL}/api` },
       ],
       afterFiles: [],
       fallback: [],
