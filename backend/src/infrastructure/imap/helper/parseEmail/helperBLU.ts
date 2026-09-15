@@ -10,28 +10,30 @@ import {
   normalizeText,
 } from './htmlExtraction.js';
 
-const ACCOUNT_LABELS = [/^blu\s*account$/i];
-const AMOUNT_LABELS = [
+const BLU_ACCOUNT_LABELS = [/\bblu\s*account(?=\s|\d|$)/i];
+const EXPENSE_AMOUNT_LABELS = [
   /^total(?:\s+(?:bayar|pembayaran))?$/i,
   /^nominal(?:\s+(?:tagihan|transaksi))?$/i,
   /^jumlah$/i,
 ];
+const INCOME_AMOUNT_LABELS = [/^nominal\s+transfer$/i];
 const DATE_LABELS = [
   /^(?:tgl\.?|tanggal)\s*(?:&|dan)\s*(?:jam|waktu)\s+transaksi$/i,
   /^waktu\s+transaksi$/i,
 ];
-const RECIPIENT_LABELS = [
+const EXPENSE_RECIPIENT_LABELS = [
   /^nama\s+penerima$/i,
   /^nama\s+merchant$/i,
   /^pembayaran\s+ke$/i,
 ];
+const INCOME_SENDER_LABELS = [/^nama\s+pengirim$/i, /^pengirim$/i, /^dari$/i];
 
 function containsIDRCurrency(value: string): boolean {
   return /(?:IDR|RP)\s*[+-]?\d[\d.,]*-?/i.test(normalizeText(value));
 }
 
-function findCounterparty($: cheerio.CheerioAPI): string {
-  const accountLabel = findTextElements($, ACCOUNT_LABELS).first();
+function findOppositeAccountHolder($: cheerio.CheerioAPI): string {
+  const accountLabel = findTextElements($, BLU_ACCOUNT_LABELS).first();
   const accountCell = accountLabel.closest('td, th').first();
   const accountCellElement = accountCell.get(0);
 
@@ -63,7 +65,7 @@ function findCounterparty($: cheerio.CheerioAPI): string {
       const counterparty = values.find(
         (value) =>
           value &&
-          !matchesText(value, ACCOUNT_LABELS) &&
+          !matchesText(value, BLU_ACCOUNT_LABELS) &&
           !containsIDRCurrency(value) &&
           !containsTransactionDate(value),
       );
@@ -72,18 +74,35 @@ function findCounterparty($: cheerio.CheerioAPI): string {
     }
   }
 
-  return findTableRowValue($, RECIPIENT_LABELS);
+  return '';
 }
 
-function extractBluTransaction(html: string, expenses: boolean): ExtractedInfo {
+function findExpenseRecipient($: cheerio.CheerioAPI): string {
+  return (
+    findOppositeAccountHolder($) ||
+    findTableRowValue($, EXPENSE_RECIPIENT_LABELS)
+  );
+}
+
+function findIncomeSender($: cheerio.CheerioAPI): string {
+  return (
+    findOppositeAccountHolder($) || findTableRowValue($, INCOME_SENDER_LABELS)
+  );
+}
+
+export function extractBluExpenseTransaction(html: string): ExtractedInfo {
   const $ = cheerio.load(html);
-  const recipient = findCounterparty($);
-  const totalAmountRaw = findNearbyValue($, AMOUNT_LABELS, containsIDRCurrency);
+  const recipient = findExpenseRecipient($);
+  const totalAmountRaw = findNearbyValue(
+    $,
+    EXPENSE_AMOUNT_LABELS,
+    containsIDRCurrency,
+  );
   const dateRaw = findNearbyValue($, DATE_LABELS, containsTransactionDate);
   const totalAmount = parseIDRCurrency(totalAmountRaw);
 
   return {
-    expenses,
+    expenses: true,
     status: Number.isFinite(totalAmount) && totalAmount > 0 && Boolean(dateRaw),
     amount: totalAmount,
     date: dateRaw,
@@ -92,10 +111,31 @@ function extractBluTransaction(html: string, expenses: boolean): ExtractedInfo {
   };
 }
 
+export function extractBluIncomeTransaction(html: string): ExtractedInfo {
+  const $ = cheerio.load(html);
+  const sender = findIncomeSender($);
+  const totalAmountRaw = findNearbyValue(
+    $,
+    INCOME_AMOUNT_LABELS,
+    containsIDRCurrency,
+  );
+  const dateRaw = findNearbyValue($, DATE_LABELS, containsTransactionDate);
+  const totalAmount = parseIDRCurrency(totalAmountRaw);
+
+  return {
+    expenses: false,
+    status: Number.isFinite(totalAmount) && totalAmount > 0 && Boolean(dateRaw),
+    amount: totalAmount,
+    date: dateRaw,
+    recipient: sender,
+    source: 'BLU',
+  };
+}
+
 export function extractInfoFromHTMLBLU(html: string): ExtractedInfo {
-  return extractBluTransaction(html, true);
+  return extractBluExpenseTransaction(html);
 }
 
 export function extractInfoFromHTMLBluIncome(html: string): ExtractedInfo {
-  return extractBluTransaction(html, false);
+  return extractBluIncomeTransaction(html);
 }
