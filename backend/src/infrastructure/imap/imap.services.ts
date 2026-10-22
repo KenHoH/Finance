@@ -1,67 +1,67 @@
-import { ImapFlow } from 'imapflow';
-import { simpleParser } from 'mailparser';
-import { extractInfo, ExtractedInfo } from './helper/extractInfo.js';
-import { AuthError, ConnectionError } from '../errors/error.js';
+// import { ImapFlow } from 'imapflow';
+// import { simpleParser } from 'mailparser';
+// import { extractInfo, ExtractedInfo } from './helper/extractInfo.js';
+// import { AuthError, ConnectionError } from '../errors/error.js';
 
-export async function connectToImap(
-  userEmail: string,
-  googleAccessToken: string,
-  since?: Date,
-): Promise<ExtractedInfo[]> {
-  const client = new ImapFlow({
-    host: 'imap.gmail.com',
-    port: 993,
-    secure: true,
-    auth: {
-      user: userEmail,
-      accessToken: googleAccessToken,
-    },
-    logger: false,
-  });
+// export async function connectToImap(
+//   userEmail: string,
+//   googleAccessToken: string,
+//   since?: Date,
+// ): Promise<ExtractedInfo[]> {
+//   const client = new ImapFlow({
+//     host: 'imap.gmail.com',
+//     port: 993,
+//     secure: true,
+//     auth: {
+//       user: userEmail,
+//       accessToken: googleAccessToken,
+//     },
+//     logger: false,
+//   });
 
-  try {
-    await client.connect();
+//   try {
+//     await client.connect();
 
-    const lock = await client.getMailboxLock('Important Stuff');
+//     const lock = await client.getMailboxLock('Important Stuff');
 
-    const results: ExtractedInfo[] = [];
+//     const results: ExtractedInfo[] = [];
 
-    try {
-      for await (const message of client.fetch('1:*', { source: true })) {
-        const parsed = await simpleParser(message.source);
+//     try {
+//       for await (const message of client.fetch('1:*', { source: true })) {
+//         const parsed = await simpleParser(message.source);
 
-        if (since && parsed.date && new Date(parsed.date) < since) {
-          continue;
-        }
+//         if (since && parsed.date && new Date(parsed.date) < since) {
+//           continue;
+//         }
 
-        if (parsed.subject && parsed.from?.text && parsed.html) {
-          const result = extractInfo(
-            parsed.subject,
-            parsed.from.text,
-            parsed.html,
-            parsed.messageId || undefined,
-          );
-          if (result.status) {
-            results.push(result);
-          }
-        }
-      }
-    } finally {
-      lock.release();
-    }
+//         if (parsed.subject && parsed.from?.text && parsed.html) {
+//           const result = extractInfo(
+//             parsed.subject,
+//             parsed.from.text,
+//             parsed.html,
+//             parsed.messageId || undefined,
+//           );
+//           if (result.status) {
+//             results.push(result);
+//           }
+//         }
+//       }
+//     } finally {
+//       lock.release();
+//     }
 
-    await client.logout();
-    return results;
-  } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null) {
-      const e = err as Record<string, unknown>;
-      if (e.authenticationFailed) {
-        throw new AuthError();
-      }
-      if (e.code === 'NoConnection') {
-        throw new ConnectionError();
-      }
-    }
-    throw err;
-  }
-}
+//     await client.logout();
+//     return results;
+//   } catch (err: unknown) {
+//     if (typeof err === 'object' && err !== null) {
+//       const e = err as Record<string, unknown>;
+//       if (e.authenticationFailed) {
+//         throw new AuthError();
+//       }
+//       if (e.code === 'NoConnection') {
+//         throw new ConnectionError();
+//       }
+//     }
+//     throw err;
+//   }
+// }
