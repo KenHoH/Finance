@@ -227,8 +227,17 @@ export class TransactionService {
 
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
-      if (filters.startDate) where.date.gte = new Date(filters.startDate);
-      if (filters.endDate) where.date.lte = new Date(filters.endDate);
+
+      if (filters.startDate) {
+        where.date.gte = new Date(`${filters.startDate}T00:00:00.000Z`);
+      }
+
+      if (filters.endDate) {
+        const endDate = new Date(`${filters.endDate}T00:00:00.000Z`);
+        endDate.setUTCDate(endDate.getUTCDate() + 1);
+
+        where.date.lt = endDate;
+      }
     }
 
     const cursorId = filters?.cursorId;
